@@ -511,16 +511,29 @@ const ApiOptions = ({
 			{selectedProvider === "bedrock" && (
 				<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
 					<VSCodeRadioGroup
-						value={apiConfiguration?.awsUseProfile ? "profile" : "credentials"}
-						onChange={handleInputChange(
-							"awsUseProfile",
-							(e) => (e.target as HTMLInputElement).value === "profile",
-						)}>
+						value={
+							apiConfiguration?.awsUseSso
+								? "sso"
+								: apiConfiguration?.awsUseProfile
+								? "profile"
+								: "credentials"
+						}
+						onChange={handleInputChange("awsUseProfile", (e) => {
+							const value = (e.target as HTMLInputElement).value;
+							if (value === "sso") {
+								setApiConfigurationField("awsUseSso", true);
+								return true; // Set awsUseProfile to true for SSO
+							} else {
+								setApiConfigurationField("awsUseSso", false);
+								return value === "profile"; // Set awsUseProfile based on selection
+							}
+						})}>
 						<VSCodeRadio value="credentials">AWS Credentials</VSCodeRadio>
 						<VSCodeRadio value="profile">AWS Profile</VSCodeRadio>
+						<VSCodeRadio value="sso">AWS SSO</VSCodeRadio>
 					</VSCodeRadioGroup>
 					{/* AWS Profile Config Block */}
-					{apiConfiguration?.awsUseProfile ? (
+					{(apiConfiguration?.awsUseProfile || apiConfiguration?.awsUseSso) ? (
 						<VSCodeTextField
 							value={apiConfiguration?.awsProfile || ""}
 							style={{ width: "100%" }}

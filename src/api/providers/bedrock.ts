@@ -4,7 +4,7 @@ import {
 	ConverseCommand,
 	BedrockRuntimeClientConfig,
 } from "@aws-sdk/client-bedrock-runtime"
-import { fromIni } from "@aws-sdk/credential-providers"
+import { fromIni, fromSSO } from "@aws-sdk/credential-providers"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { SingleCompletionHandler } from "../"
 import { ApiHandlerOptions, BedrockModelId, ModelInfo, bedrockDefaultModelId, bedrockModels } from "../../shared/api"
@@ -59,7 +59,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			region: this.options.awsRegion || "us-east-1",
 		}
 
-		if (this.options.awsUseProfile && this.options.awsProfile) {
+		if (this.options.awsUseSso) {
+			// Use SSO-based credentials if enabled
+			clientConfig.credentials = fromSSO({
+				profile: this.options.awsProfile,
+			})
+		} else if (this.options.awsUseProfile && this.options.awsProfile) {
 			// Use profile-based credentials if enabled and profile is set
 			clientConfig.credentials = fromIni({
 				profile: this.options.awsProfile,

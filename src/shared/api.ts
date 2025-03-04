@@ -38,6 +38,7 @@ export interface ApiHandlerOptions {
 	awspromptCacheId?: string
 	awsProfile?: string
 	awsUseProfile?: boolean
+	awsUseSso?: boolean
 	vertexProjectId?: string
 	vertexRegion?: string
 	openAiBaseUrl?: string
