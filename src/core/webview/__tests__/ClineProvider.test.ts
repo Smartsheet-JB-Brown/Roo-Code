@@ -181,7 +181,13 @@ jest.mock("../../../api", () => ({
 
 // Mock system prompt
 jest.mock("../../prompts/system", () => ({
-	SYSTEM_PROMPT: jest.fn().mockImplementation(async () => "mocked system prompt"),
+	SYSTEM_PROMPT: jest.fn().mockImplementation(async () => ({
+		systemPrompt: "mocked system prompt",
+		cachePointMessage: {
+			content: [{ type: "cache_point" }],
+			role: "user",
+		},
+	})),
 	codeMode: "code",
 }))
 

@@ -288,7 +288,7 @@ describe("SYSTEM_PROMPT", () => {
 			true, // enableMcpServerCreation
 		)
 
-		expect(prompt).toContain("apply_diff")
+		expect(prompt.systemPrompt).toContain("apply_diff")
 		expect(prompt).toMatchSnapshot()
 	})
 
@@ -310,7 +310,7 @@ describe("SYSTEM_PROMPT", () => {
 			true, // enableMcpServerCreation
 		)
 
-		expect(prompt).not.toContain("apply_diff")
+		expect(prompt.systemPrompt).not.toContain("apply_diff")
 		expect(prompt).toMatchSnapshot()
 	})
 
@@ -332,7 +332,7 @@ describe("SYSTEM_PROMPT", () => {
 			true, // enableMcpServerCreation
 		)
 
-		expect(prompt).not.toContain("apply_diff")
+		expect(prompt.systemPrompt).not.toContain("apply_diff")
 		expect(prompt).toMatchSnapshot()
 	})
 
@@ -354,8 +354,8 @@ describe("SYSTEM_PROMPT", () => {
 			true, // enableMcpServerCreation
 		)
 
-		expect(prompt).toContain("Language Preference:")
-		expect(prompt).toContain("You should always speak and think in the Spanish language")
+		expect(prompt.systemPrompt).toContain("Language Preference:")
+		expect(prompt.systemPrompt).toContain("You should always speak and think in the Spanish language")
 	})
 
 	it("should include custom mode role definition at top and instructions at bottom", async () => {
@@ -388,11 +388,13 @@ describe("SYSTEM_PROMPT", () => {
 		)
 
 		// Role definition should be at the top
-		expect(prompt.indexOf("Custom role definition")).toBeLessThan(prompt.indexOf("TOOL USE"))
+		expect(prompt.systemPrompt.indexOf("Custom role definition")).toBeLessThan(
+			prompt.systemPrompt.indexOf("TOOL USE"),
+		)
 
 		// Custom instructions should be at the bottom
-		const customInstructionsIndex = prompt.indexOf("Custom mode instructions")
-		const userInstructionsHeader = prompt.indexOf("USER'S CUSTOM INSTRUCTIONS")
+		const customInstructionsIndex = prompt.systemPrompt.indexOf("Custom mode instructions")
+		const userInstructionsHeader = prompt.systemPrompt.indexOf("USER'S CUSTOM INSTRUCTIONS")
 		expect(customInstructionsIndex).toBeGreaterThan(-1)
 		expect(userInstructionsHeader).toBeGreaterThan(-1)
 		expect(customInstructionsIndex).toBeGreaterThan(userInstructionsHeader)
@@ -424,9 +426,11 @@ describe("SYSTEM_PROMPT", () => {
 		)
 
 		// Role definition from promptComponent should be at the top
-		expect(prompt.indexOf("Custom prompt role definition")).toBeLessThan(prompt.indexOf("TOOL USE"))
+		expect(prompt.systemPrompt.indexOf("Custom prompt role definition")).toBeLessThan(
+			prompt.systemPrompt.indexOf("TOOL USE"),
+		)
 		// Should not contain the default mode's role definition
-		expect(prompt).not.toContain(modes[0].roleDefinition)
+		expect(prompt.systemPrompt).not.toContain(modes[0].roleDefinition)
 	})
 
 	it("should fallback to modeConfig roleDefinition when promptComponent has no roleDefinition", async () => {
@@ -455,7 +459,9 @@ describe("SYSTEM_PROMPT", () => {
 		)
 
 		// Should use the default mode's role definition
-		expect(prompt.indexOf(modes[0].roleDefinition)).toBeLessThan(prompt.indexOf("TOOL USE"))
+		expect(prompt.systemPrompt.indexOf(modes[0].roleDefinition)).toBeLessThan(
+			prompt.systemPrompt.indexOf("TOOL USE"),
+		)
 	})
 
 	describe("experimental tools", () => {
@@ -478,8 +484,8 @@ describe("SYSTEM_PROMPT", () => {
 			)
 
 			// Verify experimental tools are not included in the prompt
-			expect(prompt).not.toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
-			expect(prompt).not.toContain(EXPERIMENT_IDS.INSERT_BLOCK)
+			expect(prompt.systemPrompt).not.toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
+			expect(prompt.systemPrompt).not.toContain(EXPERIMENT_IDS.INSERT_BLOCK)
 		})
 
 		it("should enable experimental tools when explicitly enabled", async () => {
@@ -506,8 +512,8 @@ describe("SYSTEM_PROMPT", () => {
 			)
 
 			// Verify experimental tools are included in the prompt when enabled
-			expect(prompt).toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
-			expect(prompt).toContain(EXPERIMENT_IDS.INSERT_BLOCK)
+			expect(prompt.systemPrompt).toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
+			expect(prompt.systemPrompt).toContain(EXPERIMENT_IDS.INSERT_BLOCK)
 		})
 
 		it("should selectively enable experimental tools", async () => {
@@ -534,8 +540,8 @@ describe("SYSTEM_PROMPT", () => {
 			)
 
 			// Verify only enabled experimental tools are included
-			expect(prompt).toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
-			expect(prompt).not.toContain(EXPERIMENT_IDS.INSERT_BLOCK)
+			expect(prompt.systemPrompt).toContain(EXPERIMENT_IDS.SEARCH_AND_REPLACE)
+			expect(prompt.systemPrompt).not.toContain(EXPERIMENT_IDS.INSERT_BLOCK)
 		})
 
 		it("should list all available editing tools in base instruction", async () => {
@@ -562,10 +568,12 @@ describe("SYSTEM_PROMPT", () => {
 			)
 
 			// Verify base instruction lists all available tools
-			expect(prompt).toContain("apply_diff (for replacing lines in existing files)")
-			expect(prompt).toContain("write_to_file (for creating new files or complete file rewrites)")
-			expect(prompt).toContain("insert_content (for adding lines to existing files)")
-			expect(prompt).toContain("search_and_replace (for finding and replacing individual pieces of text)")
+			expect(prompt.systemPrompt).toContain("apply_diff (for replacing lines in existing files)")
+			expect(prompt.systemPrompt).toContain("write_to_file (for creating new files or complete file rewrites)")
+			expect(prompt.systemPrompt).toContain("insert_content (for adding lines to existing files)")
+			expect(prompt.systemPrompt).toContain(
+				"search_and_replace (for finding and replacing individual pieces of text)",
+			)
 		})
 
 		it("should provide detailed instructions for each enabled tool", async () => {
@@ -592,11 +600,13 @@ describe("SYSTEM_PROMPT", () => {
 			)
 
 			// Verify detailed instructions for each tool
-			expect(prompt).toContain(
+			expect(prompt.systemPrompt).toContain(
 				"You should always prefer using other editing tools over write_to_file when making changes to existing files since write_to_file is much slower and cannot handle large files.",
 			)
-			expect(prompt).toContain("The insert_content tool adds lines of text to files")
-			expect(prompt).toContain("The search_and_replace tool finds and replaces text or regex in files")
+			expect(prompt.systemPrompt).toContain("The insert_content tool adds lines of text to files")
+			expect(prompt.systemPrompt).toContain(
+				"The search_and_replace tool finds and replaces text or regex in files",
+			)
 		})
 	})
 
@@ -691,7 +701,7 @@ describe("addCustomInstructions", () => {
 			true, // enableMcpServerCreation
 		)
 
-		expect(prompt).toContain("Creating an MCP Server")
+		expect(prompt.systemPrompt).toContain("Creating an MCP Server")
 		expect(prompt).toMatchSnapshot()
 	})
 
@@ -715,7 +725,7 @@ describe("addCustomInstructions", () => {
 			false, // enableMcpServerCreation
 		)
 
-		expect(prompt).not.toContain("Creating an MCP Server")
+		expect(prompt.systemPrompt).not.toContain("Creating an MCP Server")
 		expect(prompt).toMatchSnapshot()
 	})
 

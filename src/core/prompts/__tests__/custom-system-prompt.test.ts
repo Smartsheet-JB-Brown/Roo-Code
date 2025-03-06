@@ -81,10 +81,10 @@ describe("File-Based Custom System Prompt", () => {
 		)
 
 		// Should contain default sections
-		expect(prompt).toContain("TOOL USE")
-		expect(prompt).toContain("CAPABILITIES")
-		expect(prompt).toContain("MODES")
-		expect(prompt).toContain("Test role definition")
+		expect(prompt.systemPrompt).toContain("TOOL USE")
+		expect(prompt.systemPrompt).toContain("CAPABILITIES")
+		expect(prompt.systemPrompt).toContain("MODES")
+		expect(prompt.systemPrompt).toContain("Test role definition")
 	})
 
 	it("should use file-based custom system prompt when available", async () => {
@@ -116,13 +116,13 @@ describe("File-Based Custom System Prompt", () => {
 		)
 
 		// Should contain role definition and file-based system prompt
-		expect(prompt).toContain(modes[0].roleDefinition)
-		expect(prompt).toContain(fileCustomSystemPrompt)
+		expect(prompt.systemPrompt).toContain(modes[0].roleDefinition)
+		expect(prompt.systemPrompt).toContain(fileCustomSystemPrompt)
 
 		// Should not contain any of the default sections
-		expect(prompt).not.toContain("TOOL USE")
-		expect(prompt).not.toContain("CAPABILITIES")
-		expect(prompt).not.toContain("MODES")
+		expect(prompt.systemPrompt).not.toContain("TOOL USE")
+		expect(prompt.systemPrompt).not.toContain("CAPABILITIES")
+		expect(prompt.systemPrompt).not.toContain("MODES")
 	})
 
 	it("should combine file-based system prompt with role definition and custom instructions", async () => {
@@ -161,12 +161,12 @@ describe("File-Based Custom System Prompt", () => {
 		)
 
 		// Should contain custom role definition and file-based system prompt
-		expect(prompt).toContain(customRoleDefinition)
-		expect(prompt).toContain(fileCustomSystemPrompt)
+		expect(prompt.systemPrompt).toContain(customRoleDefinition)
+		expect(prompt.systemPrompt).toContain(fileCustomSystemPrompt)
 
 		// Should not contain any of the default sections
-		expect(prompt).not.toContain("TOOL USE")
-		expect(prompt).not.toContain("CAPABILITIES")
-		expect(prompt).not.toContain("MODES")
+		expect(prompt.systemPrompt).not.toContain("TOOL USE")
+		expect(prompt.systemPrompt).not.toContain("CAPABILITIES")
+		expect(prompt.systemPrompt).not.toContain("MODES")
 	})
 })

@@ -759,3 +759,73 @@ export const openAiNativeModels = {
 		outputPrice: 1.5,
 	},
 } as const satisfies Record<string, ModelInfo>
+
+// DeepSeek
+export const deepSeekDefaultModelId = "deepseek-coder"
+export const deepSeekModels = {
+	"deepseek-coder": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.2,
+		outputPrice: 0.2,
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// Mistral
+export type MistralModelId = keyof typeof mistralModels
+export const mistralDefaultModelId: MistralModelId = "mistral-large-latest"
+export const mistralModels = {
+	"mistral-large-latest": {
+		maxTokens: 8192,
+		contextWindow: 32_768,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 8,
+		outputPrice: 24,
+	},
+	"mistral-medium-latest": {
+		maxTokens: 8192,
+		contextWindow: 32_768,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 2.7,
+		outputPrice: 8.1,
+	},
+	"mistral-small-latest": {
+		maxTokens: 8192,
+		contextWindow: 32_768,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.6,
+		outputPrice: 1.8,
+	},
+	"codestral-latest": {
+		maxTokens: 8192,
+		contextWindow: 32_768,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 8,
+		outputPrice: 24,
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// Azure OpenAI
+export const azureOpenAiDefaultApiVersion = "2023-05-15"
+
+// Unbound
+export const unboundDefaultModelId = "anthropic/claude-3-5-sonnet-20241022"
+export const unboundDefaultModelInfo: ModelInfo = {
+	maxTokens: 8192,
+	contextWindow: 200_000,
+	supportsImages: true,
+	supportsComputerUse: true,
+	supportsPromptCache: true,
+	inputPrice: 3.0,
+	outputPrice: 15.0,
+	cacheWritesPrice: 3.75,
+	cacheReadsPrice: 0.3,
+	description:
+		"Claude 3.7 Sonnet is an advanced large language model with improved reasoning, coding, and problem-solving capabilities. It introduces a hybrid reasoning approach, allowing users to choose between rapid responses and extended, step-by-step processing for complex tasks. The model demonstrates notable improvements in coding, particularly in front-end development and full-stack updates, and excels in agentic workflows, where it can autonomously navigate multi-step processes. Claude 3.7 Sonnet maintains performance parity with its predecessor in standard mode while offering an extended reasoning mode for enhanced accuracy in math, coding, and instruction-following tasks. Read more at the [blog post here](https://www.anthropic.com/news/claude-3-7-sonnet)",
+}
