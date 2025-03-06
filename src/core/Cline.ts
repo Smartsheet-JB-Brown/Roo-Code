@@ -966,7 +966,7 @@ export class Cline {
 			if (!provider) {
 				throw new Error("Provider not available")
 			}
-			return SYSTEM_PROMPT(
+			const result = await SYSTEM_PROMPT(
 				provider.context,
 				cwd,
 				(this.api.getModel().info.supportsComputerUse ?? false) && (browserToolEnabled ?? true),
@@ -982,6 +982,7 @@ export class Cline {
 				experiments,
 				enableMcpServerCreation,
 			)
+			return result.systemPrompt
 		})()
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request

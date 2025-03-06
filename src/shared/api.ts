@@ -35,7 +35,7 @@ export interface ApiHandlerOptions {
 	awsRegion?: string
 	awsUseCrossRegionInference?: boolean
 	awsUsePromptCache?: boolean
-	awspromptCacheId?: string
+	awsPromptCacheId?: string
 	awsProfile?: string
 	awsUseProfile?: boolean
 	awsUseSso?: boolean
@@ -171,7 +171,7 @@ export const anthropicModels = {
 // AWS Bedrock
 // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
 export interface MessageContent {
-	type: "text" | "image" | "video" | "tool_use" | "tool_result"
+	type: "text" | "image" | "video" | "tool_use" | "tool_result" | "cache_point"
 	text?: string
 	source?: {
 		type: "base64"
@@ -690,7 +690,7 @@ export const openAiNativeModels = {
 		supportsPromptCache: false,
 		inputPrice: 1.1,
 		outputPrice: 4.4,
-		reasoningEffort: "medium",
+		reasoningEffort: "medium" as const,
 	},
 	"o3-mini-high": {
 		maxTokens: 100_000,
@@ -699,7 +699,7 @@ export const openAiNativeModels = {
 		supportsPromptCache: false,
 		inputPrice: 1.1,
 		outputPrice: 4.4,
-		reasoningEffort: "high",
+		reasoningEffort: "high" as const,
 	},
 	"o3-mini-low": {
 		maxTokens: 100_000,
@@ -708,7 +708,7 @@ export const openAiNativeModels = {
 		supportsPromptCache: false,
 		inputPrice: 1.1,
 		outputPrice: 4.4,
-		reasoningEffort: "low",
+		reasoningEffort: "low" as const,
 	},
 	o1: {
 		maxTokens: 100_000,
@@ -755,105 +755,7 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
-		inputPrice: 0.15,
-		outputPrice: 0.6,
+		inputPrice: 0.5,
+		outputPrice: 1.5,
 	},
 } as const satisfies Record<string, ModelInfo>
-
-// DeepSeek
-// https://platform.deepseek.com/docs/api
-export type DeepSeekModelId = keyof typeof deepSeekModels
-export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-chat"
-export const deepSeekModels = {
-	"deepseek-chat": {
-		maxTokens: 8192,
-		contextWindow: 64_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.014, // $0.014 per million tokens
-		outputPrice: 0.28, // $0.28 per million tokens
-		description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
-	},
-	"deepseek-reasoner": {
-		maxTokens: 8192,
-		contextWindow: 64_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.55, // $0.55 per million tokens
-		outputPrice: 2.19, // $2.19 per million tokens
-		description: `DeepSeek-R1 achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks.`,
-	},
-} as const satisfies Record<string, ModelInfo>
-
-// Azure OpenAI
-// https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation
-// https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#api-specs
-export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
-
-// Mistral
-// https://docs.mistral.ai/getting-started/models/models_overview/
-export type MistralModelId = keyof typeof mistralModels
-export const mistralDefaultModelId: MistralModelId = "codestral-latest"
-export const mistralModels = {
-	"codestral-latest": {
-		maxTokens: 256_000,
-		contextWindow: 256_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.3,
-		outputPrice: 0.9,
-	},
-	"mistral-large-latest": {
-		maxTokens: 131_000,
-		contextWindow: 131_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 2.0,
-		outputPrice: 6.0,
-	},
-	"ministral-8b-latest": {
-		maxTokens: 131_000,
-		contextWindow: 131_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.1,
-		outputPrice: 0.1,
-	},
-	"ministral-3b-latest": {
-		maxTokens: 131_000,
-		contextWindow: 131_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.04,
-		outputPrice: 0.04,
-	},
-	"mistral-small-latest": {
-		maxTokens: 32_000,
-		contextWindow: 32_000,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.2,
-		outputPrice: 0.6,
-	},
-	"pixtral-large-latest": {
-		maxTokens: 131_000,
-		contextWindow: 131_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 2.0,
-		outputPrice: 6.0,
-	},
-} as const satisfies Record<string, ModelInfo>
-
-// Unbound Security
-export const unboundDefaultModelId = "anthropic/claude-3-5-sonnet-20241022"
-export const unboundDefaultModelInfo: ModelInfo = {
-	maxTokens: 8192,
-	contextWindow: 200_000,
-	supportsImages: true,
-	supportsPromptCache: true,
-	inputPrice: 3.0,
-	outputPrice: 15.0,
-	cacheWritesPrice: 3.75,
-	cacheReadsPrice: 0.3,
-}

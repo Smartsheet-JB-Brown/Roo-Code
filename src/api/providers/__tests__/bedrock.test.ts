@@ -179,6 +179,150 @@ describe("AwsBedrockHandler", () => {
 		})
 	})
 
+	describe("prompt caching", () => {
+		it("should add cache point when prompt caching is enabled", () => {
+			// Create a handler with prompt caching enabled
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0", // Model that supports prompt caching
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{
+					role: "user",
+					content: "Hello",
+				},
+				{
+					role: "assistant",
+					content: "Hi there!",
+				},
+			]
+
+			// Call the private method using type assertion
+			const messagesWithCachePoint = (handlerWithCache as any).addCachePointIfEnabled(messages)
+
+			// Verify that a cache point was added after the first message
+			expect(messagesWithCachePoint.length).toBe(3)
+			expect(messagesWithCachePoint[0]).toEqual(messages[0])
+			expect(messagesWithCachePoint[1].role).toBe("user")
+			expect(messagesWithCachePoint[1].content).toEqual([{ type: "cache_point" }])
+			expect(messagesWithCachePoint[2]).toEqual(messages[1])
+		})
+
+		it("should not add cache point when prompt caching is disabled", () => {
+			// Create a handler with prompt caching disabled
+			const handlerWithoutCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: false,
+			})
+
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{
+					role: "user",
+					content: "Hello",
+				},
+				{
+					role: "assistant",
+					content: "Hi there!",
+				},
+			]
+
+			// Call the private method using type assertion
+			const messagesWithCachePoint = (handlerWithoutCache as any).addCachePointIfEnabled(messages)
+
+			// Verify that no cache point was added
+			expect(messagesWithCachePoint).toEqual(messages)
+			expect(messagesWithCachePoint.length).toBe(2)
+		})
+
+		it("should not add cache point when model doesn't support prompt caching", () => {
+			// Create a handler with prompt caching enabled but model doesn't support it
+			const handlerWithUnsupportedModel = new AwsBedrockHandler({
+				apiModelId: "meta.llama3-70b-instruct-v1:0", // Model that doesn't support prompt caching
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{
+					role: "user",
+					content: "Hello",
+				},
+				{
+					role: "assistant",
+					content: "Hi there!",
+				},
+			]
+
+			// Call the private method using type assertion
+			const messagesWithCachePoint = (handlerWithUnsupportedModel as any).addCachePointIfEnabled(messages)
+
+			// Verify that no cache point was added
+			expect(messagesWithCachePoint).toEqual(messages)
+			expect(messagesWithCachePoint.length).toBe(2)
+		})
+
+		it("should handle cache-related fields in response metadata", async () => {
+			// Create a handler with prompt caching enabled
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			// Mock AWS SDK invoke with cache-related fields in the response
+			const mockStream = {
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						metadata: {
+							usage: {
+								inputTokens: 10,
+								outputTokens: 5,
+								cacheReadInputTokenCount: 100,
+								cacheWriteInputTokenCount: 0,
+							},
+						},
+					}
+				},
+			}
+
+			const mockInvoke = jest.fn().mockResolvedValue({
+				stream: mockStream,
+			})
+
+			handlerWithCache["client"] = {
+				send: mockInvoke,
+			} as unknown as BedrockRuntimeClient
+
+			const stream = handlerWithCache.createMessage("System prompt", [{ role: "user", content: "Test message" }])
+			const chunks = []
+
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify that cache-related fields are included in the usage chunk
+			expect(chunks.length).toBeGreaterThan(0)
+			expect(chunks[0]).toEqual({
+				type: "usage",
+				inputTokens: 10,
+				outputTokens: 5,
+				cacheReadTokens: 100,
+				cacheWriteTokens: 0,
+			})
+		})
+	})
+
 	describe("createMessage", () => {
 		const mockMessages: Anthropic.Messages.MessageParam[] = [
 			{
@@ -567,6 +711,61 @@ describe("AwsBedrockHandler", () => {
 				expect.objectContaining({
 					input: expect.objectContaining({
 						modelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+					}),
+				}),
+			)
+		})
+
+		it("should include prompt cache configuration in completePrompt when enabled", async () => {
+			// Create a handler with prompt caching enabled
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0", // Model that supports prompt caching
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+				awsPromptCacheId: "test-cache-id",
+			})
+
+			const mockResponse = {
+				output: new TextEncoder().encode(
+					JSON.stringify({
+						content: "Test response with cache",
+					}),
+				),
+			}
+
+			const mockSend = jest.fn().mockResolvedValue(mockResponse)
+			handlerWithCache["client"] = {
+				send: mockSend,
+			} as unknown as BedrockRuntimeClient
+
+			const result = await handlerWithCache.completePrompt("Test prompt")
+			expect(result).toBe("Test response with cache")
+
+			// Verify that the prompt cache configuration is included in the payload
+			expect(mockSend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.objectContaining({
+						inferenceConfig: expect.objectContaining({
+							promptCache: {
+								promptCacheId: "test-cache-id",
+							},
+						}),
+					}),
+				}),
+			)
+
+			// Verify that cache point is added to the messages
+			expect(mockSend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.objectContaining({
+						messages: expect.arrayContaining([
+							expect.objectContaining({
+								role: "user",
+								content: expect.arrayContaining([{ type: "cache_point" }]),
+							}),
+						]),
 					}),
 				}),
 			)

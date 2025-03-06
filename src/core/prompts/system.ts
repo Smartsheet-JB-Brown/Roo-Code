@@ -24,6 +24,7 @@ import {
 	getModesSection,
 	addCustomInstructions,
 } from "./sections"
+import { createCachePointMessage } from "./sections/cache-point"
 import { loadSystemPromptFile } from "./sections/custom-system-prompt"
 import fs from "fs/promises"
 import path from "path"
@@ -96,6 +97,11 @@ ${await addCustomInstructions(promptComponent?.customInstructions || modeConfig.
 	return basePrompt
 }
 
+export interface SystemPromptResult {
+	systemPrompt: string
+	cachePointMessage?: any
+}
+
 export const SYSTEM_PROMPT = async (
 	context: vscode.ExtensionContext,
 	cwd: string,
@@ -111,7 +117,7 @@ export const SYSTEM_PROMPT = async (
 	diffEnabled?: boolean,
 	experiments?: Record<string, boolean>,
 	enableMcpServerCreation?: boolean,
-): Promise<string> => {
+): Promise<SystemPromptResult> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
 	}
@@ -135,17 +141,22 @@ export const SYSTEM_PROMPT = async (
 	// If a file-based custom system prompt exists, use it
 	if (fileCustomSystemPrompt) {
 		const roleDefinition = promptComponent?.roleDefinition || currentMode.roleDefinition
-		return `${roleDefinition}
+		const systemPrompt = `${roleDefinition}
 
 ${fileCustomSystemPrompt}
 
 ${await addCustomInstructions(promptComponent?.customInstructions || currentMode.customInstructions || "", globalCustomInstructions || "", cwd, mode, { preferredLanguage })}`
+
+		return {
+			systemPrompt,
+			cachePointMessage: createCachePointMessage(),
+		}
 	}
 
 	// If diff is disabled, don't pass the diffStrategy
 	const effectiveDiffStrategy = diffEnabled ? diffStrategy : undefined
 
-	return generatePrompt(
+	const systemPrompt = await generatePrompt(
 		context,
 		cwd,
 		supportsComputerUse,
@@ -161,4 +172,9 @@ ${await addCustomInstructions(promptComponent?.customInstructions || currentMode
 		experiments,
 		enableMcpServerCreation,
 	)
+
+	return {
+		systemPrompt,
+		cachePointMessage: createCachePointMessage(),
+	}
 }

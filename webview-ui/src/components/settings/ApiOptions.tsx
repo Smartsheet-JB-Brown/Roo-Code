@@ -607,6 +607,20 @@ const ApiOptions = ({
 						onChange={handleInputChange("awsUseCrossRegionInference", noTransform)}>
 						Use cross-region inference
 					</Checkbox>
+					<Checkbox
+						checked={apiConfiguration?.awsUsePromptCache || false}
+						onChange={handleInputChange("awsUsePromptCache", noTransform)}>
+						Enable prompt caching
+					</Checkbox>
+					{apiConfiguration?.awsUsePromptCache && (
+						<VSCodeTextField
+							value={apiConfiguration?.awsPromptCacheId || ""}
+							style={{ width: "100%", marginTop: "8px" }}
+							onInput={handleInputChange("awsPromptCacheId")}
+							placeholder="Enter prompt cache ID...">
+							<span className="font-medium">Prompt Cache ID</span>
+						</VSCodeTextField>
+					)}
 					<p
 						style={{
 							fontSize: "12px",
@@ -617,6 +631,38 @@ const ApiOptions = ({
 						i.e. ~/.aws/credentials or environment variables. These credentials are only used locally to
 						make API requests from this extension.
 					</p>
+
+					{apiConfiguration?.awsUsePromptCache && (
+						<div
+							style={{
+								fontSize: "12px",
+								marginTop: "8px",
+								padding: "8px",
+								backgroundColor: "var(--vscode-inputValidation-infoBackground)",
+								border: "1px solid var(--vscode-inputValidation-infoBorder)",
+								borderRadius: "3px",
+								color: "var(--vscode-inputValidation-infoForeground)",
+							}}>
+							<i className="codicon codicon-info" style={{ marginRight: "5px" }}></i>
+							<strong>About Prompt Caching:</strong> AWS Bedrock Intelligent Prompt Routing and Prompt
+							Caching allows you to cache common parts of your prompts to reduce token usage and latency.
+							<p style={{ marginTop: "5px" }}>
+								To use prompt caching:
+								<ol style={{ marginTop: "3px", paddingLeft: "20px" }}>
+									<li>Create a prompt cache in the AWS Bedrock console</li>
+									<li>Enter the prompt cache ID above</li>
+									<li>Only supported models will use prompt caching (currently Claude 3.7 Sonnet)</li>
+								</ol>
+							</p>
+							<p style={{ marginTop: "5px" }}>
+								<a
+									href="https://aws.amazon.com/blogs/aws/reduce-costs-and-latency-with-amazon-bedrock-intelligent-prompt-routing-and-prompt-caching-preview/"
+									target="_blank" rel="noreferrer">
+									Learn more about AWS Bedrock Prompt Caching
+								</a>
+							</p>
+						</div>
+					)}
 
 					{(selectedModelId === "anthropic.claude-3-7-sonnet-20250219-v1:0" ||
 						selectedModelId === "custom") && (

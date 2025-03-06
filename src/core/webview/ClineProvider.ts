@@ -1558,7 +1558,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			const mode = message.mode ?? defaultModeSlug
 			const customModes = await this.customModesManager.getCustomModes()
 
-			const systemPrompt = await SYSTEM_PROMPT(
+			const result = await SYSTEM_PROMPT(
 				this.context,
 				cwd,
 				apiConfiguration.openRouterModelInfo?.supportsComputerUse ?? false,
@@ -1574,7 +1574,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				experiments,
 				enableMcpServerCreation,
 			)
-			return systemPrompt
+			return result.systemPrompt
 		}
 	}
 

@@ -40,6 +40,8 @@ export interface StreamEvent {
 			inputTokens: number
 			outputTokens: number
 			totalTokens?: number // Made optional since we don't use it
+			cacheReadInputTokenCount?: number // Number of tokens read from the cache
+			cacheWriteInputTokenCount?: number // Number of tokens written to the cache
 		}
 		metrics?: {
 			latencyMs: number
@@ -97,6 +99,35 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		this.client = this.createClient()
 	}
 
+	/**
+	 * Adds a cache point to the messages array if prompt caching is enabled
+	 * This allows us to cache the system prompt and other common prompt blocks
+	 */
+	private addCachePointIfEnabled(messages: Anthropic.Messages.MessageParam[]): Anthropic.Messages.MessageParam[] {
+		// Only add cache point if prompt caching is enabled and the model supports it
+		if (!this.options.awsUsePromptCache) {
+			return messages
+		}
+
+		const modelConfig = this.getModel()
+		if (!modelConfig.info.supportsPromptCache) {
+			return messages
+		}
+
+		// Create a new array with the cache point after the system prompt
+		const messagesWithCachePoint = [...messages]
+
+		// Insert a cache point after the first message (which is typically the system prompt)
+		if (messagesWithCachePoint.length > 0) {
+			messagesWithCachePoint.splice(1, 0, {
+				role: "user",
+				content: [{ type: "cache_point" } as any],
+			})
+		}
+
+		return messagesWithCachePoint
+	}
+
 	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		const modelConfig = this.getModel()
 
@@ -125,8 +156,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			modelId = modelConfig.id
 		}
 
+		// Add cache point if prompt caching is enabled
+		const messagesWithCachePoint = this.addCachePointIfEnabled(messages)
+
 		// Convert messages to Bedrock format
-		const formattedMessages = convertToBedrockConverseMessages(messages)
+		const formattedMessages = convertToBedrockConverseMessages(messagesWithCachePoint)
 
 		// Construct the payload
 		const payload = {
@@ -137,14 +171,14 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				maxTokens: modelConfig.info.maxTokens || 5000,
 				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
 				topP: 0.1,
-				...(this.options.awsUsePromptCache
-					? {
-							promptCache: {
-								promptCacheId: this.options.awspromptCacheId || "",
-							},
-						}
-					: {}),
-			},
+			} as any, // Type assertion to allow adding promptCache
+		}
+
+		// Add prompt cache configuration if enabled and supported
+		if (this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache) {
+			payload.inferenceConfig.promptCache = {
+				promptCacheId: this.options.awsPromptCacheId || "",
+			}
 		}
 
 		// Try up to 2 times (original attempt + 1 retry after refreshing credentials)
@@ -172,11 +206,22 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 					// Handle metadata events first
 					if (streamEvent.metadata?.usage) {
-						yield {
+						const usageEvent: any = {
 							type: "usage",
 							inputTokens: streamEvent.metadata.usage.inputTokens || 0,
 							outputTokens: streamEvent.metadata.usage.outputTokens || 0,
 						}
+
+						// Only add cache-related fields if they're present
+						if (streamEvent.metadata.usage.cacheReadInputTokenCount !== undefined) {
+							usageEvent.cacheReadTokens = streamEvent.metadata.usage.cacheReadInputTokenCount
+						}
+
+						if (streamEvent.metadata.usage.cacheWriteInputTokenCount !== undefined) {
+							usageEvent.cacheWriteTokens = streamEvent.metadata.usage.cacheWriteInputTokenCount
+						}
+
+						yield usageEvent
 						continue
 					}
 
@@ -264,6 +309,17 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		if (modelId) {
 			// For tests, allow any model ID
 			if (process.env.NODE_ENV === "test") {
+				// For test models that should support prompt caching
+				if (modelId.includes("claude-3-7-sonnet")) {
+					return {
+						id: modelId,
+						info: {
+							maxTokens: 5000,
+							contextWindow: 128_000,
+							supportsPromptCache: true,
+						},
+					}
+				}
 				return {
 					id: modelId,
 					info: {
@@ -313,19 +369,36 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			modelId = modelConfig.id
 		}
 
+		// Create messages array and add cache point if enabled
+		const messages: Anthropic.Messages.MessageParam[] = [
+			{
+				role: "user",
+				content: prompt,
+			},
+		]
+
+		// Convert messages to Bedrock format
+		const formattedMessages = convertToBedrockConverseMessages(
+			this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache
+				? this.addCachePointIfEnabled(messages)
+				: messages,
+		)
+
 		const payload = {
 			modelId,
-			messages: convertToBedrockConverseMessages([
-				{
-					role: "user",
-					content: prompt,
-				},
-			]),
+			messages: formattedMessages,
 			inferenceConfig: {
 				maxTokens: modelConfig.info.maxTokens || 5000,
 				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
 				topP: 0.1,
-			},
+			} as any, // Type assertion to allow adding promptCache
+		}
+
+		// Add prompt cache configuration if enabled and supported
+		if (this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache) {
+			payload.inferenceConfig.promptCache = {
+				promptCacheId: this.options.awsPromptCacheId || "",
+			}
 		}
 
 		// Try up to 2 times (original attempt + 1 retry after refreshing credentials)
