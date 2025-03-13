@@ -36,7 +36,7 @@ export interface ApiHandlerOptions {
 	awsRegion?: string
 	awsUseCrossRegionInference?: boolean
 	awsUsePromptCache?: boolean
-	awspromptCacheId?: string
+
 	awsProfile?: string
 	awsUseProfile?: boolean
 	awsCustomArn?: string
@@ -97,8 +97,7 @@ export const API_CONFIG_KEYS: GlobalStateKey[] = [
 	"openRouterBaseUrl",
 	"awsRegion",
 	"awsUseCrossRegionInference",
-	// "awsUsePromptCache", // NOT exist on GlobalStateKey
-	// "awspromptCacheId", // NOT exist on GlobalStateKey
+	"awsUsePromptCache",
 	"awsProfile",
 	"awsUseProfile",
 	"awsCustomArn",

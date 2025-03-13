@@ -6,11 +6,28 @@ jest.mock("@aws-sdk/credential-providers", () => ({
 	}),
 }))
 
+// Mock the logger to write to console
+jest.mock("../../../utils/logging", () => {
+	const { CompactLogger } = require("../../../utils/logging/CompactLogger")
+	const { CompactTransport } = require("../../../utils/logging/CompactTransport")
+
+	// Create a transport that writes to console
+	const consoleTransport = new CompactTransport({
+		level: "debug",
+		fileOutput: { enabled: false },
+	})
+
+	return {
+		logger: new CompactLogger(consoleTransport),
+	}
+})
+
 import { AwsBedrockHandler } from "../bedrock"
 import { MessageContent } from "../../../shared/api"
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { fromIni } from "@aws-sdk/credential-providers"
+import { logger } from "../../../utils/logging"
 
 describe("AwsBedrockHandler", () => {
 	let handler: AwsBedrockHandler
@@ -106,6 +123,106 @@ describe("AwsBedrockHandler", () => {
 
 		const systemPrompt = "You are a helpful assistant"
 
+		it("should include system prompt cache when enabled and supported", async () => {
+			// Create handler with prompt cache enabled
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0", // This model supports prompt cache
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const mockInvoke = jest.fn().mockResolvedValue({
+				stream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield {
+							metadata: {
+								usage: {
+									inputTokens: 10,
+									outputTokens: 5,
+								},
+							},
+						}
+					},
+				},
+			})
+
+			handlerWithCache["client"] = {
+				send: mockInvoke,
+				config: { region: "us-east-1" },
+			} as unknown as BedrockRuntimeClient
+
+			const stream = handlerWithCache.createMessage(systemPrompt, mockMessages)
+			for await (const chunk of stream) {
+				// Just consume the stream
+			}
+
+			// Verify cachePoint was included in the messages
+			expect(mockInvoke).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.objectContaining({
+						system: expect.arrayContaining([
+							expect.objectContaining({
+								cachePoint: expect.objectContaining({
+									type: expect.stringContaining("default"),
+								}),
+							}),
+						]),
+					}),
+				}),
+			)
+		})
+
+		it("should not include system prompt cache when model doesn't support it", async () => {
+			// Create handler with prompt cache enabled but use a model that doesn't support it
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "amazon.titan-text-express-v1:0", // This model doesn't support prompt cache
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const mockInvoke = jest.fn().mockResolvedValue({
+				stream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield {
+							metadata: {
+								usage: {
+									inputTokens: 10,
+									outputTokens: 5,
+								},
+							},
+						}
+					},
+				},
+			})
+
+			handlerWithCache["client"] = {
+				send: mockInvoke,
+				config: { region: "us-east-1" },
+			} as unknown as BedrockRuntimeClient
+
+			const stream = handlerWithCache.createMessage(systemPrompt, mockMessages)
+			for await (const chunk of stream) {
+				// Just consume the stream
+			}
+
+			// Verify cachePoint was NOT included in the messages
+			expect(mockInvoke).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.objectContaining({
+						system: expect.not.arrayContaining([
+							expect.objectContaining({
+								cachePoint: expect.anything(),
+							}),
+						]),
+					}),
+				}),
+			)
+		})
+
 		it("should handle text messages correctly", async () => {
 			const mockResponse = {
 				messages: [
@@ -154,6 +271,8 @@ describe("AwsBedrockHandler", () => {
 				type: "usage",
 				inputTokens: 10,
 				outputTokens: 5,
+				cacheReadTokens: 0,
+				cacheWriteTokens: 0,
 			})
 
 			expect(mockInvoke).toHaveBeenCalledWith(
@@ -215,6 +334,80 @@ describe("AwsBedrockHandler", () => {
 							temperature: 0.3,
 							topP: 0.1,
 						}),
+					}),
+				}),
+			)
+		})
+
+		it("should not include system prompt cache in completePrompt when enabled and supported", async () => {
+			// Create handler with prompt cache enabled
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0", // This model supports prompt cache
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const mockResponse = {
+				output: new TextEncoder().encode(
+					JSON.stringify({
+						content: "Test response with cache",
+					}),
+				),
+			}
+
+			const mockSend = jest.fn().mockResolvedValue(mockResponse)
+			handlerWithCache["client"] = {
+				send: mockSend,
+				config: { region: "us-east-1" },
+			} as unknown as BedrockRuntimeClient
+
+			const result = await handlerWithCache.completePrompt("Test prompt")
+			expect(result).toBe("Test response with cache")
+
+			// Verify cachePoint was included in the messages
+			expect(mockSend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.not.objectContaining({
+						system: expect.anything(),
+					}),
+				}),
+			)
+		})
+
+		it("should not include system prompt cache in completePrompt when model doesn't support it", async () => {
+			// Create handler with prompt cache enabled but use a model that doesn't support it
+			const handlerWithCache = new AwsBedrockHandler({
+				apiModelId: "amazon.titan-text-express-v1:0", // This model doesn't support prompt cache
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsUsePromptCache: true,
+			})
+
+			const mockResponse = {
+				output: new TextEncoder().encode(
+					JSON.stringify({
+						content: "Test response without cache",
+					}),
+				),
+			}
+
+			const mockSend = jest.fn().mockResolvedValue(mockResponse)
+			handlerWithCache["client"] = {
+				send: mockSend,
+				config: { region: "us-east-1" },
+			} as unknown as BedrockRuntimeClient
+
+			const result = await handlerWithCache.completePrompt("Test prompt")
+			expect(result).toBe("Test response without cache")
+
+			// Verify cachePoint was included in the messages
+			expect(mockSend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: expect.not.objectContaining({
+						system: expect.anything(),
 					}),
 				}),
 			)
@@ -343,6 +536,31 @@ describe("AwsBedrockHandler", () => {
 			// Should fall back to default model
 			expect(modelInfo.id).not.toBe("custom-arn")
 			expect(modelInfo.info).toBeDefined()
+		})
+	})
+
+	describe("logging", () => {
+		it("should write logs to console", () => {
+			// Spy on console.log
+			const consoleSpy = jest.spyOn(process.stdout, "write")
+
+			// Create a handler with a custom ARN to trigger logging
+			const customArnHandler = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				awsCustomArn: "arn:aws:bedrock:us-east-1::foundation-model/custom-model",
+			})
+
+			// Trigger a log message
+			logger.info("Test log message", { ctx: "bedrock-test" })
+
+			// Verify the log was written to console
+			expect(consoleSpy).toHaveBeenCalled()
+
+			// Clean up
+			consoleSpy.mockRestore()
 		})
 	})
 })

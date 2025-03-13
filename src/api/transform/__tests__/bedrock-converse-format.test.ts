@@ -11,7 +11,7 @@ describe("convertToBedrockConverseMessages", () => {
 			{ role: "assistant", content: "Hi there" },
 		]
 
-		const result = convertToBedrockConverseMessages(messages)
+		const result = convertToBedrockConverseMessages(messages).messages
 
 		expect(result).toEqual([
 			{
@@ -46,7 +46,7 @@ describe("convertToBedrockConverseMessages", () => {
 			},
 		]
 
-		const result = convertToBedrockConverseMessages(messages)
+		const result = convertToBedrockConverseMessages(messages).messages
 
 		if (!result[0] || !result[0].content) {
 			fail("Expected result to have content")
@@ -84,7 +84,7 @@ describe("convertToBedrockConverseMessages", () => {
 			},
 		]
 
-		const result = convertToBedrockConverseMessages(messages)
+		const result = convertToBedrockConverseMessages(messages).messages
 
 		if (!result[0] || !result[0].content) {
 			fail("Expected result to have content")
@@ -118,7 +118,7 @@ describe("convertToBedrockConverseMessages", () => {
 			},
 		]
 
-		const result = convertToBedrockConverseMessages(messages)
+		const result = convertToBedrockConverseMessages(messages).messages
 
 		if (!result[0] || !result[0].content) {
 			fail("Expected result to have content")
@@ -152,7 +152,7 @@ describe("convertToBedrockConverseMessages", () => {
 			},
 		]
 
-		const result = convertToBedrockConverseMessages(messages)
+		const result = convertToBedrockConverseMessages(messages).messages
 
 		if (!result[0] || !result[0].content) {
 			fail("Expected result to have content")

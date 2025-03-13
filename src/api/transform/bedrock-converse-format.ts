@@ -1,24 +1,40 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ConversationRole, Message, ContentBlock } from "@aws-sdk/client-bedrock-runtime"
+import { ConversationRole, Message, ContentBlock, SystemContentBlock } from "@aws-sdk/client-bedrock-runtime"
 
 import { MessageContent } from "../../shared/api"
 
 /**
  * Convert Anthropic messages to Bedrock Converse format
  */
-export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Messages.MessageParam[]): Message[] {
-	return anthropicMessages.map((anthropicMessage) => {
+export function convertToBedrockConverseMessages(
+	anthropicMessages: Anthropic.Messages.MessageParam[],
+	systemMessage?: string,
+	usePromptCache: boolean = false,
+): { system: SystemContentBlock[]; messages: Message[] } {
+	let systemBlocks = []
+	if (systemMessage) {
+		systemBlocks.push({ text: systemMessage } as SystemContentBlock)
+
+		if (usePromptCache) {
+			const cacheBlock = { cachePoint: { type: "default" } } as unknown as SystemContentBlock
+			systemBlocks.push(cacheBlock)
+		}
+	}
+
+	let messages = anthropicMessages.map((anthropicMessage) => {
 		// Map Anthropic roles to Bedrock roles
 		const role: ConversationRole = anthropicMessage.role === "assistant" ? "assistant" : "user"
 
 		if (typeof anthropicMessage.content === "string") {
+			const content: ContentBlock[] = [
+				{
+					text: anthropicMessage.content,
+				} as ContentBlock,
+			]
+
 			return {
 				role,
-				content: [
-					{
-						text: anthropicMessage.content,
-					},
-				] as ContentBlock[],
+				content,
 			}
 		}
 
@@ -172,4 +188,6 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 			content,
 		}
 	})
+
+	return { system: systemBlocks, messages: messages }
 }

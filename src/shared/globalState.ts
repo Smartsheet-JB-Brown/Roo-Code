@@ -39,6 +39,7 @@ export const GLOBAL_STATE_KEYS = [
 	"glamaModelInfo",
 	"awsRegion",
 	"awsUseCrossRegionInference",
+	"awsUsePromptCache",
 	"awsProfile",
 	"awsUseProfile",
 	"awsCustomArn",

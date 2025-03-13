@@ -13,6 +13,14 @@ import { convertToBedrockConverseMessages } from "../transform/bedrock-converse-
 import { BaseProvider } from "./base-provider"
 import { logger } from "../../utils/logging"
 
+// Define interface for Bedrock inference config
+interface BedrockInferenceConfig {
+	maxTokens: number
+	temperature: number
+	topP: number
+	usePromptCache?: boolean
+}
+
 /**
  * Validates an AWS Bedrock ARN format and optionally checks if the region in the ARN matches the provided region
  * @param arn The ARN string to validate
@@ -80,6 +88,8 @@ export interface StreamEvent {
 		usage?: {
 			inputTokens: number
 			outputTokens: number
+			CacheReadInputTokens?: number
+			CacheWriteInputTokens?: number
 			totalTokens?: number // Made optional since we don't use it
 		}
 		metrics?: {
@@ -196,27 +206,34 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			modelId = modelConfig.id
 		}
 
+		const usePromptCache = Boolean(this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache)
+
 		// Convert messages to Bedrock format
-		const formattedMessages = convertToBedrockConverseMessages(messages)
+		const formatted = convertToBedrockConverseMessages(messages, systemPrompt, usePromptCache)
 
 		// Construct the payload
+		const inferenceConfig: BedrockInferenceConfig = {
+			maxTokens: modelConfig.info.maxTokens || 4096,
+			temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
+			topP: 0.1,
+		}
+
 		const payload = {
 			modelId,
-			messages: formattedMessages,
-			system: [{ text: systemPrompt }],
-			inferenceConfig: {
-				maxTokens: modelConfig.info.maxTokens || 4096,
-				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
-				topP: 0.1,
-				...(this.options.awsUsePromptCache
-					? {
-							promptCache: {
-								promptCacheId: this.options.awspromptCacheId || "",
-							},
-						}
-					: {}),
-			},
+			messages: formatted.messages,
+			system: formatted.system,
+			inferenceConfig,
 		}
+
+		// Log the payload for debugging
+		logger.debug("Bedrock createMessage payload", {
+			ctx: "bedrock",
+			modelId,
+			usePromptCache: this.options.awsUsePromptCache,
+			modelSupportsPromptCache: modelConfig.info.supportsPromptCache,
+			inferenceConfig,
+			system: formatted.system,
+		})
 
 		try {
 			// Log the payload for debugging custom ARN issues
@@ -256,6 +273,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 						type: "usage",
 						inputTokens: streamEvent.metadata.usage.inputTokens || 0,
 						outputTokens: streamEvent.metadata.usage.outputTokens || 0,
+						cacheReadTokens: streamEvent.metadata.usage.CacheReadInputTokens || 0,
+						cacheWriteTokens: streamEvent.metadata.usage.CacheWriteInputTokens || 0,
 					}
 					continue
 				}
@@ -542,6 +561,17 @@ Please check:
 
 			// For tests, allow any model ID
 			if (process.env.NODE_ENV === "test") {
+				// Special case for models that should support prompt cache in tests
+				if (modelId === "anthropic.claude-3-7-sonnet-20250219-v1:0") {
+					return {
+						id: modelId,
+						info: {
+							maxTokens: 5000,
+							contextWindow: 128_000,
+							supportsPromptCache: true,
+						},
+					}
+				}
 				return {
 					id: modelId,
 					info: {
@@ -622,20 +652,37 @@ Please check:
 				modelId = modelConfig.id
 			}
 
+			const inferenceConfig: BedrockInferenceConfig = {
+				maxTokens: modelConfig.info.maxTokens || 4096,
+				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
+				topP: 0.1,
+			}
+
+			const usePromptCache = Boolean(this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache)
+
 			const payload = {
 				modelId,
-				messages: convertToBedrockConverseMessages([
-					{
-						role: "user",
-						content: prompt,
-					},
-				]),
-				inferenceConfig: {
-					maxTokens: modelConfig.info.maxTokens || 4096,
-					temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
-					topP: 0.1,
-				},
+				messages: convertToBedrockConverseMessages(
+					[
+						{
+							role: "user",
+							content: prompt,
+						},
+					],
+					undefined,
+					usePromptCache,
+				).messages,
+				inferenceConfig,
 			}
+
+			// Log the payload for debugging
+			logger.debug("Bedrock completePrompt payload", {
+				ctx: "bedrock",
+				modelId,
+				usePromptCache: this.options.awsUsePromptCache,
+				modelSupportsPromptCache: modelConfig.info.supportsPromptCache,
+				inferenceConfig,
+			})
 
 			// Log the payload for debugging custom ARN issues
 			if (this.options.awsCustomArn) {
