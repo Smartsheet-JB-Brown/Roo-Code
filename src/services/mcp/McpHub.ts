@@ -9,7 +9,8 @@ import {
 	ListToolsResultSchema,
 	ReadResourceResultSchema,
 } from "@modelcontextprotocol/sdk/types.js"
-import chokidar, { FSWatcher } from "chokidar"
+import * as chokidar from "chokidar"
+import type { FSWatcher } from "chokidar"
 import delay from "delay"
 import deepEqual from "fast-deep-equal"
 import * as fs from "fs/promises"
@@ -73,7 +74,7 @@ export class McpHub {
 	private providerRef: WeakRef<ClineProvider>
 	private disposables: vscode.Disposable[] = []
 	private settingsWatcher?: vscode.FileSystemWatcher
-	private fileWatchers: Map<string, FSWatcher> = new Map()
+	private fileWatchers: Map<string, any> = new Map()
 	private isDisposed: boolean = false
 	connections: McpConnection[] = []
 	isConnecting: boolean = false
@@ -413,12 +414,14 @@ export class McpHub {
 		const filePath = config.args?.find((arg: string) => arg.includes("build/index.js"))
 		if (filePath) {
 			// we use chokidar instead of onDidSaveTextDocument because it doesn't require the file to be open in the editor. The settings config is better suited for onDidSave since that will be manually updated by the user or Cline (and we want to detect save events, not every file change)
-			const watcher = chokidar.watch(filePath, {
-				// persistent: true,
-				// ignoreInitial: true,
-				// awaitWriteFinish: true, // This helps with atomic writes
+			// Use type assertion to work around type issues
+			const watcher: any = chokidar.watch(filePath, {
+				persistent: true,
+				ignoreInitial: true,
+				awaitWriteFinish: true, // This helps with atomic writes
 			})
 
+			// Add event listener
 			watcher.on("change", () => {
 				console.log(`Detected change in ${filePath}. Restarting server ${name}...`)
 				this.restartConnection(name)

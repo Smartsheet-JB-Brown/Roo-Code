@@ -10,10 +10,15 @@ export async function openImage(dataUri: string) {
 		return
 	}
 	const [, format, base64Data] = matches
-	const imageBuffer = Buffer.from(base64Data, "base64")
+	// Convert base64 to Uint8Array
+	const binaryString = atob(base64Data)
+	const bytes = new Uint8Array(binaryString.length)
+	for (let i = 0; i < binaryString.length; i++) {
+		bytes[i] = binaryString.charCodeAt(i)
+	}
 	const tempFilePath = path.join(os.tmpdir(), `temp_image_${Date.now()}.${format}`)
 	try {
-		await vscode.workspace.fs.writeFile(vscode.Uri.file(tempFilePath), imageBuffer)
+		await vscode.workspace.fs.writeFile(vscode.Uri.file(tempFilePath), bytes)
 		await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(tempFilePath))
 	} catch (error) {
 		vscode.window.showErrorMessage(`Error opening image: ${error}`)
@@ -49,7 +54,7 @@ export async function openFile(filePath: string, options: OpenFileOptions = {}) 
 
 			// Create with provided content or empty string
 			const content = options.content || ""
-			await vscode.workspace.fs.writeFile(uri, Buffer.from(content, "utf8"))
+			await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content))
 		}
 
 		// Check if the document is already open in a tab group that's not in the active editor's column

@@ -83,7 +83,7 @@
 		6. You MUST direct your user to read this message in full
 */
 
-import { EventEmitter } from "events"
+import EventEmitter from "events"
 import stripAnsi from "strip-ansi"
 import * as vscode from "vscode"
 import { inspect } from "util"
@@ -116,7 +116,36 @@ export interface TerminalProcessEvents {
 const PROCESS_HOT_TIMEOUT_NORMAL = 2_000
 const PROCESS_HOT_TIMEOUT_COMPILING = 15_000
 
-export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
+export class TerminalProcess extends EventEmitter {
+	// Type-safe event emitter methods
+	override emit<K extends keyof TerminalProcessEvents>(event: K, ...args: TerminalProcessEvents[K]): boolean {
+		return super.emit(event, ...args)
+	}
+
+	override on<K extends keyof TerminalProcessEvents>(
+		event: K,
+		listener: (...args: TerminalProcessEvents[K]) => void,
+	): this {
+		return super.on(event, listener as (...args: any[]) => void)
+	}
+
+	override once<K extends keyof TerminalProcessEvents>(
+		event: K,
+		listener: (...args: TerminalProcessEvents[K]) => void,
+	): this {
+		return super.once(event, listener as (...args: any[]) => void)
+	}
+
+	override removeListener<K extends keyof TerminalProcessEvents>(
+		event: K,
+		listener: (...args: TerminalProcessEvents[K]) => void,
+	): this {
+		return super.removeListener(event, listener as (...args: any[]) => void)
+	}
+
+	override removeAllListeners<K extends keyof TerminalProcessEvents>(event?: K): this {
+		return super.removeAllListeners(event)
+	}
 	private isListening: boolean = true
 	private terminalInfo: Terminal
 	private lastEmitTime_ms: number = 0
