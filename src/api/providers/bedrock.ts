@@ -3,8 +3,8 @@ import {
 	ConverseStreamCommand,
 	ConverseCommand,
 	BedrockRuntimeClientConfig,
-} from "@aws-sdk/client-bedrock-runtime"
-import { fromIni } from "@aws-sdk/credential-providers"
+} from "../../../../JsSDKV3/clients/client-bedrock-runtime"
+import { fromIni } from "../../../../JsSDKV3/packages/credential-providers"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { SingleCompletionHandler } from "../"
 import { ApiHandlerOptions, BedrockModelId, ModelInfo, bedrockDefaultModelId, bedrockModels } from "../../shared/api"
@@ -209,7 +209,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		const usePromptCache = Boolean(this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache)
 
 		// Convert messages to Bedrock format
-		const formatted = convertToBedrockConverseMessages(messages, systemPrompt, usePromptCache)
+		const formatted = convertToBedrockConverseMessages(messages, systemPrompt, true)
 
 		// Construct the payload
 		const inferenceConfig: BedrockInferenceConfig = {

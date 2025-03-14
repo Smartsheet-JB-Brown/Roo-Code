@@ -1,5 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ConversationRole, Message, ContentBlock, SystemContentBlock } from "@aws-sdk/client-bedrock-runtime"
+import { ConversationRole, Message, ContentBlock, SystemContentBlock } from "../../../../JsSDKV3/clients/client-bedrock-runtime"
 
 import { MessageContent } from "../../shared/api"
 
@@ -7,7 +7,7 @@ import { MessageContent } from "../../shared/api"
  * Convert Anthropic messages to Bedrock Converse format
  */
 export function convertToBedrockConverseMessages(
-	anthropicMessages: Anthropic.Messages.MessageParam[],
+	anthropicMessages: Anthropic.Messages.MessageParam[] | { role: string; content: string }[],
 	systemMessage?: string,
 	usePromptCache: boolean = false,
 ): { system: SystemContentBlock[]; messages: Message[] } {
@@ -39,7 +39,7 @@ export function convertToBedrockConverseMessages(
 		}
 
 		// Process complex content types
-		const content = anthropicMessage.content.map((block) => {
+		const content = anthropicMessage.content.map((block: any) => {
 			const messageBlock = block as MessageContent & {
 				id?: string
 				tool_use_id?: string
