@@ -88,13 +88,25 @@ export interface StreamEvent {
 		usage?: {
 			inputTokens: number
 			outputTokens: number
-			CacheReadInputTokens?: number
-			CacheWriteInputTokens?: number
+			cacheReadInputTokens?: number
+			cacheWriteInputTokens?: number
+			cacheReadInputTokenCount?: number
+			cacheWriteInputTokenCount?: number
 			totalTokens?: number // Made optional since we don't use it
 		}
 		metrics?: {
 			latencyMs: number
 		}
+	}
+	// Add top-level usage field to match the actual response structure
+	usage?: {
+		inputTokens: number
+		outputTokens: number
+		cacheReadInputTokens?: number
+		cacheWriteInputTokens?: number
+		cacheReadInputTokenCount?: number
+		cacheWriteInputTokenCount?: number
+		totalTokens?: number
 	}
 }
 
@@ -208,8 +220,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		const usePromptCache = Boolean(this.options.awsUsePromptCache && modelConfig.info.supportsPromptCache)
 
-		// Convert messages to Bedrock format
-		const formatted = convertToBedrockConverseMessages(messages, systemPrompt, true)
+		// Convert messages to Bedrock format, passing the model info
+		const formatted = convertToBedrockConverseMessages(messages, systemPrompt, usePromptCache, modelConfig.info)
 
 		// Construct the payload
 		const inferenceConfig: BedrockInferenceConfig = {
@@ -268,13 +280,29 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				}
 
 				// Handle metadata events first
-				if (streamEvent.metadata?.usage) {
+				if (streamEvent.metadata?.usage || streamEvent.usage) {
+					// Define a type for usage to avoid TypeScript errors
+					type UsageType = {
+						inputTokens?: number
+						outputTokens?: number
+						cacheReadInputTokens?: number
+						cacheWriteInputTokens?: number
+						cacheReadInputTokenCount?: number
+						cacheWriteInputTokenCount?: number
+					}
+
+					const usage = (streamEvent.metadata?.usage || streamEvent.usage || {}) as UsageType
+
+					// Check both field naming conventions for cache tokens
+					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
+					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
+
 					yield {
 						type: "usage",
-						inputTokens: streamEvent.metadata.usage.inputTokens || 0,
-						outputTokens: streamEvent.metadata.usage.outputTokens || 0,
-						cacheReadTokens: streamEvent.metadata.usage.CacheReadInputTokens || 0,
-						cacheWriteTokens: streamEvent.metadata.usage.CacheWriteInputTokens || 0,
+						inputTokens: usage.inputTokens || 0,
+						outputTokens: usage.outputTokens || 0,
+						cacheReadTokens,
+						cacheWriteTokens,
 					}
 					continue
 				}
@@ -671,6 +699,7 @@ Please check:
 					],
 					undefined,
 					usePromptCache,
+					modelConfig.info,
 				).messages,
 				inferenceConfig,
 			}

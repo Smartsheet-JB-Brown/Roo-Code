@@ -164,4 +164,289 @@ describe("convertToBedrockConverseMessages", () => {
 		const textBlock = result[0].content[0] as ContentBlock
 		expect(textBlock).toEqual({ text: "Hello world" })
 	})
+
+	describe("cache block insertion", () => {
+		test("adds system cache block when prompt caching is enabled, messages exist, and system prompt is long enough", () => {
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+			// Create a system prompt that's at least 50 tokens (200+ characters)
+			const systemPrompt =
+				"You are a helpful assistant that provides detailed and accurate information. " +
+				"You should always be polite, respectful, and considerate of the user's needs. " +
+				"When answering questions, try to provide comprehensive explanations that are easy to understand. " +
+				"If you don't know something, be honest about it rather than making up information."
+
+			const result = convertToBedrockConverseMessages(messages, systemPrompt, true)
+
+			// Check that system blocks include both the text and a cache block
+			expect(result.system).toHaveLength(2)
+			expect(result.system[0]).toEqual({ text: systemPrompt })
+			expect(result.system[1]).toHaveProperty("cachePoint")
+			expect(result.system[1].cachePoint).toEqual({ type: "default" })
+		})
+
+		test("adds system cache block when model info specifies it should", () => {
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+			// Create a short system prompt that wouldn't normally get a cache block
+			const systemPrompt = "You are a helpful assistant"
+
+			// Create model info with cachableFields including system and low minTokensPerCachePoint
+			const modelInfo = {
+				maxTokens: 8192,
+				contextWindow: 200_000,
+				supportsPromptCache: true,
+				minTokensPerCachePoint: 1, // Set to 1 to ensure it passes the threshold
+				maxCachePoints: 4,
+				cachableFields: ["system", "messages", "tools"],
+			}
+
+			const result = convertToBedrockConverseMessages(messages, systemPrompt, true, modelInfo)
+
+			// Check that system blocks include both the text and a cache block
+			expect(result.system).toHaveLength(2)
+			expect(result.system[0]).toEqual({ text: systemPrompt })
+			expect(result.system[1]).toHaveProperty("cachePoint")
+			expect(result.system[1].cachePoint).toEqual({ type: "default" })
+		})
+
+		test("does not add system cache block when system prompt is too short", () => {
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+			const shortSystemPrompt = "You are a helpful assistant"
+
+			const result = convertToBedrockConverseMessages(messages, shortSystemPrompt, true)
+
+			// Check that system blocks only include the text, no cache block
+			expect(result.system).toHaveLength(1)
+			expect(result.system[0]).toEqual({ text: "You are a helpful assistant" })
+		})
+
+		test("does not add cache blocks when messages array is empty even if prompt caching is enabled", () => {
+			const messages: Anthropic.Messages.MessageParam[] = []
+			const systemPrompt = "You are a helpful assistant"
+
+			const result = convertToBedrockConverseMessages(messages, systemPrompt, true)
+
+			// Check that system blocks only include the text, no cache block
+			expect(result.system).toHaveLength(1)
+			expect(result.system[0]).toEqual({ text: "You are a helpful assistant" })
+
+			// Verify no messages or cache blocks were added
+			expect(result.messages).toHaveLength(0)
+		})
+
+		test("does not add system cache block when prompt caching is disabled", () => {
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+			const systemPrompt = "You are a helpful assistant"
+
+			const result = convertToBedrockConverseMessages(messages, systemPrompt, false)
+
+			// Check that system blocks only include the text
+			expect(result.system).toHaveLength(1)
+			expect(result.system[0]).toEqual({ text: "You are a helpful assistant" })
+		})
+
+		test("does not insert message cache blocks when prompt caching is disabled", () => {
+			// Create a long conversation that would trigger cache blocks if enabled
+			const messages: Anthropic.Messages.MessageParam[] = Array(10)
+				.fill(null)
+				.map((_, i) => ({
+					role: i % 2 === 0 ? "user" : "assistant",
+					content:
+						"This is message " +
+						(i + 1) +
+						" with some additional text to increase token count. " +
+						"Adding more text to ensure we exceed the token threshold for cache block insertion.",
+				}))
+
+			const result = convertToBedrockConverseMessages(messages, undefined, false)
+
+			// Verify no cache blocks were inserted
+			expect(result.messages).toHaveLength(10)
+			result.messages.forEach((message) => {
+				if (message.content) {
+					message.content.forEach((block) => {
+						expect(block).not.toHaveProperty("cachePoint")
+					})
+				}
+			})
+		})
+
+		test("inserts message cache blocks when prompt caching is enabled and token threshold is exceeded", () => {
+			// Create a long conversation that should trigger cache blocks
+			const messages: Anthropic.Messages.MessageParam[] = Array(10)
+				.fill(null)
+				.map((_, i) => ({
+					role: i % 2 === 0 ? "user" : "assistant",
+					content:
+						"This is message " +
+						(i + 1) +
+						" with a lot of text to increase token count. " +
+						"Adding more text to ensure we exceed the token threshold for cache block insertion. " +
+						"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt " +
+						"ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation " +
+						"ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in " +
+						"reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+				}))
+
+			const result = convertToBedrockConverseMessages(messages, undefined, true)
+
+			// Count the number of cache blocks inserted
+			let cacheBlockCount = 0
+			result.messages.forEach((message) => {
+				if (message.content) {
+					message.content.forEach((block) => {
+						if ("cachePoint" in block) {
+							cacheBlockCount++
+						}
+					})
+				}
+			})
+
+			// We should have some cache blocks inserted (up to the max of 4)
+			expect(cacheBlockCount).toBeGreaterThan(0)
+			expect(cacheBlockCount).toBeLessThanOrEqual(4)
+
+			// The total message count should be greater than the original 10 due to cache blocks
+			expect(result.messages.length).toBeGreaterThan(10)
+		})
+
+		test("respects the maximum number of cache blocks", () => {
+			// Create an extremely long conversation that would trigger many cache blocks
+			const messages: Anthropic.Messages.MessageParam[] = Array(50)
+				.fill(null)
+				.map((_, i) => ({
+					role: i % 2 === 0 ? "user" : "assistant",
+					content:
+						"This is message " +
+						(i + 1) +
+						" with a lot of text to increase token count. " +
+						"Adding more text to ensure we exceed the token threshold for cache block insertion multiple times.",
+				}))
+
+			const result = convertToBedrockConverseMessages(messages, undefined, true)
+
+			// Count the number of cache blocks inserted
+			let cacheBlockCount = 0
+			result.messages.forEach((message) => {
+				if (message.content) {
+					message.content.forEach((block) => {
+						if ("cachePoint" in block) {
+							cacheBlockCount++
+						}
+					})
+				}
+			})
+
+			// We should have exactly 4 cache blocks (the maximum)
+			expect(cacheBlockCount).toBeLessThanOrEqual(4)
+		})
+
+		test("inserts cache block after the first message when appropriate", () => {
+			// Create a conversation where the first message is very large
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{
+					role: "user",
+					content:
+						"This is a very large first message that exceeds the token threshold. " +
+						"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt " +
+						"ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation " +
+						"ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in " +
+						"reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. " +
+						"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt " +
+						"mollit anim id est laborum. ".repeat(10),
+				},
+				{
+					role: "assistant",
+					content: "This is the second message.",
+				},
+			]
+
+			const result = convertToBedrockConverseMessages(messages, undefined, true)
+
+			// The first message should not have a cache block within its content
+			expect(result.messages[0].role).toBe("user")
+			expect(result.messages[0].content && result.messages[0].content[0]).not.toHaveProperty("cachePoint")
+
+			// There should be a cache block after the first message
+			let foundCacheBlock = false
+			for (let i = 1; i < result.messages.length; i++) {
+				const content = result.messages[i].content
+				if (content && content.length === 1 && content[0] && "cachePoint" in content[0]) {
+					foundCacheBlock = true
+					break
+				}
+			}
+
+			expect(foundCacheBlock).toBe(true)
+		})
+
+		test("does not insert cache blocks when total content is too small", () => {
+			// Create a conversation with very small messages
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "Hello" },
+				{ role: "assistant", content: "Hi there" },
+				{ role: "user", content: "How are you?" },
+				{ role: "assistant", content: "I'm doing well, thanks!" },
+			]
+
+			const result = convertToBedrockConverseMessages(messages, undefined, true)
+
+			// Count the number of cache blocks inserted
+			let cacheBlockCount = 0
+			result.messages.forEach((message) => {
+				if (message.content) {
+					message.content.forEach((block) => {
+						if ("cachePoint" in block) {
+							cacheBlockCount++
+						}
+					})
+				}
+			})
+
+			// We should have no cache blocks since the total content is small
+			expect(cacheBlockCount).toBe(0)
+
+			// The message count should be the same as the original
+			expect(result.messages.length).toBe(4)
+		})
+
+		test("inserts cache blocks for small content when model info specifies low threshold", () => {
+			// Create a conversation with very small messages
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "Hello" },
+				{ role: "assistant", content: "Hi there" },
+				{ role: "user", content: "How are you?" },
+				{ role: "assistant", content: "I'm doing well, thanks!" },
+			]
+
+			// Create model info with low minTokensPerCachePoint
+			const modelInfo = {
+				maxTokens: 8192,
+				contextWindow: 200_000,
+				supportsPromptCache: true,
+				minTokensPerCachePoint: 1, // Set to 1 to ensure it passes the threshold
+				maxCachePoints: 4,
+				cachableFields: ["system", "messages", "tools"],
+			}
+
+			const result = convertToBedrockConverseMessages(messages, undefined, true, modelInfo)
+
+			// Count the number of cache blocks inserted
+			let cacheBlockCount = 0
+			result.messages.forEach((message) => {
+				if (message.content) {
+					message.content.forEach((block) => {
+						if ("cachePoint" in block) {
+							cacheBlockCount++
+						}
+					})
+				}
+			})
+
+			// We should have at least one cache block since the threshold is very low
+			expect(cacheBlockCount).toBeGreaterThan(0)
+
+			// The message count should be greater than the original due to cache blocks
+			expect(result.messages.length).toBeGreaterThan(4)
+		})
+	})
 })
