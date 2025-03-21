@@ -171,6 +171,7 @@ export type GlobalStateKey =
 	| "glamaModelInfo"
 	| "awsRegion"
 	| "awsUseCrossRegionInference"
+	| "awsUsePromptCache"
 	| "awsProfile"
 	| "awsUseProfile"
 	| "awsCustomArn"

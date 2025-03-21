@@ -1,4 +1,4 @@
-// Mock AWS SDK credential providers
+// Mock AWS SDK credential providers and Bedrock client
 jest.mock("@aws-sdk/credential-providers", () => ({
 	fromIni: jest.fn().mockReturnValue({
 		accessKeyId: "profile-access-key",
@@ -6,24 +6,81 @@ jest.mock("@aws-sdk/credential-providers", () => ({
 	}),
 }))
 
+// Mock Smithy client
+jest.mock("@smithy/smithy-client", () => ({
+	throwDefaultError: jest.fn(),
+}))
+
+// Mock AWS SDK modules
+jest.mock("@aws-sdk/client-bedrock-runtime", () => {
+	const mockSend = jest.fn().mockImplementation(async (command) => {
+		// Skip middleware chain and return mock response directly
+		return {
+			$metadata: {
+				httpStatusCode: 200,
+				requestId: "mock-request-id",
+			},
+			stream: {
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						metadata: {
+							usage: {
+								inputTokens: 100,
+								outputTokens: 200,
+							},
+						},
+					}
+				},
+			},
+		}
+	})
+
+	return {
+		BedrockRuntimeClient: jest.fn().mockImplementation(() => ({
+			send: mockSend,
+			config: { region: "us-east-1" },
+			middlewareStack: {
+				clone: () => ({ resolve: () => {} }),
+				use: () => {},
+			},
+		})),
+		ConverseStreamCommand: jest.fn((params) => ({
+			...params,
+			input: params,
+			middlewareStack: {
+				clone: () => ({ resolve: () => {} }),
+				use: () => {},
+			},
+		})),
+		ConverseCommand: jest.fn((params) => ({
+			...params,
+			input: params,
+			middlewareStack: {
+				clone: () => ({ resolve: () => {} }),
+				use: () => {},
+			},
+		})),
+	}
+})
+
+// Mock Smithy client to prevent middleware errors
+jest.mock("@smithy/smithy-client", () => ({
+	throwDefaultError: jest.fn(),
+}))
+
 import { AwsBedrockHandler, StreamEvent } from "../bedrock"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime"
+const { fromIni } = require("@aws-sdk/credential-providers")
 
 describe("AwsBedrockHandler with invokedModelId", () => {
-	let mockSend: jest.SpyInstance
+	let mockSend: jest.Mock
 
 	beforeEach(() => {
-		// Mock the BedrockRuntimeClient.prototype.send method
-		mockSend = jest.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(async () => {
-			return {
-				stream: createMockStream([]),
-			}
-		})
-	})
-
-	afterEach(() => {
-		mockSend.mockRestore()
+		jest.clearAllMocks()
+		// Get the mock send function from our mocked module
+		const { BedrockRuntimeClient } = require("@aws-sdk/client-bedrock-runtime")
+		mockSend = BedrockRuntimeClient().send
 	})
 
 	// Helper function to create a mock async iterable stream
@@ -74,6 +131,8 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 								usage: {
 									inputTokens: 150,
 									outputTokens: 250,
+									cacheReadTokens: 0,
+									cacheWriteTokens: 0,
 								},
 							},
 						},
@@ -126,6 +185,8 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 			type: "usage",
 			inputTokens: 100,
 			outputTokens: 200,
+			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
 		})
 	})
 
