@@ -16,6 +16,7 @@ export abstract class BaseProvider implements ApiHandler {
 	private encoder: Tiktoken | null = null
 	abstract createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream
 	abstract getModel(): { id: string; info: ModelInfo }
+
 	/**
 	 * Default token counting implementation using tiktoken
 	 * Providers can override this to use their native token counting endpoints
@@ -41,7 +42,6 @@ export abstract class BaseProvider implements ApiHandler {
 			if (block.type === "text") {
 				// Use tiktoken for text token counting
 				const text = block.text || ""
-
 				if (text.length > 0) {
 					const tokens = this.encoder.encode(text)
 					totalTokens += tokens.length
