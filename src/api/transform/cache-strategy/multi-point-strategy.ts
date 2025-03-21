@@ -8,8 +8,9 @@ import { logger } from "../../../utils/logging"
  * Creates cache points after messages as soon as uncached tokens exceed minimumTokenCount.
  */
 export class MultiPointStrategy extends CacheStrategy {
-	// Using logger instead of outputChannel
-
+	/**
+	 * Determine optimal cache point placements and return the formatted result
+	 */
 	public determineOptimalCachePoints(): CacheResult {
 		// If prompt caching is disabled or no messages, return without cache points
 		if (!this.config.usePromptCache || this.config.messages.length === 0) {
@@ -25,21 +26,11 @@ export class MultiPointStrategy extends CacheStrategy {
 		const useSystemCache =
 			supportsSystemCache && this.config.systemPrompt && this.meetsMinTokenThreshold(this.systemTokenCount)
 
-		// logger.debug("System cache evaluation", {
-		// 	ctx: "cache-strategy",
-		// 	supportsSystemCache,
-		// 	hasSystemPrompt: Boolean(this.config.systemPrompt),
-		// 	systemTokenCount: this.systemTokenCount,
-		// 	meetsMinTokenThreshold: this.meetsMinTokenThreshold(this.systemTokenCount),
-		// 	willUseSystemCache: useSystemCache,
-		// })
-
 		// Handle system blocks
 		let systemBlocks: SystemContentBlock[] = []
 		if (this.config.systemPrompt) {
 			systemBlocks = [{ text: this.config.systemPrompt } as unknown as SystemContentBlock]
 			if (useSystemCache) {
-				// logger.debug("Adding system cache point", { ctx: "cache-strategy" })
 				systemBlocks.push(this.createCachePoint() as unknown as SystemContentBlock)
 				remainingCachePoints--
 			}
@@ -50,28 +41,21 @@ export class MultiPointStrategy extends CacheStrategy {
 			return this.formatResult(systemBlocks, this.messagesToContentBlocks(this.config.messages))
 		}
 
-		//TODO: first remove any cachePoints?
-
 		// Determine optimal cache point placements for messages
-		// logger.debug("Config messages", {
-		// 	ctx: "cache-strategy",
-		// 	messages: JSON.stringify(this.config.messages),
-		// })
 		const placements = this.determineMessageCachePoints(minTokensPerPoint, remainingCachePoints)
 		const messages = this.messagesToContentBlocks(this.config.messages)
-		// logger.debug("Cache point placements", {
-		// 	ctx: "cache-strategy",
-		// 	placements: JSON.stringify(placements),
-		// })
 		let cacheResult = this.formatResult(systemBlocks, this.applyCachePoints(messages, placements))
-		// logger.debug("Cache result", {
-		// 	ctx: "cache-strategy",
-		// 	cacheResult: JSON.stringify(cacheResult),
-		// })
 
 		return cacheResult
 	}
 
+	/**
+	 * Determine optimal cache point placements for messages
+	 *
+	 * @param minTokensPerPoint Minimum tokens required per cache point
+	 * @param remainingCachePoints Number of cache points available
+	 * @returns Array of cache point placements
+	 */
 	private determineMessageCachePoints(
 		minTokensPerPoint: number,
 		remainingCachePoints: number,
@@ -84,7 +68,6 @@ export class MultiPointStrategy extends CacheStrategy {
 		let currentIndex = 0
 
 		while (currentIndex < this.config.messages.length && remainingCachePoints > 0) {
-			// console.log(`\n--- Processing iteration ${currentIndex + 1} ---`)
 			let remainingTokens = this.config.messages
 				.filter((_, index) => index >= currentIndex)
 				.map((m) => {
@@ -92,9 +75,8 @@ export class MultiPointStrategy extends CacheStrategy {
 				})
 				.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
 
-			//stop evaluating futher cache points if the remaining messages don't reach the mininumum for a cache point
+			// Stop evaluating further cache points if the remaining messages don't reach the minimum for a cache point
 			if (remainingTokens <= minTokensPerPoint) {
-				// console.log(`Remaining tokens (${remainingTokens}) less than minimum required (${minTokensPerPoint}), stopping evaluation`)
 				break
 			}
 
@@ -149,14 +131,15 @@ export class MultiPointStrategy extends CacheStrategy {
 				break
 			}
 		}
-		// logger.debug("********************************* Cache placements", {
-		// 	ctx: "cache-strategy",
-		// 	cacheResult: JSON.stringify(placements),
-		// })
 
 		return placements
 	}
 
+	/**
+	 * Format result without cache points
+	 *
+	 * @returns Cache result without cache points
+	 */
 	private formatWithoutCachePoints(): CacheResult {
 		const systemBlocks: SystemContentBlock[] = this.config.systemPrompt
 			? [{ text: this.config.systemPrompt } as unknown as SystemContentBlock]

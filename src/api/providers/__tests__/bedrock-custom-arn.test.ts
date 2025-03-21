@@ -22,15 +22,12 @@ jest.mock("../../../utils/logging", () => ({
 jest.mock("@aws-sdk/client-bedrock-runtime", () => {
 	const mockModule = {
 		lastCommandInput: null as Record<string, any> | null,
-		mockSend: jest.fn().mockImplementation(async function (command) {
-			//console.log("AWS Bedrock Command Type:", command?.constructor?.name)
-			//console.log("Last Command Input:", JSON.stringify(mockModule.lastCommandInput, null, 2))
+		mockSend: jest.fn().mockImplementation(async function () {
 			return {
 				output: new TextEncoder().encode(JSON.stringify({ content: "Test response" })),
 			}
 		}),
 		mockConverseCommand: jest.fn(function (input) {
-			// console.log("ConverseCommand constructor called with input:", JSON.stringify(input, null, 2))
 			mockModule.lastCommandInput = input
 			return { input }
 		}),
@@ -57,8 +54,6 @@ jest.mock("@aws-sdk/client-bedrock-runtime", () => {
 const bedrockMock = jest.requireMock("@aws-sdk/client-bedrock-runtime").__mock
 
 describe("AwsBedrockHandler with custom ARN", () => {
-	// console.log("Starting custom ARN tests")
-
 	const mockOptions: ApiHandlerOptions = {
 		apiModelId: "custom-arn",
 		awsCustomArn: "arn:aws:bedrock:us-east-1:123456789012:foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
@@ -68,17 +63,12 @@ describe("AwsBedrockHandler with custom ARN", () => {
 	}
 
 	beforeEach(() => {
-		// console.log("Setting up test")
 		jest.clearAllMocks()
 	})
 
 	it("should use the custom ARN as the model ID", async () => {
-		// console.log("Test: should use the custom ARN as the model ID")
 		const handler = new AwsBedrockHandler(mockOptions)
 		const model = handler.getModel()
-
-		// console.log("Model ID:", model.id)
-		// console.log("Model info:", JSON.stringify(model.info, null, 2))
 
 		expect(model.id).toBe(mockOptions.awsCustomArn)
 		expect(model.info).toHaveProperty("maxTokens")
@@ -87,8 +77,6 @@ describe("AwsBedrockHandler with custom ARN", () => {
 	})
 
 	it("should extract region from ARN and use it for client configuration", () => {
-		// console.log("Test: should extract region from ARN and use it for client configuration")
-
 		// Test with ARN in eu-west-1 but config region in us-east-1
 		const euWestOptions = {
 			...mockOptions,
@@ -102,22 +90,18 @@ describe("AwsBedrockHandler with custom ARN", () => {
 	})
 
 	it("should validate ARN format", async () => {
-		// console.log("Test: should validate ARN format")
 		// Invalid ARN format
 		const invalidOptions = {
 			...mockOptions,
 			awsCustomArn: "invalid-arn-format",
 		}
-		// console.log("Creating handler with invalid ARN:", invalidOptions.awsCustomArn)
 
 		const handler = new AwsBedrockHandler(invalidOptions)
 
 		try {
-			// console.log("Attempting to complete prompt with invalid ARN")
 			await handler.completePrompt("test")
-			// console.log("ERROR: This should have thrown an error but didn't")
 		} catch (error) {
-			// console.log("Caught expected error:", error instanceof Error ? error.message : String(error))
+			// Expected error
 		}
 
 		// completePrompt should throw an error for invalid ARN

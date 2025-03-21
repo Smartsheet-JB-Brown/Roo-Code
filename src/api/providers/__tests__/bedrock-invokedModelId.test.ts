@@ -13,8 +13,7 @@ jest.mock("@smithy/smithy-client", () => ({
 
 // Mock AWS SDK modules
 jest.mock("@aws-sdk/client-bedrock-runtime", () => {
-	const mockSend = jest.fn().mockImplementation(async (command) => {
-		// Skip middleware chain and return mock response directly
+	const mockSend = jest.fn().mockImplementation(async () => {
 		return {
 			$metadata: {
 				httpStatusCode: 200,
@@ -63,11 +62,6 @@ jest.mock("@aws-sdk/client-bedrock-runtime", () => {
 	}
 })
 
-// Mock Smithy client to prevent middleware errors
-jest.mock("@smithy/smithy-client", () => ({
-	throwDefaultError: jest.fn(),
-}))
-
 import { AwsBedrockHandler, StreamEvent } from "../bedrock"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime"
@@ -106,7 +100,6 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 	it("should update costModelConfig when invokedModelId is present in the stream", async () => {
 		// Create a handler with a custom ARN
 		const mockOptions: ApiHandlerOptions = {
-			//	apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -136,7 +129,6 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 								},
 							},
 						},
-						// Some content events
 					},
 					{
 						contentBlockStart: {

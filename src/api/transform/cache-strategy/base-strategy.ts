@@ -4,6 +4,11 @@ import { CacheStrategyConfig, CacheResult, CachePointPlacement } from "./types"
 import { logger } from "../../../utils/logging"
 
 export abstract class CacheStrategy {
+	/**
+	 * Determine optimal cache point placements and return the formatted result
+	 */
+	public abstract determineOptimalCachePoints(): CacheResult
+
 	protected config: CacheStrategyConfig
 	protected systemTokenCount: number = 0
 
@@ -14,11 +19,6 @@ export abstract class CacheStrategy {
 	}
 
 	/**
-	 * Determine optimal cache point placements and return the formatted result
-	 */
-	public abstract determineOptimalCachePoints(): CacheResult
-
-	/**
 	 * Initialize message groups from the input messages
 	 */
 	protected initializeMessageGroups(): void {
@@ -26,17 +26,25 @@ export abstract class CacheStrategy {
 	}
 
 	/**
-	 * Calculate token count for system prompt
+	 * Calculate token count for system prompt using a more accurate approach
 	 */
 	protected calculateSystemTokens(): void {
 		if (this.config.systemPrompt) {
-			// Account for repeated text in the system prompt
-			const fullText = this.config.systemPrompt
-			this.systemTokenCount = Math.ceil(fullText.length / 4)
-			// logger.debug("System token count", {
-			// 	ctx: "cache-strategy",
-			// 	systemTokenCount: this.systemTokenCount,
-			// })
+			const text = this.config.systemPrompt
+
+			// Use a more accurate token estimation than simple character count
+			// Count words and add overhead for punctuation and special tokens
+			const words = text.split(/\s+/).filter((word) => word.length > 0)
+			// Average English word is ~1.3 tokens
+			let tokenCount = words.length * 1.3
+			// Add overhead for punctuation and special characters
+			tokenCount += (text.match(/[.,!?;:()[\]{}""''`]/g) || []).length * 0.3
+			// Add overhead for newlines
+			tokenCount += (text.match(/\n/g) || []).length * 0.5
+			// Add a small overhead for system prompt structure
+			tokenCount += 5
+
+			this.systemTokenCount = Math.ceil(tokenCount)
 		}
 	}
 
@@ -51,55 +59,26 @@ export abstract class CacheStrategy {
 	 * Convert messages to content blocks
 	 */
 	protected messagesToContentBlocks(messages: Anthropic.Messages.MessageParam[]): Message[] {
-		// logger.debug("Converting Messages to Content Blocks", {
-		// 	ctx: "cache-strategy",
-		// 	messageCount: messages.length,
-		// })
-
-		return messages.map((message, index) => {
-			// logger.debug(`Processing message`, {
-			// 	ctx: "cache-strategy",
-			// 	messageIndex: index + 1,
-			// 	role: message.role,
-			// })
-
+		return messages.map((message) => {
 			const role: ConversationRole = message.role === "assistant" ? "assistant" : "user"
 
-			// logger.debug("Content type analysis", {
-			// 	ctx: "cache-strategy",
-			// 	contentType: Array.isArray(message.content) ? "array" : "string",
-			// })
-
 			const content: ContentBlock[] = Array.isArray(message.content)
-				? message.content.map((block, blockIndex) => {
-						// logger.debug(`Processing content block`, {
-						// 	ctx: "cache-strategy",
-						// 	blockIndex: blockIndex + 1,
-						// 	block,
-						// })
+				? message.content.map((block) => {
 						if (typeof block === "string") {
-							// logger.debug("Converting string block to ContentBlock", { ctx: "cache-strategy" })
 							return { text: block } as unknown as ContentBlock
 						}
 						if ("text" in block) {
-							// logger.debug("Converting text block to ContentBlock", { ctx: "cache-strategy" })
 							return { text: block.text } as unknown as ContentBlock
 						}
 						// Handle other content types if needed
-						// logger.debug("Unsupported content type, using placeholder", { ctx: "cache-strategy" })
 						return { text: "[Unsupported Content]" } as unknown as ContentBlock
 					})
 				: [{ text: message.content } as unknown as ContentBlock]
 
-			const result = {
+			return {
 				role,
 				content,
 			}
-			// logger.debug("Converted message", {
-			// 	ctx: "cache-strategy",
-			// 	result,
-			// })
-			return result
 		})
 	}
 
@@ -115,20 +94,53 @@ export abstract class CacheStrategy {
 	}
 
 	/**
-	 * Estimate token count for a message
-	 * This is a simple estimation - in a real implementation you'd want to use
-	 * a more accurate token counting method
+	 * Estimate token count for a message using a more accurate approach
+	 * This implementation is based on the BaseProvider's countTokens method
+	 * but adapted to work without requiring an instance of BaseProvider
 	 */
 	protected estimateTokenCount(message: Anthropic.Messages.MessageParam): number {
+		// Use a more sophisticated token counting approach
+		if (!message.content) return 0
+
+		let totalTokens = 0
+
 		if (Array.isArray(message.content)) {
-			return message.content.reduce((sum, content) => {
-				if ("text" in content) {
-					return sum + Math.ceil(content.text.length / 4)
+			for (const block of message.content) {
+				if (block.type === "text") {
+					// Use a more accurate token estimation than simple character count
+					// This is still an approximation but better than character/4
+					const text = block.text || ""
+					if (text.length > 0) {
+						// Count words and add overhead for punctuation and special tokens
+						const words = text.split(/\s+/).filter((word) => word.length > 0)
+						// Average English word is ~1.3 tokens
+						totalTokens += words.length * 1.3
+						// Add overhead for punctuation and special characters
+						totalTokens += (text.match(/[.,!?;:()[\]{}""''`]/g) || []).length * 0.3
+						// Add overhead for newlines
+						totalTokens += (text.match(/\n/g) || []).length * 0.5
+					}
+				} else if (block.type === "image") {
+					// For images, use a conservative estimate
+					totalTokens += 300
 				}
-				return sum
-			}, 0)
+			}
+		} else if (typeof message.content === "string") {
+			const text = message.content
+			// Count words and add overhead for punctuation and special tokens
+			const words = text.split(/\s+/).filter((word) => word.length > 0)
+			// Average English word is ~1.3 tokens
+			totalTokens += words.length * 1.3
+			// Add overhead for punctuation and special characters
+			totalTokens += (text.match(/[.,!?;:()[\]{}""''`]/g) || []).length * 0.3
+			// Add overhead for newlines
+			totalTokens += (text.match(/\n/g) || []).length * 0.5
 		}
-		return Math.ceil(message.content.length / 4)
+
+		// Add a small overhead for message structure
+		totalTokens += 10
+
+		return Math.ceil(totalTokens)
 	}
 
 	/**
@@ -153,35 +165,10 @@ export abstract class CacheStrategy {
 	 * Format the final result with cache points applied
 	 */
 	protected formatResult(systemBlocks: SystemContentBlock[] = [], messages: Message[]): CacheResult {
-		// logger.debug("Formatting Final Result", {
-		// 	ctx: "cache-strategy",
-		// 	systemBlocksCount: systemBlocks.length,
-		// 	systemBlocks: systemBlocks.length > 0 ? systemBlocks : undefined,
-		// })
-
-		// logger.debug("Message structure overview", {
-		// 	ctx: "cache-strategy",
-		// 	messageCount: messages.length,
-		// })
-
-		// messages.forEach((msg, index) => {
-		// 	logger.debug(`Message details`, {
-		// 		ctx: "cache-strategy",
-		// 		messageIndex: index + 1,
-		// 		role: msg.role,
-		// 		content: msg.content,
-		// 		hasCachePoint: "cachePoint" in msg ? msg.cachePoint : undefined,
-		// 	})
-		// })
-
 		const result = {
 			system: systemBlocks,
 			messages,
 		}
-		// logger.debug("Final formatted result", {
-		// 	ctx: "cache-strategy",
-		// 	result,
-		// })
 		return result
 	}
 }

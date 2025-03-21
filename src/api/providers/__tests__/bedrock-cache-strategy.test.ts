@@ -4,25 +4,17 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { MultiPointStrategy } from "../../transform/cache-strategy/multi-point-strategy"
 import { SinglePointStrategy } from "../../transform/cache-strategy/single-point-strategy"
 
-// Direct mock of the convertWithOptimalCaching function
-jest.mock("../../transform/cache-strategy/strategy-factory", () => {
-	const originalModule = jest.requireActual("../../transform/cache-strategy/strategy-factory")
+// Create a mock object to store the last config passed to convertToBedrockConverseMessages
+interface CacheConfig {
+	modelInfo: any
+	systemPrompt?: string
+	messages: any[]
+	usePromptCache: boolean
+}
 
-	return {
-		...originalModule,
-		convertWithOptimalCaching: jest.fn().mockImplementation((config) => {
-			// Store the config for later inspection
-			convertWithOptimalCachingMock.lastConfig = config
-
-			// Call the original implementation
-			return originalModule.convertWithOptimalCaching(config)
-		}),
-	}
-})
-
-// Create a mock object to store the last config passed to convertWithOptimalCaching
-const convertWithOptimalCachingMock = {
-	lastConfig: null,
+const convertToBedrockConverseMessagesMock = {
+	lastConfig: null as CacheConfig | null,
+	result: null as any,
 }
 
 describe("AwsBedrockHandler Cache Strategy Integration", () => {
@@ -88,20 +80,53 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 			send: mockInvoke,
 			config: { region: "us-east-1" },
 		} as unknown as BedrockRuntimeClient
+
+		// Mock the convertToBedrockConverseMessages method to capture the config
+		jest.spyOn(handler as any, "convertToBedrockConverseMessages").mockImplementation(function (...args: any[]) {
+			const messages = args[0]
+			const systemMessage = args[1]
+			const usePromptCache = args[2]
+			const modelInfo = args[3]
+
+			// Store the config for later inspection
+			const config: CacheConfig = {
+				modelInfo,
+				systemPrompt: systemMessage,
+				messages,
+				usePromptCache,
+			}
+			convertToBedrockConverseMessagesMock.lastConfig = config
+
+			// Create a strategy based on the config
+			let strategy
+			if (!modelInfo.supportsPromptCache || !usePromptCache) {
+				strategy = new SinglePointStrategy(config as any)
+			} else if (modelInfo.maxCachePoints <= 1) {
+				strategy = new SinglePointStrategy(config as any)
+			} else {
+				strategy = new MultiPointStrategy(config as any)
+			}
+
+			// Store the result
+			const result = strategy.determineOptimalCachePoints()
+			convertToBedrockConverseMessagesMock.result = result
+
+			return result
+		})
 	})
 
 	it("should select MultiPointStrategy when conditions are met", async () => {
 		// Reset the mock
-		convertWithOptimalCachingMock.lastConfig = null
+		convertToBedrockConverseMessagesMock.lastConfig = null
 
-		// Call the method that uses convertWithOptimalCaching
+		// Call the method that uses convertToBedrockConverseMessages
 		const stream = handler.createMessage(systemPrompt, mockMessages)
 		for await (const chunk of stream) {
 			// Just consume the stream
 		}
 
-		// Verify that convertWithOptimalCaching was called with the right parameters
-		expect(convertWithOptimalCachingMock.lastConfig).toMatchObject({
+		// Verify that convertToBedrockConverseMessages was called with the right parameters
+		expect(convertToBedrockConverseMessagesMock.lastConfig).toMatchObject({
 			modelInfo: expect.objectContaining({
 				supportsPromptCache: true,
 				maxCachePoints: 4,
@@ -110,9 +135,9 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 		})
 
 		// Verify that the config would result in a MultiPointStrategy
-		expect(convertWithOptimalCachingMock.lastConfig).not.toBeNull()
-		if (convertWithOptimalCachingMock.lastConfig) {
-			const strategy = new MultiPointStrategy(convertWithOptimalCachingMock.lastConfig)
+		expect(convertToBedrockConverseMessagesMock.lastConfig).not.toBeNull()
+		if (convertToBedrockConverseMessagesMock.lastConfig) {
+			const strategy = new MultiPointStrategy(convertToBedrockConverseMessagesMock.lastConfig as any)
 			expect(strategy).toBeInstanceOf(MultiPointStrategy)
 		}
 	})
@@ -133,16 +158,16 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 		})
 
 		// Reset the mock
-		convertWithOptimalCachingMock.lastConfig = null
+		convertToBedrockConverseMessagesMock.lastConfig = null
 
-		// Call the method that uses convertWithOptimalCaching
+		// Call the method that uses convertToBedrockConverseMessages
 		const stream = handler.createMessage(systemPrompt, mockMessages)
 		for await (const chunk of stream) {
 			// Just consume the stream
 		}
 
-		// Verify that convertWithOptimalCaching was called with the right parameters
-		expect(convertWithOptimalCachingMock.lastConfig).toMatchObject({
+		// Verify that convertToBedrockConverseMessages was called with the right parameters
+		expect(convertToBedrockConverseMessagesMock.lastConfig).toMatchObject({
 			modelInfo: expect.objectContaining({
 				supportsPromptCache: true,
 				maxCachePoints: 1,
@@ -151,9 +176,9 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 		})
 
 		// Verify that the config would result in a SinglePointStrategy
-		expect(convertWithOptimalCachingMock.lastConfig).not.toBeNull()
-		if (convertWithOptimalCachingMock.lastConfig) {
-			const strategy = new SinglePointStrategy(convertWithOptimalCachingMock.lastConfig)
+		expect(convertToBedrockConverseMessagesMock.lastConfig).not.toBeNull()
+		if (convertToBedrockConverseMessagesMock.lastConfig) {
+			const strategy = new SinglePointStrategy(convertToBedrockConverseMessagesMock.lastConfig as any)
 			expect(strategy).toBeInstanceOf(SinglePointStrategy)
 		}
 	})
@@ -203,42 +228,69 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 			config: { region: "us-east-1" },
 		} as unknown as BedrockRuntimeClient
 
-		// Reset the mock
-		convertWithOptimalCachingMock.lastConfig = null
+		// Mock the convertToBedrockConverseMessages method again for the new handler
+		jest.spyOn(handler as any, "convertToBedrockConverseMessages").mockImplementation(function (...args: any[]) {
+			const messages = args[0]
+			const systemMessage = args[1]
+			const usePromptCache = args[2]
+			const modelInfo = args[3]
 
-		// Call the method that uses convertWithOptimalCaching
+			// Store the config for later inspection
+			const config: CacheConfig = {
+				modelInfo,
+				systemPrompt: systemMessage,
+				messages,
+				usePromptCache,
+			}
+			convertToBedrockConverseMessagesMock.lastConfig = config
+
+			// Create a strategy based on the config
+			let strategy
+			if (!modelInfo.supportsPromptCache || !usePromptCache) {
+				strategy = new SinglePointStrategy(config as any)
+			} else if (modelInfo.maxCachePoints <= 1) {
+				strategy = new SinglePointStrategy(config as any)
+			} else {
+				strategy = new MultiPointStrategy(config as any)
+			}
+
+			// Store the result
+			const result = strategy.determineOptimalCachePoints()
+			convertToBedrockConverseMessagesMock.result = result
+
+			return result
+		})
+
+		// Reset the mock
+		convertToBedrockConverseMessagesMock.lastConfig = null
+
+		// Call the method that uses convertToBedrockConverseMessages
 		const stream = handler.createMessage(systemPrompt, mockMessages)
 		for await (const chunk of stream) {
 			// Just consume the stream
 		}
 
-		// Verify that convertWithOptimalCaching was called with the right parameters
-		expect(convertWithOptimalCachingMock.lastConfig).toMatchObject({
+		// Verify that convertToBedrockConverseMessages was called with the right parameters
+		expect(convertToBedrockConverseMessagesMock.lastConfig).toMatchObject({
 			usePromptCache: false,
 		})
 
 		// Verify that the config would result in a SinglePointStrategy
-		expect(convertWithOptimalCachingMock.lastConfig).not.toBeNull()
-		if (convertWithOptimalCachingMock.lastConfig) {
-			const strategy = new SinglePointStrategy(convertWithOptimalCachingMock.lastConfig)
+		expect(convertToBedrockConverseMessagesMock.lastConfig).not.toBeNull()
+		if (convertToBedrockConverseMessagesMock.lastConfig) {
+			const strategy = new SinglePointStrategy(convertToBedrockConverseMessagesMock.lastConfig as any)
 			expect(strategy).toBeInstanceOf(SinglePointStrategy)
 		}
 	})
 
 	it("should include cachePoint nodes in API request when using MultiPointStrategy", async () => {
-		// Create a mock implementation of convertWithOptimalCaching that adds a cachePoint
-		const { convertWithOptimalCaching } = jest.requireMock("../../transform/cache-strategy/strategy-factory")
-
-		// Create a mock that adds a cachePoint to the system array
-		convertWithOptimalCaching.mockImplementationOnce((config: any) => {
-			const result = {
-				system: [{ text: config.systemPrompt }, { cachePoint: { type: "default" } }],
-				messages: config.messages.map((msg: any) => ({
-					role: msg.role,
-					content: [{ text: typeof msg.content === "string" ? msg.content : msg.content[0].text }],
-				})),
-			}
-			return result
+		// Mock the convertToBedrockConverseMessages method to return a result with cache points
+		;(handler as any).convertToBedrockConverseMessages.mockReturnValueOnce({
+			system: [{ text: systemPrompt }, { cachePoint: { type: "default" } }],
+			messages: mockMessages.map((msg: any) => ({
+				role: msg.role,
+				content: [{ text: typeof msg.content === "string" ? msg.content : msg.content[0].text }],
+			})),
 		})
 
 		// Create a spy for the client.send method
@@ -262,7 +314,7 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 			config: { region: "us-east-1" },
 		} as unknown as BedrockRuntimeClient
 
-		// Call the method that uses convertWithOptimalCaching
+		// Call the method that uses convertToBedrockConverseMessages
 		const stream = handler.createMessage(systemPrompt, mockMessages)
 		for await (const chunk of stream) {
 			// Just consume the stream
@@ -287,19 +339,13 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 	})
 
 	it("should yield usage results with cache tokens when using MultiPointStrategy", async () => {
-		// Create a mock implementation of convertWithOptimalCaching that adds a cachePoint
-		const { convertWithOptimalCaching } = jest.requireMock("../../transform/cache-strategy/strategy-factory")
-
-		// Create a mock that adds a cachePoint to the system array
-		convertWithOptimalCaching.mockImplementationOnce((config: any) => {
-			const result = {
-				system: [{ text: config.systemPrompt }, { cachePoint: { type: "default" } }],
-				messages: config.messages.map((msg: any) => ({
-					role: msg.role,
-					content: [{ text: typeof msg.content === "string" ? msg.content : msg.content[0].text }],
-				})),
-			}
-			return result
+		// Mock the convertToBedrockConverseMessages method to return a result with cache points
+		;(handler as any).convertToBedrockConverseMessages.mockReturnValueOnce({
+			system: [{ text: systemPrompt }, { cachePoint: { type: "default" } }],
+			messages: mockMessages.map((msg: any) => ({
+				role: msg.role,
+				content: [{ text: typeof msg.content === "string" ? msg.content : msg.content[0].text }],
+			})),
 		})
 
 		// Create a mock stream that includes cache token fields
@@ -320,7 +366,7 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 			},
 		}
 
-		const mockSend = jest.fn().mockImplementation((command) => {
+		const mockSend = jest.fn().mockImplementation(() => {
 			return Promise.resolve({
 				stream: mockStream,
 			})
@@ -331,7 +377,7 @@ describe("AwsBedrockHandler Cache Strategy Integration", () => {
 			config: { region: "us-east-1" },
 		} as unknown as BedrockRuntimeClient
 
-		// Call the method that uses convertWithOptimalCaching
+		// Call the method that uses convertToBedrockConverseMessages
 		const stream = handler.createMessage(systemPrompt, mockMessages)
 		const chunks = []
 
