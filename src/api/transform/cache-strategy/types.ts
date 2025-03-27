@@ -35,6 +35,8 @@ export interface CacheResult {
 	system: SystemContentBlock[]
 	/** Message content blocks */
 	messages: Message[]
+	/** Cache point placements for messages (for maintaining consistency across consecutive messages) */
+	messageCachePointPlacements?: CachePointPlacement[]
 }
 
 /**
@@ -61,4 +63,6 @@ export interface CacheStrategyConfig {
 	messages: Anthropic.Messages.MessageParam[]
 	/** Whether to use prompt caching */
 	usePromptCache: boolean
+	/** Previous cache point placements (for maintaining consistency across consecutive messages) */
+	previousCachePointPlacements?: CachePointPlacement[]
 }

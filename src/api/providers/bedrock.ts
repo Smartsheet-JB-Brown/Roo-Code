@@ -144,19 +144,9 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		// Extract region from custom ARN if provided
 		let region = this.options.awsRegion
 
-		// logger.debug("Options configuration", {
-		// 	ctx: "bedrock",
-		// 	options: JSON.stringify(this.options),
-		// })
-
 		// If using custom ARN, extract region from the ARN
 		if (this.options.awsCustomArn) {
 			const validation = validateBedrockArn(this.options.awsCustomArn, region)
-
-			// logger.debug("Region extracted from ARN", {
-			// 	ctx: "bedrock",
-			// 	arnRegion: validation.arnRegion,
-			// })
 
 			if (validation.isValid && validation.arnRegion) {
 				// If there's a region mismatch warning, log it and use the ARN region
@@ -174,10 +164,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			}
 		}
 
-		// logger.debug("Setting region for client configuration", {
-		// 	ctx: "bedrock",
-		// 	region,
-		// })
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region: region,
 		}
@@ -197,53 +183,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		this.client = new BedrockRuntimeClient(clientConfig)
-	}
-
-	/**
-	 * Counts tokens for a message using the BaseProvider's countTokens method
-	 * This provides more accurate token counting than the previous character-based estimation
-	 */
-	private async countMessageTokens(message: Message): Promise<number> {
-		let tokenCount = 0
-
-		// Convert Bedrock message content blocks to Anthropic content blocks for token counting
-		if (message.content && Array.isArray(message.content)) {
-			const contentBlocks: Anthropic.Messages.ContentBlockParam[] = []
-
-			for (const block of message.content) {
-				if ("text" in block && block.text) {
-					contentBlocks.push({ type: "text", text: block.text })
-				} else if ("image" in block) {
-					// For images, add a placeholder content block
-					contentBlocks.push({
-						type: "image",
-						source: { type: "base64", media_type: "image/jpeg", data: "placeholder" },
-					})
-				} else if ("toolUse" in block && block.toolUse) {
-					// For tool use, convert to text
-					const input = block.toolUse.input
-					const toolText = typeof input === "string" ? `Tool use: ${input}` : "Tool use with complex input"
-					contentBlocks.push({ type: "text", text: toolText })
-				} else if ("toolResult" in block && block.toolResult) {
-					// For tool results, convert to text
-					let resultText = "Tool result: "
-					if (block.toolResult.content && Array.isArray(block.toolResult.content)) {
-						for (const item of block.toolResult.content) {
-							resultText += item.text || ""
-						}
-					}
-					contentBlocks.push({ type: "text", text: resultText })
-				} else if ("video" in block) {
-					// For videos, add a placeholder content block
-					contentBlocks.push({ type: "text", text: "[Video content]" })
-				}
-			}
-
-			// Use the BaseProvider's countTokens method for accurate token counting
-			tokenCount = await this.countTokens(contentBlocks)
-		}
-
-		return tokenCount
 	}
 
 	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
@@ -303,12 +242,24 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		const usePromptCache = Boolean(this.options.awsUsePromptCache && this.supportsAwsPromptCache(modelConfig))
 
-		// Convert messages to Bedrock format, passing the model info
+		// Generate a conversation ID based on the first few messages to maintain cache consistency
+		// This is a simple approach - in a real application, you might want to use a more robust ID system
+		const conversationId =
+			messages.length > 0
+				? `conv_${messages[0].role}_${
+						typeof messages[0].content === "string"
+							? messages[0].content.substring(0, 20)
+							: "complex_content"
+					}`
+				: "default_conversation"
+
+		// Convert messages to Bedrock format, passing the model info and conversation ID
 		const formatted = this.convertToBedrockConverseMessages(
 			messages,
 			systemPrompt,
 			usePromptCache,
 			modelConfig.info,
+			conversationId,
 		)
 
 		// Construct the payload
@@ -325,22 +276,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			inferenceConfig,
 		}
 
-		// logger.debug("Sending payload", {
-		// 	ctx: "bedrock",
-		// 	payload: JSON.stringify(payload),
-		// })
-
-		// Log the payload for debugging
-		// logger.debug("Bedrock createMessage payload", {
-		// 	ctx: "bedrock",
-		// 	modelId,
-		// 	usePromptCache: this.options.awsUsePromptCache,
-		// 	modelSupportsPromptCache: this.supportsAwsPromptCache(modelConfig),
-		// 	inferenceConfig,
-		// 	system: formatted.system,
-		// })
-
-		// Create AbortController with 2 minute timeout
+		// Create AbortController with 10 minute timeout
 		const controller = new AbortController()
 		let timeoutId: NodeJS.Timeout | undefined
 
@@ -349,8 +285,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				() => {
 					controller.abort()
 				},
-				2 * 60 * 1000,
-			) // 2 minute
+				10 * 60 * 1000,
+			)
 
 			// Log the payload for debugging custom ARN issues
 			if (this.options.awsCustomArn) {
@@ -372,23 +308,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				throw new Error("No stream available in the response")
 			}
 
-			// logger.debug("Starting stream processing", {
-			// 	ctx: "bedrock",
-			// 	modelId,
-			// 	hasStream: !!response.stream,
-			// })
-
 			for await (const chunk of response.stream) {
 				// Parse the chunk as JSON if it's a string (for tests)
 				let streamEvent: StreamEvent
 				try {
 					streamEvent = typeof chunk === "string" ? JSON.parse(chunk) : (chunk as unknown as StreamEvent)
 				} catch (e) {
-					// logger.debug("Stream parsing error", {
-					// 	ctx: "bedrock",
-					// 	error: JSON.stringify(e),
-					// })
-
 					logger.error("Failed to parse stream event", {
 						ctx: "bedrock",
 						error: e instanceof Error ? e : String(e),
@@ -415,15 +340,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
 					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
 
-					// logger.debug("Token usage stats", {
-					// 	ctx: "bedrock",
-					// 	inputTokens: usage.inputTokens || 0,
-					// 	outputTokens: usage.outputTokens || 0,
-					// 	cacheReadTokens,
-					// 	cacheWriteTokens,
-					// 	totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
-					// })
-
 					yield {
 						type: "usage",
 						inputTokens: usage.inputTokens || 0,
@@ -437,58 +353,23 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				if (streamEvent?.trace?.promptRouter?.invokedModelId) {
 					try {
 						const invokedModelId = streamEvent.trace.promptRouter.invokedModelId
-						// logger.debug("Prompt router model selection", {
-						// 	ctx: "bedrock",
-						// 	invokedModelId,
-						// 	originalModelId: modelId,
-						// 	hasPromptRouterUsage: !!streamEvent?.trace?.promptRouter?.usage,
-						// })
 
 						const modelMatch = invokedModelId.match(/\/([^\/]+)(?::|$)/)
 						if (modelMatch && modelMatch[1]) {
 							let modelName = modelMatch[1]
 							let region = modelName.slice(0, 3)
 
-							// logger.debug("Processing prompt router model name", {
-							// 	ctx: "bedrock",
-							// 	fullModelName: modelName,
-							// 	detectedRegion: region,
-							// 	isRegionalModel: region === "us." || region === "eu.",
-							// })
-
 							if (region === "us." || region === "eu.") {
 								modelName = modelName.slice(3)
-								// logger.debug("Adjusted model name", {
-								// 	ctx: "bedrock",
-								// 	originalName: modelMatch[1],
-								// 	adjustedName: modelName,
-								// })
 							}
 
 							const previousConfig = this.costModelConfig
 							this.costModelConfig = this.getModelByName(modelName)
-
-							// logger.debug("Model config updated", {
-							// 	ctx: "bedrock",
-							// 	previousModelId: previousConfig.id,
-							// 	newModelId: this.costModelConfig.id,
-							// 	maxTokensChanged: previousConfig.info.maxTokens !== this.costModelConfig.info.maxTokens,
-							// 	contextWindowChanged:
-							// 		previousConfig.info.contextWindow !== this.costModelConfig.info.contextWindow,
-							// })
 						}
 
 						// Handle metadata events for the promptRouter.
 						if (streamEvent?.trace?.promptRouter?.usage) {
 							const routerUsage = streamEvent.trace.promptRouter.usage
-							// logger.debug("Prompt router usage details", {
-							// 	ctx: "bedrock",
-							// 	inputTokens: routerUsage.inputTokens || 0,
-							// 	outputTokens: routerUsage.outputTokens || 0,
-							// 	totalTokens: routerUsage.totalTokens,
-							// 	cacheReadTokens: routerUsage.cacheReadTokens || 0,
-							// 	cacheWriteTokens: routerUsage.cacheWriteTokens || 0,
-							// })
 
 							yield {
 								type: "usage",
@@ -536,10 +417,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			// Clear timeout after stream completes
 			clearTimeout(timeoutId)
 		} catch (error: unknown) {
-			// logger.debug("Stream parsing error caught", {
-			// 	ctx: "bedrock",
-			// 	error: JSON.stringify(error),
-			// })
 			// Clear timeout on error
 			clearTimeout(timeoutId)
 			logger.error("Bedrock Runtime API Error", {
@@ -547,6 +424,17 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				error: error instanceof Error ? error : String(error),
 			})
 
+			// Check if this is an abort error
+			if (error instanceof Error && error.name === "AbortError") {
+				logger.info("Request was aborted", {
+					ctx: "bedrock",
+					errorMessage: error.message,
+				})
+				yield {
+					type: "text",
+					text: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
+				}
+			}
 			// Enhanced error handling for custom ARN issues
 			if (this.options.awsCustomArn) {
 				logger.error("Error occurred with custom ARN", {
@@ -679,8 +567,6 @@ Please check:
 				throw new Error("An unknown error occurred")
 			}
 		}
-
-		// logger.debug("Stream parsing complete", { ctx: "bedrock" })
 	}
 
 	private supportsAwsPromptCache(modelConfig: {
@@ -693,22 +579,9 @@ Please check:
 
 	//Prompt Router responses come back in a different sequence and the model used is in the response and must be fetched by name
 	getModelByName(modelName: string): { id: BedrockModelId | string; info: SharedModelInfo } {
-		// logger.debug("Getting model configuration", {
-		// 	ctx: "bedrock",
-		// 	requestedModel: modelName,
-		// 	hasCustomMaxTokens: !!this.options.modelMaxTokens,
-		// 	customMaxTokens: this.options.modelMaxTokens || "not set",
-		// })
-
 		// Try to find the model in bedrockModels
 		if (modelName in bedrockModels) {
 			const id = modelName as BedrockModelId
-			// logger.debug("Found model in bedrockModels", {
-			// 	ctx: "bedrock",
-			// 	modelId: id,
-			// 	defaultMaxTokens: bedrockModels[id].maxTokens,
-			// 	defaultContextWindow: bedrockModels[id].contextWindow,
-			// })
 
 			//Do a deep copy of the model info so that later in the code the model id and maxTokens can be set.
 			// The bedrockModels array is a constant and updating the model ID from the returned invokedModelID value
@@ -719,110 +592,42 @@ Please check:
 			if (this.options.modelMaxTokens && this.options.modelMaxTokens > 0) {
 				const originalMaxTokens = model.maxTokens
 				model.maxTokens = this.options.modelMaxTokens
-
-				// logger.debug("Overriding model max tokens", {
-				// 	ctx: "bedrock",
-				// 	modelId: id,
-				// 	originalMaxTokens,
-				// 	newMaxTokens: model.maxTokens,
-				// 	delta: model.maxTokens - originalMaxTokens,
-				// })
 			}
 
 			return { id, info: model }
 		}
 
-		// logger.debug("Model not found, using default", {
-		// 	ctx: "bedrock",
-		// 	requestedModel: modelName,
-		// 	defaultModelId: bedrockDefaultModelId,
-		// 	defaultModelMaxTokens: bedrockModels[bedrockDefaultModelId].maxTokens,
-		// 	defaultModelContextWindow: bedrockModels[bedrockDefaultModelId].contextWindow,
-		// })
-
 		return { id: bedrockDefaultModelId, info: bedrockModels[bedrockDefaultModelId] }
 	}
 
 	override getModel(): { id: BedrockModelId | string; info: SharedModelInfo } {
-		// logger.debug("Getting model configuration", {
-		// 	ctx: "bedrock",
-		// 	hasCostModelConfig: this.costModelConfig.id.trim().length > 0,
-		// 	hasCustomArn: !!this.options.awsCustomArn,
-		// 	apiModelId: this.options.apiModelId || "not set",
-		// 	useCrossRegionInference: this.options.awsUseCrossRegionInference,
-		// })
-
 		if (this.costModelConfig.id.trim().length > 0) {
-			// logger.debug("Using existing cost model config", {
-			// 	ctx: "bedrock",
-			// 	modelId: this.costModelConfig.id,
-			// 	maxTokens: this.costModelConfig.info.maxTokens,
-			// 	contextWindow: this.costModelConfig.info.contextWindow,
-			// })
 			return this.costModelConfig
 		}
 
 		// If custom ARN is provided, use it
 		if (this.options.awsCustomArn) {
-			// logger.debug("Processing custom ARN", {
-			// 	ctx: "bedrock",
-			// 	customArn: this.options.awsCustomArn,
-			// })
 			// Extract the model name from the ARN
 			const arnMatch = this.options.awsCustomArn.match(
 				/^arn:aws:bedrock:([^:]+):(\d+):(inference-profile|foundation-model|provisioned-model)\/(.+)$/,
 			)
 
 			let modelName = arnMatch ? arnMatch[4] : ""
-			// logger.debug("ARN parsing result", {
-			// 	ctx: "bedrock",
-			// 	arnMatch: !!arnMatch,
-			// 	extractedModelName: modelName,
-			// 	matchGroups: arnMatch
-			// 		? {
-			// 				region: arnMatch[1],
-			// 				accountId: arnMatch[2],
-			// 				resourceType: arnMatch[3],
-			// 				modelName: arnMatch[4],
-			// 			}
-			// 		: null,
-			// })
 
 			if (modelName) {
 				let region = modelName.slice(0, 3)
-				// logger.debug("Processing model name from ARN", {
-				// 	ctx: "bedrock",
-				// 	originalModelName: modelName,
-				// 	detectedRegion: region,
-				// 	isRegionalModel: region === "us." || region === "eu.",
-				// })
 
 				if (region === "us." || region === "eu.") {
 					modelName = modelName.slice(3)
-					// logger.debug("Adjusted model name after region removal", {
-					// 	ctx: "bedrock",
-					// 	adjustedModelName: modelName,
-					// })
 				}
 
 				let modelData = this.getModelByName(modelName)
 				modelData.id = this.options.awsCustomArn
 
 				if (modelData) {
-					// logger.debug("Found matching model for ARN", {
-					// 	ctx: "bedrock",
-					// 	modelId: modelData.id,
-					// 	maxTokens: modelData.info.maxTokens,
-					// 	contextWindow: modelData.info.contextWindow,
-					// })
 					return modelData
 				}
 			}
-
-			// logger.debug("No direct model match found for ARN, using default prompt router", {
-			// 	ctx: "bedrock",
-			// 	defaultModelId: bedrockDefaultPromptRouterModelId,
-			// })
 
 			// An ARN was used, but no model info match found, use default values based on common patterns
 			let model = this.getModelByName(bedrockDefaultPromptRouterModelId)
@@ -835,39 +640,15 @@ Please check:
 		}
 
 		if (this.options.apiModelId) {
-			// logger.debug("Processing apiModelId", {
-			// 	ctx: "bedrock",
-			// 	apiModelId: this.options.apiModelId,
-			// 	isCustomArn: this.options.apiModelId === "custom-arn",
-			// })
-
 			// Special case for custom ARN option
 			if (this.options.apiModelId === "custom-arn") {
-				// logger.debug("Custom ARN option specified without ARN, using default model", {
-				// 	ctx: "bedrock",
-				// 	defaultModelId: bedrockDefaultModelId,
-				// })
 				return this.getModelByName(bedrockDefaultModelId)
 			}
 
 			// For production, validate against known models
-			// logger.debug("Using specified API model", {
-			// 	ctx: "bedrock",
-			// 	apiModelId: this.options.apiModelId,
-			// 	modelExists: this.options.apiModelId in bedrockModels,
-			// })
 			return this.getModelByName(this.options.apiModelId)
 		}
 
-		// logger.debug("No model configuration specified, using default", {
-		// 	ctx: "bedrock",
-		// 	defaultModelId: bedrockDefaultModelId,
-		// 	defaultModelInfo: {
-		// 		maxTokens: bedrockModels[bedrockDefaultModelId].maxTokens,
-		// 		contextWindow: bedrockModels[bedrockDefaultModelId].contextWindow,
-		// 		supportsPromptCache: bedrockModels[bedrockDefaultModelId].supportsPromptCache,
-		// 	},
-		// })
 		return this.getModelByName(bedrockDefaultModelId)
 	}
 
@@ -934,6 +715,9 @@ Please check:
 
 			const usePromptCache = Boolean(this.options.awsUsePromptCache && this.supportsAwsPromptCache(modelConfig))
 
+			// For completePrompt, use a unique conversation ID based on the prompt
+			const conversationId = `prompt_${prompt.substring(0, 20)}`
+
 			const payload = {
 				modelId,
 				messages: this.convertToBedrockConverseMessages(
@@ -946,19 +730,10 @@ Please check:
 					undefined,
 					usePromptCache,
 					modelConfig.info,
+					conversationId,
 				).messages,
 				inferenceConfig,
 			}
-
-			// Log the payload for debugging
-			// logger.debug("Bedrock completePrompt payload", {
-			// 	ctx: "bedrock",
-			// 	modelId,
-			// 	usePromptCache: this.options.awsUsePromptCache,
-			// 	modelSupportsPromptCache: modelConfig.info.supportsPromptCache,
-			// 	supportsAwsPromptCache: this.supportsAwsPromptCache(modelConfig),
-			// 	inferenceConfig,
-			// })
 
 			const command = new ConverseCommand(payload)
 			const response = await this.client.send(command)
@@ -979,6 +754,17 @@ Please check:
 			}
 			return ""
 		} catch (error) {
+			// Check if this is an abort error
+			if (error instanceof Error && error.name === "AbortError") {
+				logger.info("Request was aborted in completePrompt", {
+					ctx: "bedrock",
+					errorMessage: error.message,
+				})
+				throw new Error(
+					`Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
+				)
+			}
+
 			// Enhanced error handling for custom ARN issues
 			if (this.options.awsCustomArn) {
 				logger.error("Error occurred with custom ARN in completePrompt", {
@@ -1052,6 +838,9 @@ Please check:
 		return content
 	}
 
+	// Store previous cache point placements for maintaining consistency across consecutive messages
+	private previousCachePointPlacements: { [conversationId: string]: any[] } = {}
+
 	/**
 	 * Convert Anthropic messages to Bedrock Converse format
 	 */
@@ -1060,15 +849,8 @@ Please check:
 		systemMessage?: string,
 		usePromptCache: boolean = false,
 		modelInfo?: any,
+		conversationId?: string, // Optional conversation ID to track cache points across messages
 	): { system: SystemContentBlock[]; messages: Message[] } {
-		// logger.debug("Converting messages to Bedrock format", {
-		// 	ctx: "bedrock",
-		// 	messageCount: anthropicMessages.length,
-		// 	hasSystemMessage: !!systemMessage,
-		// 	usePromptCache,
-		// 	modelInfo: JSON.stringify(modelInfo),
-		// })
-
 		// Convert model info to expected format
 		const cacheModelInfo: CacheModelInfo = {
 			maxTokens: modelInfo?.maxTokens || 8192,
@@ -1079,17 +861,7 @@ Please check:
 			cachableFields: modelInfo?.cachableFields || [],
 		}
 
-		// logger.debug("Cache model info configured", {
-		// 	ctx: "bedrock",
-		// 	cacheModelInfo: JSON.stringify(cacheModelInfo),
-		// })
-
 		// Clean messages by removing any existing cache points
-		// logger.debug("Cleaning messages and removing cache points", {
-		// 	ctx: "bedrock",
-		// 	originalMessageCount: anthropicMessages.length,
-		// })
-
 		const cleanedMessages = anthropicMessages.map((msg) => {
 			if (typeof msg.content === "string") {
 				return msg
@@ -1098,19 +870,14 @@ Please check:
 				...msg,
 				content: this.removeCachePoints(msg.content),
 			}
-			// logger.debug("Cleaned message content", {
-			// 	ctx: "bedrock",
-			// 	role: msg.role,
-			// 	contentType: typeof msg.content,
-			// 	hasContent: !!msg.content,
-			// })
 			return cleaned
 		})
 
-		// logger.debug("Messages cleaned", {
-		// 	ctx: "bedrock",
-		// 	cleanedMessageCount: cleanedMessages.length,
-		// })
+		// Get previous cache point placements for this conversation if available
+		const previousPlacements =
+			conversationId && this.previousCachePointPlacements[conversationId]
+				? this.previousCachePointPlacements[conversationId]
+				: undefined
 
 		// Create config for cache strategy
 		const config = {
@@ -1118,6 +885,7 @@ Please check:
 			systemPrompt: systemMessage,
 			messages: cleanedMessages as Anthropic.Messages.MessageParam[],
 			usePromptCache,
+			previousCachePointPlacements: previousPlacements,
 		}
 
 		// Inline the logic from convertWithOptimalCaching and CacheStrategyFactory.createStrategy
@@ -1137,6 +905,13 @@ Please check:
 		}
 
 		// Determine optimal cache points
-		return strategy.determineOptimalCachePoints()
+		const result = strategy.determineOptimalCachePoints()
+
+		// Store cache point placements for future use if conversation ID is provided
+		if (conversationId && result.messageCachePointPlacements) {
+			this.previousCachePointPlacements[conversationId] = result.messageCachePointPlacements
+		}
+
+		return result
 	}
 }
