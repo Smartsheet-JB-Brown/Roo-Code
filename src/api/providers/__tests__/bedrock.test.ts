@@ -256,6 +256,7 @@ describe("AwsBedrockHandler", () => {
 				expect.objectContaining({
 					supportsPromptCache: true,
 				}),
+				expect.any(String), // conversationId parameter
 			)
 
 			// Restore the original function
