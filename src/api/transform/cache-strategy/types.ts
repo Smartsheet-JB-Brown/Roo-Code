@@ -1,5 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ContentBlock, SystemContentBlock, ConversationRole, Message } from "@aws-sdk/client-bedrock-runtime"
+import { SystemContentBlock, Message } from "@aws-sdk/client-bedrock-runtime"
 
 /**
  * Information about a model's capabilities and constraints

@@ -507,9 +507,7 @@ describe("AwsBedrockHandler", () => {
 				send: mockSend,
 			} as unknown as BedrockRuntimeClient
 
-			await expect(handler.completePrompt("Test prompt")).rejects.toThrow(
-				"Bedrock completion error: AWS Bedrock error",
-			)
+			await expect(handler.completePrompt("Test prompt")).rejects.toThrow(/^Bedrock completion error:/)
 		})
 
 		it("should handle invalid response format", async () => {

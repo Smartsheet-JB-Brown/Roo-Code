@@ -28,52 +28,15 @@ interface BedrockInferenceConfig {
 	maxTokens: number
 	temperature: number
 	topP: number
-	// New cache-related field
-	usePromptCache?: boolean
-}
-
-/**
- * Validates an AWS Bedrock ARN format and optionally checks if the region in the ARN matches the provided region
- * @param arn The ARN string to validate
- * @param region Optional region to check against the ARN's region
- * @returns An object with validation results: { isValid, arnRegion, errorMessage }
- */
-function validateBedrockArn(arn: string, region?: string) {
-	// Validate ARN format
-	const arnRegex =
-		/^arn:aws:bedrock:([^:]+):(\d+):(foundation-model|provisioned-model|default-prompt-router|prompt-router)\/(.+)$/
-	const match = arn.match(arnRegex)
-
-	if (!match) {
-		return {
-			isValid: false,
-			arnRegion: undefined,
-			errorMessage:
-				"Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name",
-		}
-	}
-
-	// Extract region from ARN
-	const arnRegion = match[1]
-
-	// Check if region in ARN matches provided region (if specified)
-	if (region && arnRegion !== region) {
-		return {
-			isValid: true,
-			arnRegion,
-			errorMessage: `Warning: The region in your ARN (${arnRegion}) does not match your selected region (${region}). This may cause access issues. The provider will use the region from the ARN.`,
-		}
-	}
-
-	// ARN is valid and region matches (or no region was provided to check against)
-	return {
-		isValid: true,
-		arnRegion,
-		errorMessage: undefined,
-	}
 }
 
 const BEDROCK_DEFAULT_TEMPERATURE = 0.3
+
+/************************************************************************************
+ *
+ *     TYPES
+ *
+ *************************************************************************************/
 
 // Define types for stream events based on AWS SDK
 export interface StreamEvent {
@@ -126,15 +89,25 @@ export interface StreamEvent {
 	}
 }
 
+// Type for usage information in stream events
+export type UsageType = {
+	inputTokens?: number
+	outputTokens?: number
+	cacheReadInputTokens?: number
+	cacheWriteInputTokens?: number
+	cacheReadInputTokenCount?: number
+	cacheWriteInputTokenCount?: number
+}
+
+/************************************************************************************
+ *
+ *     PROVIDER
+ *
+ *************************************************************************************/
+
 export class AwsBedrockHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: BedrockRuntimeClient
-	// Using logger instead of outputChannel
-
-	private costModelConfig: { id: BedrockModelId | string; info: SharedModelInfo } = {
-		id: "",
-		info: { maxTokens: 0, contextWindow: 0, supportsPromptCache: false, supportsImages: false },
-	}
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -145,7 +118,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		// If using custom ARN, extract region from the ARN
 		if (this.options.awsCustomArn) {
-			const validation = validateBedrockArn(this.options.awsCustomArn, region)
+			const validation = this.validateBedrockArn(this.options.awsCustomArn, region)
 
 			if (validation.isValid && validation.arnRegion) {
 				// If there's a region mismatch warning, log it and use the ARN region
@@ -189,54 +162,19 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		// Handle cross-region inference
 		let modelId: string
 
-		// For custom ARNs, use the ARN directly without modification
-		if (this.options.awsCustomArn) {
-			modelId = modelConfig.id
-
-			// Validate ARN format and check region match
-			const clientRegion = this.client.config.region as string
-			const validation = validateBedrockArn(modelId, clientRegion)
-
-			if (!validation.isValid) {
-				logger.error("Invalid ARN format", {
-					ctx: "bedrock",
-					modelId,
-					errorMessage: validation.errorMessage,
-				})
+		try {
+			modelId = this.getModelIdWithRegionHandling(modelConfig)
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith("INVALID_ARN_FORMAT:")) {
+				const errorMessage = error.message.substring("INVALID_ARN_FORMAT:".length)
 				yield {
 					type: "text",
-					text: `Error: ${validation.errorMessage}`,
+					text: `Error: ${errorMessage}`,
 				}
 				yield { type: "usage", inputTokens: 0, outputTokens: 0 }
 				throw new Error("Invalid ARN format")
 			}
-
-			// Extract region from ARN
-			const arnRegion = validation.arnRegion!
-
-			// Log warning if there's a region mismatch
-			if (validation.errorMessage) {
-				logger.warn(validation.errorMessage, {
-					ctx: "bedrock",
-					arnRegion,
-					clientRegion,
-				})
-			}
-		} else if (this.options.awsUseCrossRegionInference) {
-			let regionPrefix = (this.options.awsRegion || "").slice(0, 3)
-			switch (regionPrefix) {
-				case "us-":
-					modelId = `us.${modelConfig.id}`
-					break
-				case "eu-":
-					modelId = `eu.${modelConfig.id}`
-					break
-				default:
-					modelId = modelConfig.id
-					break
-			}
-		} else {
-			modelId = modelConfig.id
+			throw error
 		}
 
 		const usePromptCache = Boolean(this.options.awsUsePromptCache && this.supportsAwsPromptCache(modelConfig))
@@ -323,21 +261,21 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 				// Handle metadata events first
 				if (streamEvent.metadata?.usage) {
-					// Define a type for usage to avoid TypeScript errors
-					type UsageType = {
-						inputTokens?: number
-						outputTokens?: number
-						cacheReadInputTokens?: number
-						cacheWriteInputTokens?: number
-						cacheReadInputTokenCount?: number
-						cacheWriteInputTokenCount?: number
-					}
-
 					const usage = (streamEvent.metadata?.usage || {}) as UsageType
 
 					// Check both field naming conventions for cache tokens
 					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
 					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
+
+					logger.debug("Bedrock usage amounts before yielding", {
+						ctx: "bedrock",
+						inputTokens: usage.inputTokens || 0,
+						outputTokens: usage.outputTokens || 0,
+						cacheReadTokens,
+						cacheWriteTokens,
+						totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
+						modelId: modelId,
+					})
 
 					yield {
 						type: "usage",
@@ -369,6 +307,16 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 						// Handle metadata events for the promptRouter.
 						if (streamEvent?.trace?.promptRouter?.usage) {
 							const routerUsage = streamEvent.trace.promptRouter.usage
+
+							logger.debug("Bedrock prompt router usage amounts before yielding", {
+								ctx: "bedrock",
+								inputTokens: routerUsage.inputTokens || 0,
+								outputTokens: routerUsage.outputTokens || 0,
+								cacheReadTokens: routerUsage.cacheReadTokens || 0,
+								cacheWriteTokens: routerUsage.cacheWriteTokens || 0,
+								totalTokens: (routerUsage.inputTokens || 0) + (routerUsage.outputTokens || 0),
+								invokedModelId: streamEvent.trace.promptRouter.invokedModelId,
+							})
 
 							yield {
 								type: "usage",
@@ -435,12 +383,195 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		}
 	}
 
-	private supportsAwsPromptCache(modelConfig: {
-		id: BedrockModelId | string
-		info: SharedModelInfo
-	}): boolean | undefined {
-		return modelConfig?.info?.cachableFields && modelConfig?.info?.cachableFields?.length > 0
-		//	return modelConfig.info.supportsPromptCache
+	async completePrompt(prompt: string): Promise<string> {
+		try {
+			const modelConfig = this.getModel()
+
+			// Handle cross-region inference
+			const modelId = this.getModelIdWithRegionHandling(modelConfig)
+
+			const inferenceConfig: BedrockInferenceConfig = {
+				maxTokens: modelConfig.info.maxTokens || 4096,
+				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
+				topP: 0.1,
+			}
+
+			// For completePrompt, use a unique conversation ID based on the prompt
+			const conversationId = `prompt_${prompt.substring(0, 20)}`
+
+			const payload = {
+				modelId,
+				messages: this.convertToBedrockConverseMessages(
+					[
+						{
+							role: "user",
+							content: prompt,
+						},
+					],
+					undefined,
+					false,
+					modelConfig.info,
+					conversationId,
+				).messages,
+				inferenceConfig,
+			}
+
+			const command = new ConverseCommand(payload)
+			const response = await this.client.send(command)
+
+			if (response.output && response.output instanceof Uint8Array) {
+				try {
+					const outputStr = new TextDecoder().decode(response.output)
+					const output = JSON.parse(outputStr)
+					if (output.content) {
+						return output.content
+					}
+				} catch (parseError) {
+					logger.error("Failed to parse Bedrock response", {
+						ctx: "bedrock",
+						error: parseError instanceof Error ? parseError : String(parseError),
+					})
+				}
+			}
+			return ""
+		} catch (error) {
+			// Use the extracted error handling method for all errors
+			const errorMessage = this.handleBedrockError(error, "completePrompt")
+			throw new Error(errorMessage)
+		}
+	}
+
+	/**
+	 * Convert Anthropic messages to Bedrock Converse format
+	 */
+	private convertToBedrockConverseMessages(
+		anthropicMessages: Anthropic.Messages.MessageParam[] | { role: string; content: string }[],
+		systemMessage?: string,
+		usePromptCache: boolean = false,
+		modelInfo?: any,
+		conversationId?: string, // Optional conversation ID to track cache points across messages
+	): { system: SystemContentBlock[]; messages: Message[] } {
+		// Convert model info to expected format
+		const cacheModelInfo: CacheModelInfo = {
+			maxTokens: modelInfo?.maxTokens || 8192,
+			contextWindow: modelInfo?.contextWindow || 200_000,
+			supportsPromptCache: modelInfo?.supportsPromptCache || false,
+			maxCachePoints: modelInfo?.maxCachePoints || 0,
+			minTokensPerCachePoint: modelInfo?.minTokensPerCachePoint || 50,
+			cachableFields: modelInfo?.cachableFields || [],
+		}
+
+		// Clean messages by removing any existing cache points
+		const cleanedMessages = anthropicMessages.map((msg) => {
+			if (typeof msg.content === "string") {
+				return msg
+			}
+			const cleaned = {
+				...msg,
+				content: this.removeCachePoints(msg.content),
+			}
+			return cleaned
+		})
+
+		// Get previous cache point placements for this conversation if available
+		const previousPlacements =
+			conversationId && this.previousCachePointPlacements[conversationId]
+				? this.previousCachePointPlacements[conversationId]
+				: undefined
+
+		// Create config for cache strategy
+		const config = {
+			modelInfo: cacheModelInfo,
+			systemPrompt: systemMessage,
+			messages: cleanedMessages as Anthropic.Messages.MessageParam[],
+			usePromptCache,
+			previousCachePointPlacements: previousPlacements,
+		}
+
+		// Inline the logic from convertWithOptimalCaching and CacheStrategyFactory.createStrategy
+		let strategy = new MultiPointStrategy(config)
+
+		// Determine optimal cache points
+		const result = strategy.determineOptimalCachePoints()
+
+		// Store cache point placements for future use if conversation ID is provided
+		if (conversationId && result.messageCachePointPlacements) {
+			this.previousCachePointPlacements[conversationId] = result.messageCachePointPlacements
+		}
+
+		return result
+	}
+
+	/************************************************************************************
+	 *
+	 *     MODEL IDENTIFICATION
+	 *
+	 *************************************************************************************/
+
+	private costModelConfig: { id: BedrockModelId | string; info: SharedModelInfo } = {
+		id: "",
+		info: { maxTokens: 0, contextWindow: 0, supportsPromptCache: false, supportsImages: false },
+	}
+
+	/**
+	 * Gets the model ID with proper region handling for custom ARNs and cross-region inference
+	 * @param modelConfig The model configuration
+	 * @returns The model ID to use
+	 */
+	private getModelIdWithRegionHandling(modelConfig: { id: BedrockModelId | string; info: SharedModelInfo }): string {
+		let modelId: string
+
+		// For custom ARNs, use the ARN directly without modification
+		if (this.options.awsCustomArn) {
+			modelId = modelConfig.id
+
+			// Validate ARN format and check region match
+			const clientRegion = this.client.config.region as string
+			const validation = this.validateBedrockArn(modelId, clientRegion)
+
+			if (!validation.isValid) {
+				logger.error("Invalid ARN format", {
+					ctx: "bedrock",
+					modelId,
+					errorMessage: validation.errorMessage,
+				})
+
+				// Throw a consistent error with a prefix that can be detected by callers
+				const errorMessage =
+					validation.errorMessage ||
+					"Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name"
+				throw new Error("INVALID_ARN_FORMAT:" + errorMessage)
+			}
+
+			// Extract region from ARN
+			const arnRegion = validation.arnRegion!
+
+			// Log warning if there's a region mismatch
+			if (validation.errorMessage) {
+				logger.warn(validation.errorMessage, {
+					ctx: "bedrock",
+					arnRegion,
+					clientRegion,
+				})
+			}
+		} else if (this.options.awsUseCrossRegionInference) {
+			let regionPrefix = (this.options.awsRegion || "").slice(0, 3)
+			switch (regionPrefix) {
+				case "us-":
+					modelId = `us.${modelConfig.id}`
+					break
+				case "eu-":
+					modelId = `eu.${modelConfig.id}`
+					break
+				default:
+					modelId = modelConfig.id
+					break
+			}
+		} else {
+			modelId = modelConfig.id
+		}
+
+		return modelId
 	}
 
 	//Prompt Router responses come back in a different sequence and the model used is in the response and must be fetched by name
@@ -498,7 +629,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			// An ARN was used, but no model info match found, use default values based on common patterns
 			let model = this.getModelByName(bedrockDefaultPromptRouterModelId)
 
-			// For custom ARNs, always return the specific values expected by tests
 			return {
 				id: this.options.awsCustomArn,
 				info: model.info,
@@ -506,124 +636,277 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		if (this.options.apiModelId) {
-			// Special case for custom ARN option
+			// Special case for custom ARN option. This should never happen, because it should have been handled above, but just in case.
 			if (this.options.apiModelId === "custom-arn") {
 				return this.getModelByName(bedrockDefaultModelId)
 			}
-
-			// For production, validate against known models
 			return this.getModelByName(this.options.apiModelId)
 		}
 
+		//This should never happen, we should have an apiModelId always - but just in case.
 		return this.getModelByName(bedrockDefaultModelId)
 	}
 
-	async completePrompt(prompt: string): Promise<string> {
-		try {
-			const modelConfig = this.getModel()
+	/************************************************************************************
+	 *
+	 *     CACHE
+	 *
+	 *************************************************************************************/
 
-			// Handle cross-region inference
-			let modelId: string
+	// Store previous cache point placements for maintaining consistency across consecutive messages
+	private previousCachePointPlacements: { [conversationId: string]: any[] } = {}
 
-			// For custom ARNs, use the ARN directly without modification
-			if (this.options.awsCustomArn) {
-				modelId = modelConfig.id
+	private supportsAwsPromptCache(modelConfig: {
+		id: BedrockModelId | string
+		info: SharedModelInfo
+	}): boolean | undefined {
+		return (
+			modelConfig?.info?.supportsPromptCache &&
+			modelConfig?.info?.cachableFields &&
+			modelConfig?.info?.cachableFields?.length > 0
+		)
+	}
 
-				// Validate ARN format and check region match
-				const clientRegion = this.client.config.region as string
-				const validation = validateBedrockArn(modelId, clientRegion)
-
-				if (!validation.isValid) {
-					logger.error("Invalid ARN format in completePrompt", {
-						ctx: "bedrock",
-						modelId,
-						errorMessage: validation.errorMessage,
-					})
-					throw new Error(
-						validation.errorMessage ||
-							"Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name",
-					)
-				}
-
-				// Extract region from ARN
-				const arnRegion = validation.arnRegion!
-
-				// Log warning if there's a region mismatch
-				if (validation.errorMessage) {
-					logger.warn(validation.errorMessage, {
-						ctx: "bedrock",
-						arnRegion,
-						clientRegion,
-					})
-				}
-			} else if (this.options.awsUseCrossRegionInference) {
-				let regionPrefix = (this.options.awsRegion || "").slice(0, 3)
-				switch (regionPrefix) {
-					case "us-":
-						modelId = `us.${modelConfig.id}`
-						break
-					case "eu-":
-						modelId = `eu.${modelConfig.id}`
-						break
-					default:
-						modelId = modelConfig.id
-						break
-				}
-			} else {
-				modelId = modelConfig.id
-			}
-
-			const inferenceConfig: BedrockInferenceConfig = {
-				maxTokens: modelConfig.info.maxTokens || 4096,
-				temperature: this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE,
-				topP: 0.1,
-			}
-
-			const usePromptCache = Boolean(this.options.awsUsePromptCache && this.supportsAwsPromptCache(modelConfig))
-
-			// For completePrompt, use a unique conversation ID based on the prompt
-			const conversationId = `prompt_${prompt.substring(0, 20)}`
-
-			const payload = {
-				modelId,
-				messages: this.convertToBedrockConverseMessages(
-					[
-						{
-							role: "user",
-							content: prompt,
-						},
-					],
-					undefined,
-					usePromptCache,
-					modelConfig.info,
-					conversationId,
-				).messages,
-				inferenceConfig,
-			}
-
-			const command = new ConverseCommand(payload)
-			const response = await this.client.send(command)
-
-			if (response.output && response.output instanceof Uint8Array) {
-				try {
-					const outputStr = new TextDecoder().decode(response.output)
-					const output = JSON.parse(outputStr)
-					if (output.content) {
-						return output.content
-					}
-				} catch (parseError) {
-					logger.error("Failed to parse Bedrock response", {
-						ctx: "bedrock",
-						error: parseError instanceof Error ? parseError : String(parseError),
-					})
-				}
-			}
-			return ""
-		} catch (error) {
-			// Use the extracted error handling method for all errors
-			const errorMessage = this.handleBedrockError(error, "completePrompt")
-			throw new Error(errorMessage)
+	/**
+	 * Removes any existing cachePoint nodes from content blocks
+	 */
+	private removeCachePoints(content: any): any {
+		if (Array.isArray(content)) {
+			return content.map((block) => {
+				const { cachePoint, ...rest } = block
+				return rest
+			})
 		}
+		return content
+	}
+
+	/************************************************************************************
+	 *
+	 *     ERROR HANDLING
+	 *
+	 *************************************************************************************/
+
+	/**
+	 * Validates an AWS Bedrock ARN format and optionally checks if the region in the ARN matches the provided region
+	 * @param arn The ARN string to validate
+	 * @param region Optional region to check against the ARN's region
+	 * @returns An object with validation results: { isValid, arnRegion, errorMessage }
+	 */
+	private validateBedrockArn(arn: string, region?: string) {
+		// Validate ARN format
+		const arnRegex =
+			/^arn:aws:bedrock:([^:]+):(\d+):(foundation-model|provisioned-model|default-prompt-router|prompt-router)\/(.+)$/
+		const match = arn.match(arnRegex)
+
+		if (!match) {
+			return {
+				isValid: false,
+				arnRegion: undefined,
+				errorMessage:
+					"Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name",
+			}
+		}
+
+		// Extract region from ARN
+		const arnRegion = match[1]
+
+		// Check if region in ARN matches provided region (if specified)
+		if (region && arnRegion !== region) {
+			return {
+				isValid: true,
+				arnRegion,
+				errorMessage: `Warning: The region in your ARN (${arnRegion}) does not match your selected region (${region}). This may cause access issues. The provider will use the region from the ARN.`,
+			}
+		}
+
+		// ARN is valid and region matches (or no region was provided to check against)
+		return {
+			isValid: true,
+			arnRegion,
+			errorMessage: undefined,
+		}
+	}
+
+	/**
+	 * Error type definitions for Bedrock API errors
+	 */
+	private static readonly ERROR_TYPES: Record<
+		string,
+		{
+			patterns: string[] // Strings to match in lowercase error message or name
+			messageTemplate: string // Template with placeholders like {region}, {modelId}, etc.
+			logLevel: "error" | "warn" | "info" // Log level for this error type
+		}
+	> = {
+		ACCESS_DENIED: {
+			patterns: ["access", "denied", "permission"],
+			messageTemplate: `You don't have access to the model with the specified ARN. Please verify:
+1. The ARN is correct and points to a valid model
+2. Your AWS credentials have permission to access this model (check IAM policies)
+3. The region in the ARN {regionInfo} matches the region where the model is deployed
+4. If using a provisioned model, ensure it's active and not in a failed state{customModelInfo}`,
+			logLevel: "error",
+		},
+		NOT_FOUND: {
+			patterns: ["not found", "does not exist"],
+			messageTemplate: `The specified ARN does not exist or is invalid. Please check:
+1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
+2. The model exists in the specified region
+3. The account ID in the ARN is correct
+4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`,
+			logLevel: "error",
+		},
+		THROTTLING: {
+			patterns: ["throttl", "rate", "limit"],
+			messageTemplate: `Request was throttled or rate limited. Please try:
+1. Reducing the frequency of requests
+2. If using a provisioned model, check its throughput settings
+3. Contact AWS support to request a quota increase if needed
+
+Error Details:
+{formattedErrorDetails}
+
+Model Information:
+- Model ID: {modelId}
+- Context window: {contextWindow} tokens`,
+			logLevel: "error",
+		},
+		TOO_MANY_TOKENS: {
+			patterns: ["too many tokens"],
+			messageTemplate: `"Too many tokens" error detected.
+
+Error Details:
+{formattedErrorDetails}
+
+Model Information:
+- Model ID: {modelId}
+- Context window: {contextWindow} tokens
+
+Possible Causes:
+1. Input exceeds model's context window limit
+2. Rate limiting (too many tokens per minute)
+3. Quota exceeded for token usage
+4. Other token-related service limitations
+
+Suggestions:
+1. Reduce the size of your input
+2. Split your request into smaller chunks
+3. Use a model with a larger context window
+4. If rate limited, reduce request frequency
+5. Check your AWS Bedrock quotas and limits`,
+			logLevel: "error",
+		},
+		ABORT: {
+			patterns: ["aborterror"], // This will match error.name.toLowerCase() for AbortError
+			messageTemplate: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.
+	   
+Error Details:
+{formattedErrorDetails}
+
+Model Information:
+- Model ID: {modelId}
+- Context window: {contextWindow} tokens`,
+			logLevel: "info",
+		},
+		// Default/generic error
+		GENERIC: {
+			patterns: [], // Empty patterns array means this is the default
+			messageTemplate: `
+Error Details:
+{formattedErrorDetails}
+
+Model Information:
+- Model ID: {modelId}
+- Context window: {contextWindow} tokens			
+			`,
+			logLevel: "error",
+		},
+	}
+
+	/**
+	 * Determines the error type based on the error message or name
+	 */
+	private getErrorType(error: unknown): string {
+		if (!(error instanceof Error)) {
+			return "GENERIC"
+		}
+
+		const errorMessage = error.message.toLowerCase()
+		const errorName = error.name.toLowerCase()
+
+		// Check each error type's patterns
+		for (const [errorType, definition] of Object.entries(AwsBedrockHandler.ERROR_TYPES)) {
+			if (errorType === "GENERIC") continue // Skip the generic type
+
+			// If any pattern matches in either message or name, return this error type
+			if (definition.patterns.some((pattern) => errorMessage.includes(pattern) || errorName.includes(pattern))) {
+				return errorType
+			}
+		}
+
+		// Default to generic error
+		return "GENERIC"
+	}
+
+	/**
+	 * Formats an error message based on the error type and context
+	 */
+	private formatErrorMessage(error: unknown, errorType: string, isStreamContext: boolean): string {
+		const definition = AwsBedrockHandler.ERROR_TYPES[errorType] || AwsBedrockHandler.ERROR_TYPES.GENERIC
+		let template = definition.messageTemplate
+
+		// Prepare template variables
+		const templateVars: Record<string, string> = {}
+
+		if (error instanceof Error) {
+			templateVars.errorMessage = error.message
+			templateVars.errorName = error.name
+
+			const modelConfig = this.getModel()
+			templateVars.modelId = modelConfig.id
+			templateVars.contextWindow = String(modelConfig.info.contextWindow || "unknown")
+
+			// Format error details
+			const errorDetails: Record<string, any> = {}
+			Object.getOwnPropertyNames(error).forEach((prop) => {
+				if (prop !== "stack") {
+					errorDetails[prop] = (error as any)[prop]
+				}
+			})
+
+			// Safely stringify error details to avoid circular references
+			templateVars.formattedErrorDetails = Object.entries(errorDetails)
+				.map(([key, value]) => {
+					let valueStr
+					if (typeof value === "object" && value !== null) {
+						try {
+							// Use a replacer function to handle circular references
+							valueStr = JSON.stringify(value, (k, v) => {
+								if (k && typeof v === "object" && v !== null) {
+									return "[Object]"
+								}
+								return v
+							})
+						} catch (e) {
+							valueStr = "[Complex Object]"
+						}
+					} else {
+						valueStr = String(value)
+					}
+					return `- ${key}: ${valueStr}`
+				})
+				.join("\n")
+		}
+
+		// Add context-specific template variables
+		templateVars.regionInfo = `(${this?.client?.config?.region})`
+
+		// Replace template variables
+		for (const [key, value] of Object.entries(templateVars)) {
+			template = template.replace(new RegExp(`{${key}}`, "g"), value || "")
+		}
+
+		return template
 	}
 
 	/**
@@ -642,411 +925,34 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		context: "createMessage" | "completePrompt",
 	): string | Array<{ type: string; text?: string; inputTokens?: number; outputTokens?: number }> {
 		const isStreamContext = context === "createMessage"
-		const prefix = isStreamContext ? "" : "Bedrock custom ARN error: "
 
-		// Check if this is an abort error
-		if (error instanceof Error && error.name === "AbortError") {
-			logger.info(`Request was aborted in ${context}`, {
-				ctx: "bedrock",
-				errorMessage: error.message,
-			})
+		// Determine error type
+		const errorType = this.getErrorType(error)
 
-			const abortMessage = `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.
-			
-			${JSON.stringify(error)}
-			`
+		// Format error message
+		const errorMessage = this.formatErrorMessage(error, errorType, isStreamContext)
 
-			if (isStreamContext) {
-				return [
-					{
-						type: "text",
-						text: abortMessage,
-					},
-					{ type: "usage", inputTokens: 0, outputTokens: 0 },
-				]
-			}
-			return abortMessage
-		}
-
-		// Enhanced error handling for custom ARN issues
-		if (this.options.awsCustomArn) {
-			logger.error(`Error occurred with custom ARN in ${context}`, {
-				ctx: "bedrock",
-				customArn: this.options.awsCustomArn,
-				error: error instanceof Error ? error : String(error),
-			})
-
-			if (error instanceof Error) {
-				const errorMessage = error.message.toLowerCase()
-
-				// Access denied errors
-				if (
-					errorMessage.includes("access") &&
-					(errorMessage.includes("model") || errorMessage.includes("denied"))
-				) {
-					const accessDeniedMessage = `${prefix}You don't have access to the model with the specified ARN. Please verify:
-1. The ARN is correct and points to a valid model
-2. Your AWS credentials have permission to access this model (check IAM policies)
-3. The region in the ARN ${isStreamContext ? `(${this.client.config.region})` : ""} matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state${isStreamContext ? "\n5. If using a custom model, ensure your account has been granted access to it" : ""}`
-
-					if (isStreamContext) {
-						logger.error("Permissions issue with custom ARN", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "access_denied",
-							clientRegion: this.client.config.region,
-						})
-						return [
-							{
-								type: "text",
-								text: `Error: ${accessDeniedMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return accessDeniedMessage
-				}
-				// Model not found errors
-				else if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
-					const notFoundMessage = `${prefix}The specified ARN does not exist or is invalid. Please check:
-1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
-2. The model exists in the specified region
-3. The account ID in the ARN is correct
-4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`
-
-					if (isStreamContext) {
-						logger.error("Invalid ARN or non-existent model", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "not_found",
-						})
-						return [
-							{
-								type: "text",
-								text: `Error: ${notFoundMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return notFoundMessage
-				}
-				// Throttling errors
-				else if (
-					errorMessage.includes("throttl") ||
-					errorMessage.includes("rate") ||
-					errorMessage.includes("limit")
-				) {
-					const throttlingMessage = `${prefix}Request was throttled or rate limited. Please try:
-1. Reducing the frequency of requests
-2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed
-
-${JSON.stringify(error)}
-`
-
-					if (isStreamContext) {
-						logger.error("Throttling or rate limit issue with Bedrock", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "throttling",
-						})
-						return [
-							{
-								type: "text",
-								text: `Error: ${throttlingMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return throttlingMessage
-				}
-				// Too many tokens errors
-				else if (errorMessage.includes("too many tokens")) {
-					// Get the current model info for context window details
-					const modelConfig = this.getModel()
-					const contextWindow = modelConfig.info.contextWindow || "unknown"
-
-					// Extract all available error properties
-					const errorDetails: Record<string, any> = {}
-					Object.getOwnPropertyNames(error).forEach((prop) => {
-						if (prop !== "stack") {
-							// Skip stack trace for readability
-							errorDetails[prop] = (error as any)[prop]
-						}
-					})
-
-					// Format error details as string
-					const formattedErrorDetails = Object.entries(errorDetails)
-						.map(([key, value]) => `- ${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
-						.join("\n")
-
-					const tooManyTokensMessage = `${prefix}"Too many tokens" error detected.
-
-Error Details:
-- Message: ${error.message}
-- Name: ${error.name}
-${formattedErrorDetails}
-
-Model Information:
-- Model ID: ${modelConfig.id}
-- Context window: ${contextWindow} tokens
-
-Possible Causes:
-1. Input exceeds model's context window limit
-2. Rate limiting (too many tokens per minute)
-3. Quota exceeded for token usage
-4. Other token-related service limitations
-
-Suggestions:
-1. Reduce the size of your input
-2. Split your request into smaller chunks
-3. Use a model with a larger context window
-4. If rate limited, reduce request frequency
-5. Check your AWS Bedrock quotas and limits`
-
-					if (isStreamContext) {
-						logger.error("Too many tokens error with Bedrock", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "too_many_tokens",
-							modelId: modelConfig.id,
-							contextWindow: contextWindow,
-							errorMessage: error.message,
-							errorDetails: errorDetails,
-						})
-						return [
-							{
-								type: "text",
-								text: `Error: ${tooManyTokensMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return tooManyTokensMessage
-				}
-				// Other errors
-				else {
-					const genericMessage = `${prefix}${error.message}${isStreamContext ? "\n\nPlease check:\n1. Your AWS credentials are valid and have the necessary permissions\n2. The ARN format is correct\n3. The region in the ARN matches the region where you're making the request" : ""}`
-
-					if (isStreamContext) {
-						logger.error("Unspecified error with custom ARN", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorStack: error.stack,
-							errorMessage: error.message,
-						})
-						return [
-							{
-								type: "text",
-								text: `Error with custom ARN: ${genericMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return genericMessage
-				}
-			} else {
-				const unknownMessage = `Unknown error occurred with custom ARN. Please check your AWS credentials and ARN format.`
-
-				if (isStreamContext) {
-					return [
-						{
-							type: "text",
-							text: unknownMessage,
-						},
-						{ type: "usage", inputTokens: 0, outputTokens: 0 },
-					]
-				}
-				return unknownMessage
-			}
-		} else {
-			// Standard error handling for non-ARN cases
-			if (error instanceof Error) {
-				const errorMessage = error.message.toLowerCase()
-
-				// Check for "Too many tokens" error in standard cases
-				if (errorMessage.includes("too many tokens")) {
-					// Get the current model info for context window details
-					const modelConfig = this.getModel()
-					const contextWindow = modelConfig.info.contextWindow || "unknown"
-
-					// Extract all available error properties
-					const errorDetails: Record<string, any> = {}
-					Object.getOwnPropertyNames(error).forEach((prop) => {
-						if (prop !== "stack") {
-							// Skip stack trace for readability
-							errorDetails[prop] = (error as any)[prop]
-						}
-					})
-
-					// Format error details as string
-					const formattedErrorDetails = Object.entries(errorDetails)
-						.map(([key, value]) => `- ${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
-						.join("\n")
-
-					const tooManyTokensMessage = `"Too many tokens" error detected.
-
-Error Details:
-- Message: ${error.message}
-- Name: ${error.name}
-${formattedErrorDetails}
-
-Model Information:
-- Model ID: ${modelConfig.id}
-- Context window: ${contextWindow} tokens
-
-Possible Causes:
-1. Input exceeds model's context window limit
-2. Rate limiting (too many tokens per minute)
-3. Quota exceeded for token usage
-4. Other token-related service limitations
-
-Suggestions:
-1. Reduce the size of your input
-2. Split your request into smaller chunks
-3. Use a model with a larger context window
-4. If rate limited, reduce request frequency
-5. Check your AWS Bedrock quotas and limits`
-
-					if (isStreamContext) {
-						logger.error("Too many tokens error with Bedrock", {
-							ctx: "bedrock",
-							errorType: "too_many_tokens",
-							modelId: modelConfig.id,
-							contextWindow: contextWindow,
-							errorMessage: error.message,
-							errorDetails: errorDetails,
-						})
-						return [
-							{
-								type: "text",
-								text: `Error: ${tooManyTokensMessage}`,
-							},
-							{ type: "usage", inputTokens: 0, outputTokens: 0 },
-						]
-					}
-					return `Bedrock completion error: ${tooManyTokensMessage}`
-				}
-
-				// Standard error handling for other errors
-				const standardMessage = isStreamContext ? error.message : `Bedrock completion error: ${error.message}`
-
-				if (isStreamContext) {
-					logger.error("Standard Bedrock error", {
-						ctx: "bedrock",
-						errorStack: error.stack,
-						errorMessage: error.message,
-					})
-					return [
-						{
-							type: "text",
-							text: `Error: ${standardMessage}`,
-						},
-						{ type: "usage", inputTokens: 0, outputTokens: 0 },
-					]
-				}
-				return standardMessage
-			} else {
-				const unknownMessage = isStreamContext
-					? "An unknown error occurred"
-					: "An unknown Bedrock error occurred"
-
-				if (isStreamContext) {
-					logger.error("Unknown Bedrock error", {
-						ctx: "bedrock",
-						error: String(error),
-					})
-					return [
-						{
-							type: "text",
-							text: unknownMessage,
-						},
-						{ type: "usage", inputTokens: 0, outputTokens: 0 },
-					]
-				}
-				return unknownMessage
-			}
-		}
-	}
-
-	/**
-	 * Removes any existing cachePoint nodes from content blocks
-	 */
-	private removeCachePoints(content: any): any {
-		if (Array.isArray(content)) {
-			return content.map((block) => {
-				const { cachePoint, ...rest } = block
-				return rest
-			})
-		}
-		return content
-	}
-
-	// Store previous cache point placements for maintaining consistency across consecutive messages
-	private previousCachePointPlacements: { [conversationId: string]: any[] } = {}
-
-	/**
-	 * Convert Anthropic messages to Bedrock Converse format
-	 */
-	private convertToBedrockConverseMessages(
-		anthropicMessages: Anthropic.Messages.MessageParam[] | { role: string; content: string }[],
-		systemMessage?: string,
-		usePromptCache: boolean = false,
-		modelInfo?: any,
-		conversationId?: string, // Optional conversation ID to track cache points across messages
-	): { system: SystemContentBlock[]; messages: Message[] } {
-		// Convert model info to expected format
-		const cacheModelInfo: CacheModelInfo = {
-			maxTokens: modelInfo?.maxTokens || 8192,
-			contextWindow: modelInfo?.contextWindow || 200_000,
-			supportsPromptCache: modelInfo?.supportsPromptCache || false,
-			maxCachePoints: modelInfo?.maxCachePoints || 0,
-			minTokensPerCachePoint: modelInfo?.minTokensPerCachePoint || 50,
-			cachableFields: modelInfo?.cachableFields || [],
-		}
-
-		// Clean messages by removing any existing cache points
-		const cleanedMessages = anthropicMessages.map((msg) => {
-			if (typeof msg.content === "string") {
-				return msg
-			}
-			const cleaned = {
-				...msg,
-				content: this.removeCachePoints(msg.content),
-			}
-			return cleaned
+		// Log the error
+		const definition = AwsBedrockHandler.ERROR_TYPES[errorType]
+		const logMethod = definition.logLevel
+		logger[logMethod](`${errorType} error in ${context}`, {
+			ctx: "bedrock",
+			customArn: this.options.awsCustomArn,
+			errorType,
+			errorMessage: error instanceof Error ? error.message : String(error),
+			...(error instanceof Error && error.stack ? { errorStack: error.stack } : {}),
+			...(this.client?.config?.region ? { clientRegion: this.client.config.region } : {}),
 		})
 
-		// Get previous cache point placements for this conversation if available
-		const previousPlacements =
-			conversationId && this.previousCachePointPlacements[conversationId]
-				? this.previousCachePointPlacements[conversationId]
-				: undefined
-
-		// Create config for cache strategy
-		const config = {
-			modelInfo: cacheModelInfo,
-			systemPrompt: systemMessage,
-			messages: cleanedMessages as Anthropic.Messages.MessageParam[],
-			usePromptCache,
-			previousCachePointPlacements: previousPlacements,
+		// Return appropriate response based on context
+		if (isStreamContext) {
+			return [
+				{ type: "text", text: `Error: ${errorMessage}` },
+				{ type: "usage", inputTokens: 0, outputTokens: 0 },
+			]
+		} else {
+			// For completePrompt, add the expected prefix
+			return `Bedrock completion error: ${errorMessage}`
 		}
-
-		// Inline the logic from convertWithOptimalCaching and CacheStrategyFactory.createStrategy
-		let strategy
-
-		// Use MultiPointStrategy for all cases
-		strategy = new MultiPointStrategy(config)
-
-		// Determine optimal cache points
-		const result = strategy.determineOptimalCachePoints()
-
-		// Store cache point placements for future use if conversation ID is provided
-		if (conversationId && result.messageCachePointPlacements) {
-			this.previousCachePointPlacements[conversationId] = result.messageCachePointPlacements
-		}
-
-		return result
 	}
 }

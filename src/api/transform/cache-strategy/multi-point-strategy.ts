@@ -14,6 +14,11 @@ export class MultiPointStrategy extends CacheStrategy {
 	public determineOptimalCachePoints(): CacheResult {
 		// If prompt caching is disabled or no messages, return without cache points
 		if (!this.config.usePromptCache || this.config.messages.length === 0) {
+			logger.debug("Cache points not used: prompt caching disabled or no messages", {
+				ctx: "cache-strategy",
+				usePromptCache: this.config.usePromptCache,
+				messageCount: this.config.messages.length,
+			})
 			return this.formatWithoutCachePoints()
 		}
 
@@ -22,15 +27,39 @@ export class MultiPointStrategy extends CacheStrategy {
 		const minTokensPerPoint = this.config.modelInfo.minTokensPerCachePoint
 		let remainingCachePoints: number = this.config.modelInfo.maxCachePoints
 
+		logger.debug("Starting cache point determination", {
+			ctx: "cache-strategy",
+			supportsSystemCache,
+			supportsMessageCache,
+			minTokensPerPoint,
+			maxCachePoints: this.config.modelInfo.maxCachePoints,
+			remainingCachePoints,
+			messageCount: this.config.messages.length,
+		})
+
 		// First, determine if we'll use a system cache point
 		const useSystemCache =
 			supportsSystemCache && this.config.systemPrompt && this.meetsMinTokenThreshold(this.systemTokenCount)
+
+		logger.debug("System cache point evaluation", {
+			ctx: "cache-strategy",
+			supportsSystemCache,
+			hasSystemPrompt: !!this.config.systemPrompt,
+			systemTokenCount: this.systemTokenCount,
+			minTokensRequired: this.config.modelInfo.minTokensPerCachePoint,
+			meetsThreshold: this.meetsMinTokenThreshold(this.systemTokenCount),
+			useSystemCache,
+		})
 
 		// Handle system blocks
 		let systemBlocks: SystemContentBlock[] = []
 		if (this.config.systemPrompt) {
 			systemBlocks = [{ text: this.config.systemPrompt } as unknown as SystemContentBlock]
 			if (useSystemCache) {
+				logger.debug("Adding cache point after system prompt", {
+					ctx: "cache-strategy",
+					systemTokenCount: this.systemTokenCount,
+				})
 				systemBlocks.push(this.createCachePoint() as unknown as SystemContentBlock)
 				remainingCachePoints--
 			}
@@ -38,11 +67,31 @@ export class MultiPointStrategy extends CacheStrategy {
 
 		// If message caching isn't supported, return with just system caching
 		if (!supportsMessageCache) {
+			logger.debug("Message caching not supported, using system caching only", {
+				ctx: "cache-strategy",
+				supportsMessageCache,
+			})
 			return this.formatResult(systemBlocks, this.messagesToContentBlocks(this.config.messages))
 		}
 
 		// Determine optimal cache point placements for messages
+		logger.debug("Determining message cache points", {
+			ctx: "cache-strategy",
+			minTokensPerPoint,
+			remainingCachePoints,
+			messageCount: this.config.messages.length,
+			hasPreviousPlacements: !!this.config.previousCachePointPlacements,
+			previousPlacementsCount: this.config.previousCachePointPlacements?.length || 0,
+		})
+
 		const placements = this.determineMessageCachePoints(minTokensPerPoint, remainingCachePoints)
+
+		logger.debug("Cache point placements determined", {
+			ctx: "cache-strategy",
+			placementsCount: placements.length,
+			placements: placements.map((p) => ({ index: p.index, tokensCovered: p.tokensCovered })),
+		})
+
 		const messages = this.messagesToContentBlocks(this.config.messages)
 		let cacheResult = this.formatResult(systemBlocks, this.applyCachePoints(messages, placements))
 
@@ -66,6 +115,10 @@ export class MultiPointStrategy extends CacheStrategy {
 		remainingCachePoints: number,
 	): CachePointPlacement[] {
 		if (this.config.messages.length <= 1) {
+			logger.debug("Not enough messages for cache points", {
+				ctx: "cache-strategy",
+				messageCount: this.config.messages.length,
+			})
 			return []
 		}
 
@@ -73,11 +126,29 @@ export class MultiPointStrategy extends CacheStrategy {
 		const totalMessages = this.config.messages.length
 		const previousPlacements = this.config.previousCachePointPlacements || []
 
+		logger.debug("Starting message cache point determination", {
+			ctx: "cache-strategy",
+			totalMessages,
+			previousPlacementsCount: previousPlacements.length,
+			remainingCachePoints,
+		})
+
 		// Special case: If previousPlacements is empty, place initial cache points
 		if (previousPlacements.length === 0) {
+			logger.debug("No previous placements, determining initial cache points", {
+				ctx: "cache-strategy",
+			})
+
 			let currentIndex = 0
 
 			while (currentIndex < totalMessages && remainingCachePoints > 0) {
+				logger.debug("Finding optimal placement for range", {
+					ctx: "cache-strategy",
+					startIndex: currentIndex,
+					endIndex: totalMessages - 1,
+					minTokensPerPoint,
+				})
+
 				const newPlacement = this.findOptimalPlacementForRange(
 					currentIndex,
 					totalMessages - 1,
@@ -85,10 +156,21 @@ export class MultiPointStrategy extends CacheStrategy {
 				)
 
 				if (newPlacement) {
+					logger.debug("Found optimal placement", {
+						ctx: "cache-strategy",
+						placementIndex: newPlacement.index,
+						tokensCovered: newPlacement.tokensCovered,
+					})
+
 					placements.push(newPlacement)
 					currentIndex = newPlacement.index + 1
 					remainingCachePoints--
 				} else {
+					logger.debug("No suitable placement found in range", {
+						ctx: "cache-strategy",
+						startIndex: currentIndex,
+						endIndex: totalMessages - 1,
+					})
 					break
 				}
 			}
@@ -158,21 +240,27 @@ export class MultiPointStrategy extends CacheStrategy {
 
 				// Only combine cache points if it's beneficial
 				// Compare the token count of new messages with the smallest combined token gap
+				// Apply a required percentage increase to ensure reallocation is worth it
+				const requiredPercentageIncrease = 1.2 // 20% increase required
+				const requiredTokenThreshold = smallestGap * requiredPercentageIncrease
+
 				logger.debug("Cache point decision", {
 					ctx: "cache-strategy",
 					newMessagesTokens,
 					smallestGap,
-					shouldCombine: newMessagesTokens >= smallestGap,
+					requiredTokenThreshold,
+					shouldCombine: newMessagesTokens >= requiredTokenThreshold,
 					lastPreviousIndex,
 					totalMessages,
 				})
 
-				if (newMessagesTokens >= smallestGap) {
-					// It's beneficial to combine cache points since new messages have more tokens
+				if (newMessagesTokens >= requiredTokenThreshold) {
+					// It's beneficial to combine cache points since new messages have significantly more tokens
 					logger.info("Combining cache points is beneficial", {
 						ctx: "cache-strategy",
 						newMessagesTokens,
 						smallestGap,
+						requiredTokenThreshold,
 						action: "combining_cache_points",
 					})
 
@@ -260,6 +348,11 @@ export class MultiPointStrategy extends CacheStrategy {
 		minTokensPerPoint: number,
 	): CachePointPlacement | null {
 		if (startIndex >= endIndex) {
+			logger.debug("Invalid range for cache point placement", {
+				ctx: "cache-strategy",
+				startIndex,
+				endIndex,
+			})
 			return null
 		}
 
@@ -271,6 +364,14 @@ export class MultiPointStrategy extends CacheStrategy {
 				break
 			}
 		}
+
+		logger.debug("Finding last user message in range", {
+			ctx: "cache-strategy",
+			startIndex,
+			endIndex,
+			lastUserMessageIndex,
+			foundUserMessage: lastUserMessageIndex >= 0,
+		})
 
 		if (lastUserMessageIndex >= 0) {
 			// Calculate the total tokens covered from the previous cache point (or start of conversation)
@@ -294,10 +395,33 @@ export class MultiPointStrategy extends CacheStrategy {
 				.slice(tokenStartIndex, lastUserMessageIndex + 1)
 				.reduce((acc, curr) => acc + this.estimateTokenCount(curr), 0)
 
+			logger.debug("Evaluating potential cache point", {
+				ctx: "cache-strategy",
+				messageIndex: lastUserMessageIndex,
+				previousCachePointIndex,
+				tokenStartIndex,
+				totalTokensCovered,
+				minTokensPerPoint,
+				meetsThreshold: totalTokensCovered >= minTokensPerPoint,
+			})
+
 			// Guard clause: ensure we have enough tokens to justify a cache point
 			if (totalTokensCovered < minTokensPerPoint) {
+				logger.debug("Not enough tokens for cache point", {
+					ctx: "cache-strategy",
+					totalTokensCovered,
+					minTokensPerPoint,
+					messageIndex: lastUserMessageIndex,
+				})
 				return null
 			}
+
+			logger.debug("Creating cache point placement", {
+				ctx: "cache-strategy",
+				index: lastUserMessageIndex,
+				tokensCovered: totalTokensCovered,
+				messageRole: this.config.messages[lastUserMessageIndex].role,
+			})
 
 			return {
 				index: lastUserMessageIndex,

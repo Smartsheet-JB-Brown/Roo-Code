@@ -554,10 +554,11 @@ const config = {
 1. The algorithm detects that all cache points are used and new messages have been added.
 2. It calculates the token count of the new messages (400 tokens).
 3. It analyzes the token distribution between existing cache points and finds the smallest gap (260 tokens).
-4. It compares the token count of new messages (400) with the smallest gap (260).
-5. Since the new messages have more tokens than the smallest gap (400 > 260), it decides to combine cache points.
-6. It identifies that the cache point at index 8 has the smallest token coverage (260 tokens).
-7. It removes this cache point and places a new one after the new user message.
+4. It calculates the required token threshold by applying a 20% increase to the smallest gap (260 \* 1.2 = 312).
+5. It compares the token count of new messages (400) with this threshold (312).
+6. Since the new messages have significantly more tokens than the threshold (400 > 312), it decides to combine cache points.
+7. It identifies that the cache point at index 8 has the smallest token coverage (260 tokens).
+8. It removes this cache point and places a new one after the new user message.
 
 **Output Cache Point Placements with Reallocation:**
 
@@ -607,7 +608,7 @@ const config = {
 
 ### Key Observations
 
-1. **Simplified Placement Logic**: The algorithm now simply finds the last user message in each range, rather than using complex token midpoint calculations. This makes the code more maintainable while still providing effective cache point placement.
+1. **Simple Initial Placement Logic**: The last user message in the range that meets the minimum token threshold is set as a cachePoint.
 
 2. **User Message Boundary Requirement**: Cache points are placed exclusively after user messages, not after assistant messages. This ensures cache points are placed at natural conversation boundaries where the user has provided input.
 
@@ -615,6 +616,6 @@ const config = {
 
 4. **Adaptive Placement for Growing Conversations**: As the conversation grows, the strategy adapts by preserving previous cache points when possible and only reallocating them when beneficial.
 
-5. **Token Comparison Optimization**: When all cache points are used and new messages are added, the algorithm compares the token count of new messages with the smallest combined gap between existing cache points. Cache points are only combined if the new messages have more tokens than the smallest gap, ensuring that reallocation is only done when it results in a net positive effect on caching efficiency.
+5. **Token Comparison Optimization with Required Increase**: When all cache points are used and new messages are added, the algorithm compares the token count of new messages with the smallest combined token count of contiguous existing cache points, applying a required percentage increase (20%) to ensure reallocation is worth it. Cache points are only combined if the new messages have significantly more tokens than this threshold, ensuring that reallocation is only done when it results in a substantial net positive effect on caching efficiency.
 
 This adaptive approach ensures that as conversations grow, the caching strategy continues to optimize token usage and response times by strategically placing cache points at the most effective positions, while avoiding inefficient reallocations that could result in a net negative effect on caching performance.
