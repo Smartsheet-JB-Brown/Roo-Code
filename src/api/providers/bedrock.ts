@@ -227,12 +227,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 			// Log the payload for debugging custom ARN issues
 			if (this.options.awsCustomArn) {
-				logger.debug("Using custom ARN for Bedrock request", {
-					ctx: "bedrock",
-					customArn: this.options.awsCustomArn,
-					clientRegion: this.client.config.region,
-					payload: JSON.stringify(payload, null, 2),
-				})
+				// logger.debug("Using custom ARN for Bedrock request", {
+				// 	ctx: "bedrock",
+				// 	customArn: this.options.awsCustomArn,
+				// 	clientRegion: this.client.config.region,
+				// 	payload: JSON.stringify(payload, null, 2),
+				// })
 			}
 
 			const command = new ConverseStreamCommand(payload)
@@ -267,15 +267,15 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
 					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
 
-					logger.debug("Bedrock usage amounts before yielding", {
-						ctx: "bedrock",
-						inputTokens: usage.inputTokens || 0,
-						outputTokens: usage.outputTokens || 0,
-						cacheReadTokens,
-						cacheWriteTokens,
-						totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
-						modelId: modelId,
-					})
+					// logger.debug("Bedrock usage amounts before yielding", {
+					// 	ctx: "bedrock",
+					// 	inputTokens: usage.inputTokens || 0,
+					// 	outputTokens: usage.outputTokens || 0,
+					// 	cacheReadTokens,
+					// 	cacheWriteTokens,
+					// 	totalTokens: (usage.inputTokens || 0) + (usage.outputTokens || 0),
+					// 	modelId: modelId,
+					// })
 
 					// In test environments, don't include cache tokens to match test expectations
 					const isTestEnvironment = process.env.NODE_ENV === "test"
@@ -319,15 +319,15 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 						if (streamEvent?.trace?.promptRouter?.usage) {
 							const routerUsage = streamEvent.trace.promptRouter.usage
 
-							logger.debug("Bedrock prompt router usage amounts before yielding", {
-								ctx: "bedrock",
-								inputTokens: routerUsage.inputTokens || 0,
-								outputTokens: routerUsage.outputTokens || 0,
-								cacheReadTokens: routerUsage.cacheReadTokens || 0,
-								cacheWriteTokens: routerUsage.cacheWriteTokens || 0,
-								totalTokens: (routerUsage.inputTokens || 0) + (routerUsage.outputTokens || 0),
-								invokedModelId: streamEvent.trace.promptRouter.invokedModelId,
-							})
+							// logger.debug("Bedrock prompt router usage amounts before yielding", {
+							// 	ctx: "bedrock",
+							// 	inputTokens: routerUsage.inputTokens || 0,
+							// 	outputTokens: routerUsage.outputTokens || 0,
+							// 	cacheReadTokens: routerUsage.cacheReadTokens || 0,
+							// 	cacheWriteTokens: routerUsage.cacheWriteTokens || 0,
+							// 	totalTokens: (routerUsage.inputTokens || 0) + (routerUsage.outputTokens || 0),
+							// 	invokedModelId: streamEvent.trace.promptRouter.invokedModelId,
+							// })
 
 							yield {
 								type: "usage",
@@ -794,27 +794,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			messageTemplate: `Request was throttled or rate limited. Please try:
 1. Reducing the frequency of requests
 2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed
-
-Error Details:
-{formattedErrorDetails}
-
-Model Information:
-- Model ID: {modelId}
-- Context window: {contextWindow} tokens`,
+3. Contact AWS support to request a quota increase if needed`,
 			logLevel: "error",
 		},
 		TOO_MANY_TOKENS: {
 			patterns: ["too many tokens"],
 			messageTemplate: `"Too many tokens" error detected.
-
-Error Details:
-{formattedErrorDetails}
-
-Model Information:
-- Model ID: {modelId}
-- Context window: {contextWindow} tokens
-
 Possible Causes:
 1. Input exceeds model's context window limit
 2. Rate limiting (too many tokens per minute)
@@ -831,27 +816,13 @@ Suggestions:
 		},
 		ABORT: {
 			patterns: ["aborterror"], // This will match error.name.toLowerCase() for AbortError
-			messageTemplate: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.
-	   
-Error Details:
-{formattedErrorDetails}
-
-Model Information:
-- Model ID: {modelId}
-- Context window: {contextWindow} tokens`,
+			messageTemplate: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
 			logLevel: "info",
 		},
 		// Default/generic error
 		GENERIC: {
 			patterns: [], // Empty patterns array means this is the default
-			messageTemplate: `
-Error Details:
-{formattedErrorDetails}
-
-Model Information:
-- Model ID: {modelId}
-- Context window: {contextWindow} tokens			
-			`,
+			messageTemplate: `Unknown Error`,
 			logLevel: "error",
 		},
 	}
@@ -958,6 +929,19 @@ Model Information:
 		context: "createMessage" | "completePrompt",
 	): string | Array<{ type: string; text?: string; inputTokens?: number; outputTokens?: number }> {
 		const isStreamContext = context === "createMessage"
+
+		// Check for specific invalid ARN format errors
+		if (error instanceof Error && error.message.startsWith("INVALID_ARN_FORMAT:")) {
+			// For completePrompt, return just "Invalid ARN format" without the prefix
+			if (!isStreamContext) {
+				return "Invalid ARN format"
+			}
+			// For createMessage, return the formatted error
+			return [
+				{ type: "text", text: "Error: Invalid ARN format" },
+				{ type: "usage", inputTokens: 0, outputTokens: 0 },
+			]
+		}
 
 		// Determine error type
 		const errorType = this.getErrorType(error)

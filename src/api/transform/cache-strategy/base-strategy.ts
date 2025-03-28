@@ -149,23 +149,23 @@ export abstract class CacheStrategy {
 	protected applyCachePoints(messages: Message[], placements: CachePointPlacement[]): Message[] {
 		const result: Message[] = []
 
-		logger.debug("Applying cache points to messages", {
-			ctx: "cache-strategy",
-			messageCount: messages.length,
-			placementCount: placements.length,
-			placements: placements.map((p) => ({ index: p.index, tokensCovered: p.tokensCovered })),
-		})
+		// logger.debug("Applying cache points to messages", {
+		// 	ctx: "cache-strategy",
+		// 	messageCount: messages.length,
+		// 	placementCount: placements.length,
+		// 	placements: placements.map((p) => ({ index: p.index, tokensCovered: p.tokensCovered })),
+		// })
 
 		for (let i = 0; i < messages.length; i++) {
 			const placement = placements.find((p) => p.index === i)
 
 			if (placement) {
-				logger.debug("Adding cache point to message", {
-					ctx: "cache-strategy",
-					messageIndex: i,
-					messageRole: messages[i].role,
-					tokensCovered: placement.tokensCovered,
-				})
+				// logger.debug("Adding cache point to message", {
+				// 	ctx: "cache-strategy",
+				// 	messageIndex: i,
+				// 	messageRole: messages[i].role,
+				// 	tokensCovered: placement.tokensCovered,
+				// })
 				messages[i].content?.push(this.createCachePoint())
 			}
 			result.push(messages[i])
