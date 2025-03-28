@@ -55,6 +55,7 @@ export class MultiPointStrategy extends CacheStrategy {
 
 	/**
 	 * Determine optimal cache point placements for messages
+	 * This method handles both new conversations and growing conversations
 	 *
 	 * @param minTokensPerPoint Minimum tokens required per cache point
 	 * @param remainingCachePoints Number of cache points available
@@ -68,40 +69,32 @@ export class MultiPointStrategy extends CacheStrategy {
 			return []
 		}
 
-		// Check if we have previous cache point placements
-		const previousPlacements = this.config.previousCachePointPlacements || []
-
-		// If we have previous placements and this is a growing conversation,
-		// analyze if we should combine any previous cache points
-		if (
-			previousPlacements.length > 0 &&
-			this.config.messages.length > previousPlacements[previousPlacements.length - 1].index + 1
-		) {
-			// This is a growing conversation with new messages added
-			return this.determineGrowingConversationPlacements(
-				minTokensPerPoint,
-				remainingCachePoints,
-				previousPlacements,
-			)
-		}
-
-		// For new conversations or when previous placements aren't applicable,
-		// use the standard algorithm
-		return this.determineNewConversationPlacements(minTokensPerPoint, remainingCachePoints)
-	}
-
-	/**
-	 * Determine cache point placements for a growing conversation
-	 * This method analyzes previous placements and decides whether to keep them,
-	 * combine them, or reallocate them based on the new message distribution
-	 */
-	private determineGrowingConversationPlacements(
-		minTokensPerPoint: number,
-		remainingCachePoints: number,
-		previousPlacements: CachePointPlacement[],
-	): CachePointPlacement[] {
 		const placements: CachePointPlacement[] = []
 		const totalMessages = this.config.messages.length
+		const previousPlacements = this.config.previousCachePointPlacements || []
+
+		// Special case: If previousPlacements is empty, place initial cache points
+		if (previousPlacements.length === 0) {
+			let currentIndex = 0
+
+			while (currentIndex < totalMessages && remainingCachePoints > 0) {
+				const newPlacement = this.findOptimalPlacementForRange(
+					currentIndex,
+					totalMessages - 1,
+					minTokensPerPoint,
+				)
+
+				if (newPlacement) {
+					placements.push(newPlacement)
+					currentIndex = newPlacement.index + 1
+					remainingCachePoints--
+				} else {
+					break
+				}
+			}
+
+			return placements
+		}
 
 		// Calculate total tokens in the conversation
 		const totalTokens = this.config.messages.reduce((acc, curr) => acc + this.estimateTokenCount(curr), 0)
@@ -136,7 +129,7 @@ export class MultiPointStrategy extends CacheStrategy {
 				}
 			} else {
 				// We need to decide which previous cache points to keep and which to combine
-				// Strategy: If two consecutive cache points are close together, combine them
+				// Strategy: Compare the token count of new messages with the smallest combined token gap
 
 				// First, analyze the token distribution between previous cache points
 				const tokensBetweenPlacements: number[] = []
@@ -163,45 +156,82 @@ export class MultiPointStrategy extends CacheStrategy {
 					}
 				}
 
-				// Combine the two placements with the smallest gap
-				for (let i = 0; i < previousPlacements.length; i++) {
-					if (i !== smallestGapIndex && i !== smallestGapIndex + 1) {
-						// Keep this placement
-						if (previousPlacements[i].index < totalMessages) {
-							placements.push(previousPlacements[i])
-						}
-					} else if (i === smallestGapIndex) {
-						// Replace with a combined placement
-						const combinedEndIndex = previousPlacements[i + 1].index
-						const combinedTokens = tokensBetweenPlacements[i] + tokensBetweenPlacements[i + 1]
+				// Only combine cache points if it's beneficial
+				// Compare the token count of new messages with the smallest combined token gap
+				logger.debug("Cache point decision", {
+					ctx: "cache-strategy",
+					newMessagesTokens,
+					smallestGap,
+					shouldCombine: newMessagesTokens >= smallestGap,
+					lastPreviousIndex,
+					totalMessages,
+				})
 
-						// Find the optimal placement within this combined range
-						const startOfRange = i === 0 ? 0 : previousPlacements[i - 1].index + 1
-						const combinedPlacement = this.findOptimalPlacementForRange(
-							startOfRange,
-							combinedEndIndex,
+				if (newMessagesTokens >= smallestGap) {
+					// It's beneficial to combine cache points since new messages have more tokens
+					logger.info("Combining cache points is beneficial", {
+						ctx: "cache-strategy",
+						newMessagesTokens,
+						smallestGap,
+						action: "combining_cache_points",
+					})
+
+					// Combine the two placements with the smallest gap
+					for (let i = 0; i < previousPlacements.length; i++) {
+						if (i !== smallestGapIndex && i !== smallestGapIndex + 1) {
+							// Keep this placement
+							if (previousPlacements[i].index < totalMessages) {
+								placements.push(previousPlacements[i])
+							}
+						} else if (i === smallestGapIndex) {
+							// Replace with a combined placement
+							const combinedEndIndex = previousPlacements[i + 1].index
+							const combinedTokens = tokensBetweenPlacements[i] + tokensBetweenPlacements[i + 1]
+
+							// Find the optimal placement within this combined range
+							const startOfRange = i === 0 ? 0 : previousPlacements[i - 1].index + 1
+							const combinedPlacement = this.findOptimalPlacementForRange(
+								startOfRange,
+								combinedEndIndex,
+								minTokensPerPoint,
+							)
+
+							if (combinedPlacement) {
+								placements.push(combinedPlacement)
+							}
+
+							// Skip the next placement as we've combined it
+							i++
+						}
+					}
+
+					// If we freed up a cache point, use it for the new messages
+					if (placements.length < remainingCachePoints) {
+						const newPlacement = this.findOptimalPlacementForRange(
+							lastPreviousIndex + 1,
+							totalMessages - 1,
 							minTokensPerPoint,
 						)
 
-						if (combinedPlacement) {
-							placements.push(combinedPlacement)
+						if (newPlacement) {
+							placements.push(newPlacement)
 						}
-
-						// Skip the next placement as we've combined it
-						i++
 					}
-				}
+				} else {
+					// It's not beneficial to combine cache points
+					// Keep all previous placements and don't add a new one for the new messages
+					logger.info("Combining cache points is not beneficial", {
+						ctx: "cache-strategy",
+						newMessagesTokens,
+						smallestGap,
+						action: "keeping_existing_cache_points",
+					})
 
-				// If we freed up a cache point, use it for the new messages
-				if (placements.length < remainingCachePoints) {
-					const newPlacement = this.findOptimalPlacementForRange(
-						lastPreviousIndex + 1,
-						totalMessages - 1,
-						minTokensPerPoint,
-					)
-
-					if (newPlacement) {
-						placements.push(newPlacement)
+					// Keep all previous placements that are still valid
+					for (const placement of previousPlacements) {
+						if (placement.index < totalMessages) {
+							placements.push(placement)
+						}
 					}
 				}
 			}
@@ -222,6 +252,7 @@ export class MultiPointStrategy extends CacheStrategy {
 
 	/**
 	 * Find the optimal placement for a cache point within a specified range of messages
+	 * Simply finds the last user message in the range
 	 */
 	private findOptimalPlacementForRange(
 		startIndex: number,
@@ -232,131 +263,50 @@ export class MultiPointStrategy extends CacheStrategy {
 			return null
 		}
 
-		// Calculate total tokens in the range
-		const rangeTokens = this.config.messages
-			.slice(startIndex, endIndex + 1)
-			.reduce((acc, curr) => acc + this.estimateTokenCount(curr), 0)
-
-		if (rangeTokens < minTokensPerPoint) {
-			return null
-		}
-
-		// Find the midpoint of the range in terms of tokens
-		const targetTokens = rangeTokens / 2
-		let accumulatedTokens = 0
-		let bestIndex = -1
-		let bestTokenDiff = Number.MAX_VALUE
-
-		// Find the user message closest to the midpoint
-		for (let i = startIndex; i <= endIndex; i++) {
-			const message = this.config.messages[i]
-			accumulatedTokens += this.estimateTokenCount(message)
-
-			if (message.role === "user") {
-				const tokenDiff = Math.abs(accumulatedTokens - targetTokens)
-				if (tokenDiff < bestTokenDiff) {
-					bestTokenDiff = tokenDiff
-					bestIndex = i
-				}
+		// Find the last user message in the range
+		let lastUserMessageIndex = -1
+		for (let i = endIndex; i >= startIndex; i--) {
+			if (this.config.messages[i].role === "user") {
+				lastUserMessageIndex = i
+				break
 			}
 		}
 
-		if (bestIndex >= 0) {
+		if (lastUserMessageIndex >= 0) {
+			// Calculate the total tokens covered from the previous cache point (or start of conversation)
+			// to this cache point. This ensures tokensCovered represents the full span of tokens
+			// that will be cached by this cache point.
+			let totalTokensCovered = 0
+
+			// Find the previous cache point index
+			const previousPlacements = this.config.previousCachePointPlacements || []
+			let previousCachePointIndex = -1
+
+			for (const placement of previousPlacements) {
+				if (placement.index < startIndex && placement.index > previousCachePointIndex) {
+					previousCachePointIndex = placement.index
+				}
+			}
+
+			// Calculate tokens from previous cache point (or start) to this cache point
+			const tokenStartIndex = previousCachePointIndex + 1
+			totalTokensCovered = this.config.messages
+				.slice(tokenStartIndex, lastUserMessageIndex + 1)
+				.reduce((acc, curr) => acc + this.estimateTokenCount(curr), 0)
+
+			// Guard clause: ensure we have enough tokens to justify a cache point
+			if (totalTokensCovered < minTokensPerPoint) {
+				return null
+			}
+
 			return {
-				index: bestIndex,
+				index: lastUserMessageIndex,
 				type: "message",
-				tokensCovered: accumulatedTokens,
+				tokensCovered: totalTokensCovered,
 			}
 		}
 
 		return null
-	}
-
-	/**
-	 * Determine cache point placements for a new conversation
-	 * This is the standard algorithm for placing cache points
-	 */
-	private determineNewConversationPlacements(
-		minTokensPerPoint: number,
-		remainingCachePoints: number,
-	): CachePointPlacement[] {
-		const placements: CachePointPlacement[] = []
-		let currentIndex = 0
-
-		while (currentIndex < this.config.messages.length && remainingCachePoints > 0) {
-			let remainingTokens = this.config.messages
-				.filter((_, index) => index >= currentIndex)
-				.map((m) => {
-					return this.estimateTokenCount(m)
-				})
-				.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-
-			// Stop evaluating further cache points if the remaining messages don't reach the minimum for a cache point
-			if (remainingTokens <= minTokensPerPoint) {
-				break
-			}
-
-			// Add 1 to remainingCachePoints to lower the minumTokenMultiples value,
-			// which results in cache points being placed earlier and more frequently.
-			// This ensures better utilization of available cache points throughout the conversation.
-			// For detailed examples and analysis, see cline_docs/cache-strategy-documentation.md
-			let minimTokensForRemainingCachePoints = minTokensPerPoint * (remainingCachePoints + 1)
-
-			// Hybrid approach: Use Math.ceil for first cache point, Math.floor for subsequent placements
-			// This ensures a strategic placement of the first cache point while maximizing utilization of remaining points
-			let minumTokenMultiples =
-				placements.length === 0
-					? Math.ceil(remainingTokens / minimTokensForRemainingCachePoints)
-					: Math.floor(remainingTokens / minimTokensForRemainingCachePoints)
-
-			let nextPlacement = this.config.messages
-				.filter((_, index) => index >= currentIndex)
-				.map((m) => {
-					return { tokens: this.estimateTokenCount(m), role: m.role }
-				})
-				.reduce(
-					(acc, curr, idx) => {
-						// If we've already found a valid placement, return it
-						if (acc.found) return acc
-
-						// Add current message tokens to running total
-						acc.totalTokens += curr.tokens
-
-						// Check if we've exceeded threshold AND it's a user message
-						if (acc.totalTokens >= minTokensPerPoint && curr.role === "user") {
-							acc.thresholdCount++
-
-							// If we've found enough user messages exceeding the threshold
-							if (acc.thresholdCount === minumTokenMultiples) {
-								return {
-									...acc,
-									found: true,
-									index: currentIndex + idx,
-								}
-							}
-						}
-
-						return acc
-					},
-					{ found: false, totalTokens: 0, thresholdCount: 0, index: -1 },
-				)
-
-			// If we found a valid placement, add it and update state
-			if (nextPlacement.found && nextPlacement.index >= 0) {
-				placements.push({
-					index: nextPlacement.index,
-					type: "message",
-					tokensCovered: nextPlacement.totalTokens,
-				})
-				currentIndex = nextPlacement.index + 1
-				remainingCachePoints--
-			} else {
-				// No valid placement found in remaining messages
-				break
-			}
-		}
-
-		return placements
 	}
 
 	/**

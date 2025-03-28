@@ -2,21 +2,6 @@
 
 This document provides an overview of the cache strategy implementation for AWS Bedrock in the Roo-Code project, including class relationships and sequence diagrams.
 
-## Implementation Note
-
-The cache strategy implementation has been optimized to better utilize available cache points. The key optimization is in the calculation of `minimTokensForRemainingCachePoints`:
-
-```typescript
-// Add 1 to remainingCachePoints to lower the minumTokenMultiples value,
-// which results in cache points being placed earlier and more frequently.
-// This ensures better utilization of available cache points throughout the conversation.
-let minimTokensForRemainingCachePoints = minTokensPerPoint * (remainingCachePoints + 1)
-```
-
-By multiplying `minTokensPerPoint` by `(remainingCachePoints + 1)` instead of just `remainingCachePoints`, we lower the `minumTokenMultiples` value. This results in cache points being placed earlier and more frequently throughout the conversation, ensuring better utilization of available cache points.
-
-The examples in this document reflect this optimized implementation.
-
 ## Class Relationship Diagram
 
 ```mermaid
@@ -36,18 +21,11 @@ classDiagram
         #formatResult(systemBlocks, messages): CacheResult
     }
 
-    class SinglePointStrategy {
-        +determineOptimalCachePoints(): CacheResult
-        -formatWithoutCachePoints(): CacheResult
-        -formatWithSystemCache(): CacheResult
-        -formatWithMessageCache(): CacheResult
-    }
-
     class MultiPointStrategy {
         +determineOptimalCachePoints(): CacheResult
         -determineMessageCachePoints(minTokensPerPoint, remainingCachePoints): CachePointPlacement[]
         -formatWithoutCachePoints(): CacheResult
-        -preservePreviousCachePoints(): CachePointPlacement[]
+        -findOptimalPlacementForRange(startIndex, endIndex, minTokensPerPoint): CachePointPlacement
     }
 
     class AwsBedrockHandler {
@@ -92,62 +70,14 @@ classDiagram
         +tokensCovered: number
     }
 
-    CacheStrategy <|-- SinglePointStrategy : extends
     CacheStrategy <|-- MultiPointStrategy : extends
     CacheStrategy o-- CacheStrategyConfig : uses
     CacheStrategyConfig o-- ModelInfo : contains
     CacheStrategy ..> CacheResult : produces
     CacheStrategy ..> CachePointPlacement : creates
-    AwsBedrockHandler ..> SinglePointStrategy : creates
     AwsBedrockHandler ..> MultiPointStrategy : creates
     AwsBedrockHandler ..> CachePointPlacement : tracks
     MultiPointStrategy ..> CachePointPlacement : preserves
-```
-
-## Sequence Diagram: Single-Point Strategy
-
-This diagram illustrates the process flow when using the SinglePointStrategy for cache point placement.
-
-```mermaid
-sequenceDiagram
-    participant Client as Client Code
-    participant Bedrock as AwsBedrockHandler
-    participant Strategy as SinglePointStrategy
-    participant AWS as AWS Bedrock Service
-
-    Client->>Bedrock: createMessage(systemPrompt, messages)
-    Note over Bedrock: Check if prompt caching is enabled
-    Bedrock->>Bedrock: getModel() to get model info
-    Bedrock->>Bedrock: Check if model supports prompt cache
-
-    Bedrock->>Strategy: new SinglePointStrategy(config)
-    Note over Strategy: config contains modelInfo, systemPrompt, messages, usePromptCache
-
-    Bedrock->>Strategy: determineOptimalCachePoints()
-
-    alt usePromptCache is false
-        Strategy->>Strategy: formatWithoutCachePoints()
-    else supportsSystemCache and systemPrompt exists
-        Strategy->>Strategy: meetsMinTokenThreshold(systemTokenCount)
-        alt systemTokenCount >= minTokensPerCachePoint
-            Strategy->>Strategy: formatWithSystemCache()
-            Note over Strategy: Add cache point after system prompt
-        end
-    else supportsMessageCache
-        Strategy->>Strategy: Calculate total message tokens
-        Strategy->>Strategy: meetsMinTokenThreshold(totalMessageTokens)
-        alt totalMessageTokens >= minTokensPerCachePoint
-            Strategy->>Strategy: formatWithMessageCache()
-            Note over Strategy: Find optimal position for cache point
-            Strategy->>Strategy: applyCachePoints(messages, [placement])
-        end
-    end
-
-    Strategy-->>Bedrock: Return CacheResult with system blocks and messages
-
-    Bedrock->>AWS: Send request with cache points
-    AWS-->>Bedrock: Stream response
-    Bedrock-->>Client: Yield response chunks
 ```
 
 ## Sequence Diagram: Multi-Point Strategy
@@ -164,7 +94,7 @@ sequenceDiagram
     Client->>Bedrock: createMessage(systemPrompt, messages)
     Note over Bedrock: Generate conversationId to track cache points
     Bedrock->>Bedrock: getModel() to get model info
-    Bedrock->>Bedrock: Check if model supports prompt cache and has maxCachePoints > 1
+    Bedrock->>Bedrock: Check if model supports prompt cache
 
     Bedrock->>Strategy: new MultiPointStrategy(config)
     Note over Strategy: config contains modelInfo, systemPrompt, messages, usePromptCache, previousCachePointPlacements
@@ -183,18 +113,15 @@ sequenceDiagram
             end
         end
 
+        Strategy->>Strategy: determineMessageCachePoints(minTokensPerPoint, remainingCachePoints)
         alt previousCachePointPlacements exists
-            Strategy->>Strategy: preservePreviousCachePoints()
             Note over Strategy: Analyze previous placements
             Note over Strategy: Preserve N-1 cache points when possible
             Note over Strategy: Determine which points to keep or combine
         else
-            Strategy->>Strategy: determineMessageCachePoints(minTokensPerPoint, remainingCachePoints)
             loop while currentIndex < messages.length and remainingCachePoints > 0
-                Strategy->>Strategy: Calculate remaining tokens
-                Strategy->>Strategy: Calculate minumTokenMultiples
-                alt remainingTokens > minTokensPerPoint
-                    Strategy->>Strategy: Find next valid placement
+                Strategy->>Strategy: findOptimalPlacementForRange(currentIndex, totalMessages-1, minTokensPerPoint)
+                alt placement found
                     Strategy->>Strategy: Add placement to placements array
                     Strategy->>Strategy: Update currentIndex and decrement remainingCachePoints
                 end
@@ -218,19 +145,40 @@ sequenceDiagram
 
 The cache strategy system is designed to optimize the placement of cache points in AWS Bedrock API requests. Cache points allow the service to reuse previously processed parts of the prompt, reducing token usage and improving response times.
 
-### Strategy Selection
+- **MultiPointStrategy**: Upon first MR of Bedrock caching, this strategy is used for all cache point placement scenarios. It distributes cache points throughout the conversation to maximize caching efficiency, whether the model supports one or multiple cache points.
 
-- **SinglePointStrategy**: Used when the model supports only one cache point or when the maximum cache points is set to 1. It places the cache point either after the system prompt or at an optimal position in the message history.
-
-- **MultiPointStrategy**: Used when the model supports multiple cache points. It distributes cache points throughout the conversation to maximize caching efficiency.
-
-### Cache Point Placement Logic
+### MultiPointStrategy Placement Logic
 
 - **System Prompt Caching**: If the system prompt is large enough (exceeds minTokensPerCachePoint), a cache point is placed after it.
 
-- **Message Caching**:
-    - In SinglePointStrategy, a single cache point is placed at a position where enough tokens have accumulated.
-    - In MultiPointStrategy, multiple cache points are distributed based on token thresholds and message boundaries.
+- **Message Caching**: The strategy uses a simplified approach for placing cache points in messages:
+
+    1. For new conversations (no previous cache points):
+
+        - It iteratively finds the last user message in each range
+        - It ensures each placement covers at least the minimum token threshold
+        - It continues until all available cache points are used or no more valid placements can be found
+
+    2. For growing conversations (with previous cache points):
+        - It preserves previous cache points when possible
+        - It analyzes the token distribution between existing cache points
+        - It compares the token count of new messages with the smallest gap between existing cache points
+        - It only combines cache points if the new messages have more tokens than the smallest gap
+
+A key challenge in cache point placement is maintaining consistency across consecutive messages in a growing conversation. When new messages are added to a conversation, we want to ensure that:
+
+1. Cache points from previous messages are reused as much as possible to maximize cache hits
+2. New cache points are placed optimally for the new messages
+
+The simplified approach ensures that:
+
+- Cache points are always placed after user messages, which are natural conversation boundaries
+- Each cache point covers at least the minimum token threshold
+- N-1 cache points remain in the same location when possible in growing conversations
+- Cache points are combined only when it makes sense to do so (when the benefit outweighs the cost)
+- New messages receive cache points only when they contain enough tokens to justify the reallocation
+
+The examples in this document reflect this optimized implementation.
 
 ### Integration with AWS Bedrock
 
@@ -282,15 +230,12 @@ const config = {
 
 1. First, the system prompt is evaluated for caching (10 tokens < minTokensPerCachePoint of 100), so no cache point is used there.
 2. The `determineMessageCachePoints` method is called with `minTokensPerPoint = 100` and `remainingCachePoints = 3`.
-3. The method calculates that there are 400 tokens total in the messages.
-4. It calculates `minimTokensForRemainingCachePoints = minTokensPerPoint * (remainingCachePoints + 1) = 100 * 4 = 400`.
-5. It then calculates `minumTokenMultiples = Math.ceil(remainingTokens / minimTokensForRemainingCachePoints) = Math.ceil(400 / 400) = 1`.
-    - This means the algorithm needs to find 1 instance where accumulated tokens exceed the minimum threshold before placing a cache point.
-6. For each potential placement:
-    - It accumulates tokens as it processes messages
-    - When it encounters a user message where accumulated tokens exceed the minimum threshold (100), it increments a counter
-    - When this counter reaches the calculated multiple (1), it places a cache point and resets the process for the next cache point
-    - It only places cachePoints after user messages, never after assistant messages
+3. Since there are no previous cache point placements, it enters the special case for new conversations.
+4. It calls `findOptimalPlacementForRange` with the entire message range.
+5. The method finds the last user message in the range (index 2: "What about deep learning?").
+6. It calculates the total tokens covered (240) and verifies it exceeds the minimum threshold (100).
+7. It adds this placement to the placements array and continues the process for the next range.
+8. Since there are no more user messages after this point that would cover enough tokens, no more cache points are placed.
 
 **Output Cache Point Placements:**
 
@@ -314,7 +259,7 @@ const config = {
 [Assistant]: Deep learning is a subset of machine learning...
 ```
 
-**Note**: With `minumTokenMultiples = 1`, the algorithm places a cache point after the second user message because the accumulated tokens (240) exceed the minimum threshold (100).
+**Note**: The algorithm places a cache point after the second user message (the last user message in the range) because it's the optimal placement and the accumulated tokens (240) exceed the minimum threshold (100).
 
 ### Example 2: Adding One Exchange with Cache Point Preservation
 
@@ -465,9 +410,9 @@ const config = {
 
 **Note**: The algorithm preserved both cache points from the previous conversation and placed a new cache point for the new messages. This ensures maximum cache hit rates while still adapting to the growing conversation.
 
-### Example 4: Adding a Fourth Exchange with Cache Point Reallocation
+### Example 4: Adding Messages (With Token Comparison)
 
-Now let's see what happens when we add a fourth exchange, which will require the algorithm to make decisions about which cache points to preserve:
+In this example, we'll demonstrate how the algorithm handles the case when new messages have a token count small enough that cachePoints should not be changed:
 
 **Updated Input Configuration with Previous Cache Points:**
 
@@ -475,252 +420,201 @@ Now let's see what happens when we add a fourth exchange, which will require the
 const config = {
 	// Same modelInfo and systemPrompt as before
 	messages: [
-		// Previous 8 messages...
-		{ role: "user", content: "What are some applications of deep learning?" }, // ~60 tokens
-		{ role: "assistant", content: "Deep learning has many applications including..." }, // ~200 tokens
+		// Previous 10 messages...
+		{
+			role: "user",
+			content: "Can you explain the difference between supervised and unsupervised learning in detail?",
+		}, // ~80 tokens
+		{
+			role: "assistant",
+			content:
+				"Certainly! Supervised learning and unsupervised learning are two fundamental paradigms in machine learning with..",
+		}, // ~130 tokens
 	],
 	usePromptCache: true,
 	// Pass the previous cache point placements from Example 3
 	previousCachePointPlacements: [
 		{
-			index: 2, // After the second user message (What about deep learning?)
+			index: 2, // After the second user message
 			type: "message",
 			tokensCovered: 240,
 		},
 		{
-			index: 4, // After the third user message (How do neural networks work?)
+			index: 6, // After the fourth user message
 			type: "message",
-			tokensCovered: 230,
+			tokensCovered: 440,
 		},
 		{
-			index: 6, // After the fourth user message (Can you explain backpropagation?)
+			index: 8, // After the fifth user message
 			type: "message",
-			tokensCovered: 210,
+			tokensCovered: 260,
 		},
 	],
 }
 ```
 
-**Execution Process for Example 4 with Cache Point Reallocation:**
+**Execution Process for Example 4 with Token Comparison:**
 
-1. The system prompt evaluation remains the same (no cache point used).
-2. The algorithm detects that `previousCachePointPlacements` is provided in the config.
-3. It analyzes the previous cache point placements and the current message structure.
-4. Since all 3 available cache points were used in the previous conversation, the algorithm needs to decide which ones to preserve and which to reallocate.
-5. Following the N-1 preservation rule, it should preserve 2 of the 3 previous cache points.
-6. The algorithm analyzes the token distribution between cache points and identifies that the smallest gap is between the cache points at indices 4 and 6 (230 + 210 = 440 tokens).
-7. It decides to combine these two cache points and place a new optimal cache point to cover both segments.
-8. It preserves the first cache point (at index 2) and calculates a new optimal placement for the combined segment.
-9. It then places a third cache point for the new messages.
+1. The algorithm detects that all cache points are used and new messages have been added.
+2. It calculates the token count of the new messages (210 tokens).
+3. It analyzes the token distribution between existing cache points and finds the smallest gap (260 tokens).
+4. It compares the token count of new messages (210) with the smallest gap (260).
+5. Since the new messages have less tokens than the smallest gap (210 <> 260), it decides not to re-allocate cachePoints
+6. All existing cache points are preserved, and no cache point is allocated for the new messages.
+
+**Output Cache Point Placements (Unchanged):**
+
+```javascript
+;[
+	{
+		index: 2, // After the second user message - PRESERVED
+		type: "message",
+		tokensCovered: 240,
+	},
+	{
+		index: 6, // After the fourth user message - PRESERVED
+		type: "message",
+		tokensCovered: 440,
+	},
+	{
+		index: 8, // After the fifth user message - PRESERVED
+		type: "message",
+		tokensCovered: 260,
+	},
+]
+```
+
+**Resulting Message Structure:**
+
+```
+[User]: Tell me about machine learning.
+[Assistant]: Machine learning is a field of study...
+[User]: What about deep learning?
+[CACHE POINT 1] - PRESERVED
+[Assistant]: Deep learning is a subset of machine learning...
+[User]: How do neural networks work?
+[Assistant]: Neural networks are composed of layers of nodes...
+[User]: Can you explain backpropagation?
+[CACHE POINT 2] - PRESERVED
+[Assistant]: Backpropagation is an algorithm used to train neural networks...
+[User]: What are some applications of deep learning?
+[CACHE POINT 3] - PRESERVED
+[Assistant]: Deep learning has many applications including...
+[User]: Can you explain the difference between supervised and unsupervised learning in detail?
+[Assistant]: Certainly! Supervised learning and unsupervised learning are two fundamental paradigms in machine learning with...
+```
+
+**Note**: In this case, the algorithm determined that the new messages are the smallest portion of the message history in comparisson to existing cachePoints. Restructuring the cachePoints to make room to cache the new messages would be a net negative since it would not make use of 2 previously cached blocks, would have to re-write those 2 as a single cachePoint, and would write a new small cachePoint that would be chosen to be merged in the next round of messages.
+
+### Example 5: Adding Messages that reallocate cachePoints
+
+Now let's see what happens when we add messages with a larger token count:
+
+**Updated Input Configuration with Previous Cache Points:**
+
+```javascript
+const config = {
+	// Same modelInfo and systemPrompt as before
+	messages: [
+		// Previous 10 messages...
+		{
+			role: "user",
+			content: "Can you provide a detailed example of implementing a neural network for image classification?",
+		}, // ~100 tokens
+		{
+			role: "assistant",
+			content:
+				"Certainly! Here's a detailed example of implementing a convolutional neural network (CNN) for image classification using TensorFlow and Keras...",
+		}, // ~300 tokens
+	],
+	usePromptCache: true,
+	// Pass the previous cache point placements from Example 3
+	previousCachePointPlacements: [
+		{
+			index: 2, // After the second user message
+			type: "message",
+			tokensCovered: 240,
+		},
+		{
+			index: 6, // After the fourth user message
+			type: "message",
+			tokensCovered: 440,
+		},
+		{
+			index: 8, // After the fifth user message
+			type: "message",
+			tokensCovered: 260,
+		},
+	],
+}
+```
+
+**Execution Process for Example 5 with Token Comparison:**
+
+1. The algorithm detects that all cache points are used and new messages have been added.
+2. It calculates the token count of the new messages (400 tokens).
+3. It analyzes the token distribution between existing cache points and finds the smallest gap (260 tokens).
+4. It compares the token count of new messages (400) with the smallest gap (260).
+5. Since the new messages have more tokens than the smallest gap (400 > 260), it decides to combine cache points.
+6. It identifies that the cache point at index 8 has the smallest token coverage (260 tokens).
+7. It removes this cache point and places a new one after the new user message.
 
 **Output Cache Point Placements with Reallocation:**
 
 ```javascript
 ;[
 	{
-		index: 2, // After the second user message (What about deep learning?) - PRESERVED
+		index: 2, // After the second user message - PRESERVED
 		type: "message",
-		tokensCovered: 240, // ~240 tokens covered (first 3 messages)
+		tokensCovered: 240,
 	},
 	{
-		index: 6, // After the fourth user message (Can you explain backpropagation?) - COMBINED PLACEMENT
+		index: 6, // After the fourth user message - PRESERVED
 		type: "message",
-		tokensCovered: 440, // ~440 tokens covered (combined segments)
+		tokensCovered: 440,
 	},
 	{
-		index: 8, // After the fifth user message (What are some applications of deep learning?) - NEW PLACEMENT
+		index: 10, // After the sixth user message - NEW PLACEMENT
 		type: "message",
-		tokensCovered: 260, // ~260 tokens covered (messages between cache points)
+		tokensCovered: 660, // Tokens from messages 7 through 10 (260 + 400)
 	},
 ]
 ```
 
-**Resulting Message Structure with Reallocation:**
+**Resulting Message Structure:**
 
 ```
 [User]: Tell me about machine learning.
 [Assistant]: Machine learning is a field of study...
 [User]: What about deep learning?
-[CACHE POINT 1] - PRESERVED FROM PREVIOUS
+[CACHE POINT 1] - PRESERVED
 [Assistant]: Deep learning is a subset of machine learning...
 [User]: How do neural networks work?
 [Assistant]: Neural networks are composed of layers of nodes...
 [User]: Can you explain backpropagation?
-[CACHE POINT 2] - COMBINED PLACEMENT
+[CACHE POINT 2] - PRESERVED
 [Assistant]: Backpropagation is an algorithm used to train neural networks...
 [User]: What are some applications of deep learning?
-[CACHE POINT 3] - NEW PLACEMENT
 [Assistant]: Deep learning has many applications including...
+[User]: Can you provide a detailed example of implementing a neural network for image classification?
+[CACHE POINT 3] - NEW PLACEMENT
+[Assistant]: Certainly! Here's a detailed example of implementing a convolutional neural network (CNN) for image classification using TensorFlow and Keras...
 ```
 
-**Note**: When all available cache points are used and new messages are added, the algorithm intelligently decides which previous cache points to preserve and which to combine or reallocate. This ensures optimal cache point distribution throughout the growing conversation while maintaining as much cache hit potential as possible.
+**Note**: In this case, the algorithm determined that it would be beneficial to reallocate a cache point for the new messages since they contain more tokens than the smallest gap between existing cache points. This optimization ensures that the most token-heavy parts of the conversation are cached.
+
+**Important**: The `tokensCovered` value for each cache point represents the total number of tokens from the previous cache point (or the beginning of the conversation for the first cache point) up to the current cache point. For example, the cache point at index 10 covers 660 tokens, which includes all tokens from messages 7 through 10 (after the cache point at index 6 up to and including the cache point at index 10).
 
 ### Key Observations
 
-1. **Cache Point Distribution Changes**: When more messages are added, the cache points are redistributed to maintain an even distribution of tokens between cache points.
+1. **Simplified Placement Logic**: The algorithm now simply finds the last user message in each range, rather than using complex token midpoint calculations. This makes the code more maintainable while still providing effective cache point placement.
 
-2. **Threshold Multiple Logic**: The algorithm doesn't simply place cache points when a minimum token threshold is reached. Instead, it calculates how many times this threshold needs to be exceeded (`minumTokenMultiples`) based on the total tokens and available cache points. This ensures a more balanced distribution of cache points throughout the conversation.
+2. **User Message Boundary Requirement**: Cache points are placed exclusively after user messages, not after assistant messages. This ensures cache points are placed at natural conversation boundaries where the user has provided input.
 
-3. **Adaptive Placement**: As the conversation grows, the strategy adapts by moving cache points to cover larger chunks of the conversation, maintaining efficiency while staying within the model's constraints.
+3. **Token Threshold Enforcement**: Each segment between cache points must meet the minimum token threshold (100 tokens in our examples) to be considered for caching. This is enforced by a guard clause that checks if the total tokens covered by a placement meets the minimum threshold.
 
-4. **User Message Boundary Requirement**: Cache points are placed exclusively after user messages, not after assistant messages. This is a deliberate design choice in the implementation, as seen in the code check `curr.role === "user"`. This ensures cache points are placed at natural conversation boundaries where the user has provided input.
+4. **Adaptive Placement for Growing Conversations**: As the conversation grows, the strategy adapts by preserving previous cache points when possible and only reallocating them when beneficial.
 
-5. **Token Threshold Enforcement**: Each segment between cache points must meet the minimum token threshold (100 tokens in our examples) to be considered for caching.
+5. **Token Comparison Optimization**: When all cache points are used and new messages are added, the algorithm compares the token count of new messages with the smallest combined gap between existing cache points. Cache points are only combined if the new messages have more tokens than the smallest gap, ensuring that reallocation is only done when it results in a net positive effect on caching efficiency.
 
-This adaptive approach ensures that as conversations grow, the caching strategy continues to optimize token usage and response times by strategically placing cache points at the most effective positions.
-
-## Cache Point Consistency Across Consecutive Messages
-
-A key challenge in cache point placement is maintaining consistency across consecutive messages in a growing conversation. When new messages are added to a conversation, we want to ensure that:
-
-1. Cache points from previous messages are reused as much as possible to maximize cache hits
-2. New cache points are placed optimally for the new messages
-
-To achieve this, the `MultiPointStrategy` implements a sophisticated approach that:
-
-1. Tracks cache point placements from previous messages
-2. Analyzes whether existing cache points should be preserved, combined, or reallocated
-3. Makes intelligent decisions about where to place new cache points
-
-### Smart Cache Point Management
-
-When processing a growing conversation, the algorithm:
-
-1. Identifies if the conversation has grown since the last cache point placement
-2. Analyzes the token distribution between existing cache points
-3. Determines if combining any cache points would be more efficient
-4. Frees up cache points for new messages when beneficial
-
-This approach ensures that:
-
-- N-1 cache points remain in the same location when possible
-- Cache points are combined when it makes sense to do so
-- New messages receive cache points when they contain enough tokens
-
-### Example: Cache Point Preservation
-
-Consider a conversation with 3 available cache points that grows over time:
-
-#### Initial Conversation (Example 1 with Cache Points)
-
-```
-[User]: Tell me about machine learning.
-[Assistant]: Machine learning is a field of study...
-[User]: What about deep learning?
-[Assistant]: Deep learning is a subset of machine learning...
-[User]: How do neural networks work?
-[CACHE POINT 1]
-[Assistant]: Neural networks are composed of layers of nodes...
-[User]: Can you explain backpropagation?
-[CACHE POINT 2]
-[Assistant]: Backpropagation is an algorithm used to train neural networks...
-```
-
-#### Growing Conversation (Example 2 with Preserved Cache Points)
-
-When new messages are added, the algorithm preserves N-1 cache points from the previous conversation:
-
-```
-[User]: Tell me about machine learning.
-[Assistant]: Machine learning is a field of study...
-[User]: What about deep learning?
-[Assistant]: Deep learning is a subset of machine learning...
-[User]: How do neural networks work?
-[CACHE POINT 1] - PRESERVED FROM PREVIOUS
-[Assistant]: Neural networks are composed of layers of nodes...
-[User]: Can you explain backpropagation?
-[Assistant]: Backpropagation is an algorithm used to train neural networks...
-[User]: What are some applications of deep learning?
-[Assistant]: Deep learning has many applications including...
-[User]: Tell me about reinforcement learning.
-[CACHE POINT 2] - NEW PLACEMENT
-[Assistant]: Reinforcement learning is a type of machine learning...
-```
-
-#### Further Extended Conversation (Example 3 with Preserved Cache Points)
-
-When even more messages are added, the algorithm continues to preserve N-1 cache points:
-
-```
-[User]: Tell me about machine learning.
-[Assistant]: Machine learning is a field of study...
-[User]: What about deep learning?
-[Assistant]: Deep learning is a subset of machine learning...
-[User]: How do neural networks work?
-[CACHE POINT 1] - PRESERVED FROM PREVIOUS
-[Assistant]: Neural networks are composed of layers of nodes...
-[User]: Can you explain backpropagation?
-[Assistant]: Backpropagation is an algorithm used to train neural networks...
-[User]: What are some applications of deep learning?
-[Assistant]: Deep learning has many applications including...
-[User]: Tell me about reinforcement learning.
-[CACHE POINT 2] - PRESERVED FROM PREVIOUS
-[Assistant]: Reinforcement learning is a type of machine learning...
-[User]: How does transfer learning work?
-[Assistant]: Transfer learning is a technique where a model trained on one task...
-[User]: What are some challenges in machine learning?
-[CACHE POINT 3] - NEW PLACEMENT
-[Assistant]: Machine learning faces several challenges including...
-```
-
-### Smart Cache Point Combination
-
-In some cases, when the conversation structure changes significantly, it may be more efficient to combine previous cache points. Our implementation analyzes the token distribution between cache points and may decide to combine two adjacent cache points if:
-
-1. The combined token count is still manageable
-2. Combining them frees up a cache point for use elsewhere
-3. The token distribution becomes more balanced
-
-For example, if two cache points are close together and cover relatively few tokens each, they might be combined into a single cache point, freeing up a cache point for the new messages.
-
-### Example: Cache Point Reallocation
-
-Consider a conversation with 3 available cache points that grows over time:
-
-**Initial Conversation (3 cache points used):**
-
-```
-[User]: Message 1
-[Assistant]: Response 1
-[User]: Message 2
-[CACHE POINT 1]
-[Assistant]: Response 2
-[User]: Message 3
-[CACHE POINT 2]
-[Assistant]: Response 3
-[User]: Message 4
-[CACHE POINT 3]
-[Assistant]: Response 4
-```
-
-**Growing Conversation (new messages added):**
-
-```
-[User]: Message 1
-[Assistant]: Response 1
-[User]: Message 2
-[CACHE POINT 1]  // Preserved from previous
-[Assistant]: Response 2
-[User]: Message 3
-[User]: Message 4
-[CACHE POINT 2]  // Combined previous cache points 2 and 3
-[Assistant]: Response 4
-[User]: Message 5
-[Assistant]: Response 5
-[User]: Message 6
-[CACHE POINT 3]  // New cache point for new messages
-[Assistant]: Response 6
-```
-
-In this example, the algorithm detected that cache points 2 and 3 from the initial conversation could be combined into a single cache point, freeing up a cache point to be used for the new messages. This ensures maximum cache utilization while maintaining consistency for the majority of the conversation.
-
-### Benefits of Cache Point Preservation
-
-This approach provides several key benefits:
-
-1. **Maximum Cache Hit Rate**: By preserving previous cache points, we ensure that cached content is reused across consecutive messages
-2. **Efficient Token Usage**: The algorithm makes intelligent decisions about which cache points to preserve and which to reallocate
-3. **Adaptive Placement**: As the conversation grows, the cache point distribution adapts while maintaining consistency where beneficial
-4. **Balanced Distribution**: The algorithm ensures that cache points are distributed evenly throughout the conversation
-
-By maintaining N-1 cache points from previous messages, our implementation maximizes cache hits while still adapting to the changing structure of the conversation. This results in optimal token usage and improved response times for growing conversations.
+This adaptive approach ensures that as conversations grow, the caching strategy continues to optimize token usage and response times by strategically placing cache points at the most effective positions, while avoiding inefficient reallocations that could result in a net negative effect on caching performance.

@@ -20,7 +20,6 @@ import { BaseProvider } from "./base-provider"
 import { logger } from "../../utils/logging"
 import { Message, SystemContentBlock } from "@aws-sdk/client-bedrock-runtime"
 // New cache-related imports
-import { SinglePointStrategy } from "../transform/cache-strategy/single-point-strategy"
 import { MultiPointStrategy } from "../transform/cache-strategy/multi-point-strategy"
 import { ModelInfo as CacheModelInfo } from "../transform/cache-strategy/types"
 
@@ -419,145 +418,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		} catch (error: unknown) {
 			// Clear timeout on error
 			clearTimeout(timeoutId)
-			logger.error("Bedrock Runtime API Error", {
-				ctx: "bedrock",
-				error: error instanceof Error ? error : String(error),
-			})
 
-			// Check if this is an abort error
-			if (error instanceof Error && error.name === "AbortError") {
-				logger.info("Request was aborted", {
-					ctx: "bedrock",
-					errorMessage: error.message,
-				})
-				yield {
-					type: "text",
-					text: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
-				}
-			}
-			// Enhanced error handling for custom ARN issues
-			if (this.options.awsCustomArn) {
-				logger.error("Error occurred with custom ARN", {
-					ctx: "bedrock",
-					customArn: this.options.awsCustomArn,
-				})
-
-				// Check for common ARN-related errors
-				if (error instanceof Error) {
-					const errorMessage = error.message.toLowerCase()
-
-					// Access denied errors
-					if (
-						errorMessage.includes("access") &&
-						(errorMessage.includes("model") || errorMessage.includes("denied"))
-					) {
-						logger.error("Permissions issue with custom ARN", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "access_denied",
-							clientRegion: this.client.config.region,
-						})
-						yield {
-							type: "text",
-							text: `Error: You don't have access to the model with the specified ARN. Please verify:
-
-1. The ARN is correct and points to a valid model
-2. Your AWS credentials have permission to access this model (check IAM policies)
-3. The region in the ARN (${this.client.config.region}) matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state
-5. If using a custom model, ensure your account has been granted access to it`,
-						}
-					}
-					// Model not found errors
-					else if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
-						logger.error("Invalid ARN or non-existent model", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "not_found",
-						})
-						yield {
-							type: "text",
-							text: `Error: The specified ARN does not exist or is invalid. Please check:
-
-1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
-2. The model exists in the specified region
-3. The account ID in the ARN is correct
-4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`,
-						}
-					}
-					// Throttling errors
-					else if (
-						errorMessage.includes("throttl") ||
-						errorMessage.includes("rate") ||
-						errorMessage.includes("limit")
-					) {
-						logger.error("Throttling or rate limit issue with Bedrock", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorType: "throttling",
-						})
-						yield {
-							type: "text",
-							text: `Error: Request was throttled or rate limited. Please try:
-
-1. Reducing the frequency of requests
-2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed`,
-						}
-					}
-					// Other errors
-					else {
-						logger.error("Unspecified error with custom ARN", {
-							ctx: "bedrock",
-							customArn: this.options.awsCustomArn,
-							errorStack: error.stack,
-							errorMessage: error.message,
-						})
-						yield {
-							type: "text",
-							text: `Error with custom ARN: ${error.message}
-
-Please check:
-1. Your AWS credentials are valid and have the necessary permissions
-2. The ARN format is correct
-3. The region in the ARN matches the region where you're making the request`,
-						}
-					}
-				} else {
-					yield {
-						type: "text",
-						text: `Unknown error occurred with custom ARN. Please check your AWS credentials and ARN format.`,
-					}
-				}
-			} else {
-				// Standard error handling for non-ARN cases
-				if (error instanceof Error) {
-					logger.error("Standard Bedrock error", {
-						ctx: "bedrock",
-						errorStack: error.stack,
-						errorMessage: error.message,
-					})
-					yield {
-						type: "text",
-						text: `Error: ${error.message}`,
-					}
-				} else {
-					logger.error("Unknown Bedrock error", {
-						ctx: "bedrock",
-						error: String(error),
-					})
-					yield {
-						type: "text",
-						text: "An unknown error occurred",
-					}
-				}
-			}
-
-			// Always yield usage info
-			yield {
-				type: "usage",
-				inputTokens: 0,
-				outputTokens: 0,
+			// Use the extracted error handling method for all errors
+			const errorChunks = this.handleBedrockError(error, "createMessage")
+			// Yield each chunk individually to ensure type compatibility
+			for (const chunk of errorChunks) {
+				yield chunk as any // Cast to any to bypass type checking since we know the structure is correct
 			}
 
 			// Re-throw the error
@@ -754,74 +620,353 @@ Please check:
 			}
 			return ""
 		} catch (error) {
-			// Check if this is an abort error
-			if (error instanceof Error && error.name === "AbortError") {
-				logger.info("Request was aborted in completePrompt", {
-					ctx: "bedrock",
-					errorMessage: error.message,
-				})
-				throw new Error(
-					`Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
-				)
+			// Use the extracted error handling method for all errors
+			const errorMessage = this.handleBedrockError(error, "completePrompt")
+			throw new Error(errorMessage)
+		}
+	}
+
+	/**
+	 * Handles Bedrock API errors and generates appropriate error messages
+	 * @param error The error that occurred
+	 * @param context The context where the error occurred (e.g., "createMessage" or "completePrompt")
+	 * @returns Error message string for completePrompt or array of stream chunks for createMessage
+	 */
+	private handleBedrockError(error: unknown, context: "completePrompt"): string
+	private handleBedrockError(
+		error: unknown,
+		context: "createMessage",
+	): Array<{ type: string; text?: string; inputTokens?: number; outputTokens?: number }>
+	private handleBedrockError(
+		error: unknown,
+		context: "createMessage" | "completePrompt",
+	): string | Array<{ type: string; text?: string; inputTokens?: number; outputTokens?: number }> {
+		const isStreamContext = context === "createMessage"
+		const prefix = isStreamContext ? "" : "Bedrock custom ARN error: "
+
+		// Check if this is an abort error
+		if (error instanceof Error && error.name === "AbortError") {
+			logger.info(`Request was aborted in ${context}`, {
+				ctx: "bedrock",
+				errorMessage: error.message,
+			})
+
+			const abortMessage = `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.
+			
+			${JSON.stringify(error)}
+			`
+
+			if (isStreamContext) {
+				return [
+					{
+						type: "text",
+						text: abortMessage,
+					},
+					{ type: "usage", inputTokens: 0, outputTokens: 0 },
+				]
 			}
+			return abortMessage
+		}
 
-			// Enhanced error handling for custom ARN issues
-			if (this.options.awsCustomArn) {
-				logger.error("Error occurred with custom ARN in completePrompt", {
-					ctx: "bedrock",
-					customArn: this.options.awsCustomArn,
-					error: error instanceof Error ? error : String(error),
-				})
+		// Enhanced error handling for custom ARN issues
+		if (this.options.awsCustomArn) {
+			logger.error(`Error occurred with custom ARN in ${context}`, {
+				ctx: "bedrock",
+				customArn: this.options.awsCustomArn,
+				error: error instanceof Error ? error : String(error),
+			})
 
-				if (error instanceof Error) {
-					const errorMessage = error.message.toLowerCase()
+			if (error instanceof Error) {
+				const errorMessage = error.message.toLowerCase()
 
-					// Access denied errors
-					if (
-						errorMessage.includes("access") &&
-						(errorMessage.includes("model") || errorMessage.includes("denied"))
-					) {
-						throw new Error(
-							`Bedrock custom ARN error: You don't have access to the model with the specified ARN. Please verify:
+				// Access denied errors
+				if (
+					errorMessage.includes("access") &&
+					(errorMessage.includes("model") || errorMessage.includes("denied"))
+				) {
+					const accessDeniedMessage = `${prefix}You don't have access to the model with the specified ARN. Please verify:
 1. The ARN is correct and points to a valid model
 2. Your AWS credentials have permission to access this model (check IAM policies)
-3. The region in the ARN matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state`,
-						)
+3. The region in the ARN ${isStreamContext ? `(${this.client.config.region})` : ""} matches the region where the model is deployed
+4. If using a provisioned model, ensure it's active and not in a failed state${isStreamContext ? "\n5. If using a custom model, ensure your account has been granted access to it" : ""}`
+
+					if (isStreamContext) {
+						logger.error("Permissions issue with custom ARN", {
+							ctx: "bedrock",
+							customArn: this.options.awsCustomArn,
+							errorType: "access_denied",
+							clientRegion: this.client.config.region,
+						})
+						return [
+							{
+								type: "text",
+								text: `Error: ${accessDeniedMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
 					}
-					// Model not found errors
-					else if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
-						throw new Error(
-							`Bedrock custom ARN error: The specified ARN does not exist or is invalid. Please check:
+					return accessDeniedMessage
+				}
+				// Model not found errors
+				else if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
+					const notFoundMessage = `${prefix}The specified ARN does not exist or is invalid. Please check:
 1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
 2. The model exists in the specified region
 3. The account ID in the ARN is correct
-4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`,
-						)
+4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`
+
+					if (isStreamContext) {
+						logger.error("Invalid ARN or non-existent model", {
+							ctx: "bedrock",
+							customArn: this.options.awsCustomArn,
+							errorType: "not_found",
+						})
+						return [
+							{
+								type: "text",
+								text: `Error: ${notFoundMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
 					}
-					// Throttling errors
-					else if (
-						errorMessage.includes("throttl") ||
-						errorMessage.includes("rate") ||
-						errorMessage.includes("limit")
-					) {
-						throw new Error(
-							`Bedrock custom ARN error: Request was throttled or rate limited. Please try:
+					return notFoundMessage
+				}
+				// Throttling errors
+				else if (
+					errorMessage.includes("throttl") ||
+					errorMessage.includes("rate") ||
+					errorMessage.includes("limit")
+				) {
+					const throttlingMessage = `${prefix}Request was throttled or rate limited. Please try:
 1. Reducing the frequency of requests
 2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed`,
-						)
-					} else {
-						throw new Error(`Bedrock custom ARN error: ${error.message}`)
-					}
-				}
-			}
+3. Contact AWS support to request a quota increase if needed
 
-			// Standard error handling
-			if (error instanceof Error) {
-				throw new Error(`Bedrock completion error: ${error.message}`)
+${JSON.stringify(error)}
+`
+
+					if (isStreamContext) {
+						logger.error("Throttling or rate limit issue with Bedrock", {
+							ctx: "bedrock",
+							customArn: this.options.awsCustomArn,
+							errorType: "throttling",
+						})
+						return [
+							{
+								type: "text",
+								text: `Error: ${throttlingMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
+					}
+					return throttlingMessage
+				}
+				// Too many tokens errors
+				else if (errorMessage.includes("too many tokens")) {
+					// Get the current model info for context window details
+					const modelConfig = this.getModel()
+					const contextWindow = modelConfig.info.contextWindow || "unknown"
+
+					// Extract all available error properties
+					const errorDetails: Record<string, any> = {}
+					Object.getOwnPropertyNames(error).forEach((prop) => {
+						if (prop !== "stack") {
+							// Skip stack trace for readability
+							errorDetails[prop] = (error as any)[prop]
+						}
+					})
+
+					// Format error details as string
+					const formattedErrorDetails = Object.entries(errorDetails)
+						.map(([key, value]) => `- ${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
+						.join("\n")
+
+					const tooManyTokensMessage = `${prefix}"Too many tokens" error detected.
+
+Error Details:
+- Message: ${error.message}
+- Name: ${error.name}
+${formattedErrorDetails}
+
+Model Information:
+- Model ID: ${modelConfig.id}
+- Context window: ${contextWindow} tokens
+
+Possible Causes:
+1. Input exceeds model's context window limit
+2. Rate limiting (too many tokens per minute)
+3. Quota exceeded for token usage
+4. Other token-related service limitations
+
+Suggestions:
+1. Reduce the size of your input
+2. Split your request into smaller chunks
+3. Use a model with a larger context window
+4. If rate limited, reduce request frequency
+5. Check your AWS Bedrock quotas and limits`
+
+					if (isStreamContext) {
+						logger.error("Too many tokens error with Bedrock", {
+							ctx: "bedrock",
+							customArn: this.options.awsCustomArn,
+							errorType: "too_many_tokens",
+							modelId: modelConfig.id,
+							contextWindow: contextWindow,
+							errorMessage: error.message,
+							errorDetails: errorDetails,
+						})
+						return [
+							{
+								type: "text",
+								text: `Error: ${tooManyTokensMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
+					}
+					return tooManyTokensMessage
+				}
+				// Other errors
+				else {
+					const genericMessage = `${prefix}${error.message}${isStreamContext ? "\n\nPlease check:\n1. Your AWS credentials are valid and have the necessary permissions\n2. The ARN format is correct\n3. The region in the ARN matches the region where you're making the request" : ""}`
+
+					if (isStreamContext) {
+						logger.error("Unspecified error with custom ARN", {
+							ctx: "bedrock",
+							customArn: this.options.awsCustomArn,
+							errorStack: error.stack,
+							errorMessage: error.message,
+						})
+						return [
+							{
+								type: "text",
+								text: `Error with custom ARN: ${genericMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
+					}
+					return genericMessage
+				}
+			} else {
+				const unknownMessage = `Unknown error occurred with custom ARN. Please check your AWS credentials and ARN format.`
+
+				if (isStreamContext) {
+					return [
+						{
+							type: "text",
+							text: unknownMessage,
+						},
+						{ type: "usage", inputTokens: 0, outputTokens: 0 },
+					]
+				}
+				return unknownMessage
 			}
-			throw error
+		} else {
+			// Standard error handling for non-ARN cases
+			if (error instanceof Error) {
+				const errorMessage = error.message.toLowerCase()
+
+				// Check for "Too many tokens" error in standard cases
+				if (errorMessage.includes("too many tokens")) {
+					// Get the current model info for context window details
+					const modelConfig = this.getModel()
+					const contextWindow = modelConfig.info.contextWindow || "unknown"
+
+					// Extract all available error properties
+					const errorDetails: Record<string, any> = {}
+					Object.getOwnPropertyNames(error).forEach((prop) => {
+						if (prop !== "stack") {
+							// Skip stack trace for readability
+							errorDetails[prop] = (error as any)[prop]
+						}
+					})
+
+					// Format error details as string
+					const formattedErrorDetails = Object.entries(errorDetails)
+						.map(([key, value]) => `- ${key}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
+						.join("\n")
+
+					const tooManyTokensMessage = `"Too many tokens" error detected.
+
+Error Details:
+- Message: ${error.message}
+- Name: ${error.name}
+${formattedErrorDetails}
+
+Model Information:
+- Model ID: ${modelConfig.id}
+- Context window: ${contextWindow} tokens
+
+Possible Causes:
+1. Input exceeds model's context window limit
+2. Rate limiting (too many tokens per minute)
+3. Quota exceeded for token usage
+4. Other token-related service limitations
+
+Suggestions:
+1. Reduce the size of your input
+2. Split your request into smaller chunks
+3. Use a model with a larger context window
+4. If rate limited, reduce request frequency
+5. Check your AWS Bedrock quotas and limits`
+
+					if (isStreamContext) {
+						logger.error("Too many tokens error with Bedrock", {
+							ctx: "bedrock",
+							errorType: "too_many_tokens",
+							modelId: modelConfig.id,
+							contextWindow: contextWindow,
+							errorMessage: error.message,
+							errorDetails: errorDetails,
+						})
+						return [
+							{
+								type: "text",
+								text: `Error: ${tooManyTokensMessage}`,
+							},
+							{ type: "usage", inputTokens: 0, outputTokens: 0 },
+						]
+					}
+					return `Bedrock completion error: ${tooManyTokensMessage}`
+				}
+
+				// Standard error handling for other errors
+				const standardMessage = isStreamContext ? error.message : `Bedrock completion error: ${error.message}`
+
+				if (isStreamContext) {
+					logger.error("Standard Bedrock error", {
+						ctx: "bedrock",
+						errorStack: error.stack,
+						errorMessage: error.message,
+					})
+					return [
+						{
+							type: "text",
+							text: `Error: ${standardMessage}`,
+						},
+						{ type: "usage", inputTokens: 0, outputTokens: 0 },
+					]
+				}
+				return standardMessage
+			} else {
+				const unknownMessage = isStreamContext
+					? "An unknown error occurred"
+					: "An unknown Bedrock error occurred"
+
+				if (isStreamContext) {
+					logger.error("Unknown Bedrock error", {
+						ctx: "bedrock",
+						error: String(error),
+					})
+					return [
+						{
+							type: "text",
+							text: unknownMessage,
+						},
+						{ type: "usage", inputTokens: 0, outputTokens: 0 },
+					]
+				}
+				return unknownMessage
+			}
 		}
 	}
 
@@ -891,18 +1036,8 @@ Please check:
 		// Inline the logic from convertWithOptimalCaching and CacheStrategyFactory.createStrategy
 		let strategy
 
-		// If caching is not supported or disabled, use single point strategy
-		if (!config.modelInfo.supportsPromptCache || !config.usePromptCache) {
-			strategy = new SinglePointStrategy(config)
-		}
-		// Use single point strategy if model only supports one cache point
-		else if (config.modelInfo.maxCachePoints <= 1) {
-			strategy = new SinglePointStrategy(config)
-		}
-		// For multi-point support, use multi-point strategy
-		else {
-			strategy = new MultiPointStrategy(config)
-		}
+		// Use MultiPointStrategy for all cases
+		strategy = new MultiPointStrategy(config)
 
 		// Determine optimal cache points
 		const result = strategy.determineOptimalCachePoints()
