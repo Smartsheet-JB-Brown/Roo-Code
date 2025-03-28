@@ -2,7 +2,6 @@ dist
 out
 out-*
 node_modules
-vendors/
 coverage/
 
 .DS_Store
