@@ -105,10 +105,15 @@
 		},
 		"current": "Mevcut"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo mevcut göreve yardımcı olmak için ayrıntılı talimatlar almak istiyor"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo bu dosyayı okumak istiyor:",
+		"wantsToReadOutsideWorkspace": "Roo çalışma alanı dışındaki bu dosyayı okumak istiyor:",
 		"didRead": "Roo bu dosyayı okudu:",
 		"wantsToEdit": "Roo bu dosyayı düzenlemek istiyor:",
+		"wantsToEditOutsideWorkspace": "Roo çalışma alanı dışındaki bu dosyayı düzenlemek istiyor:",
 		"wantsToCreate": "Roo yeni bir dosya oluşturmak istiyor:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Düşünüyor",
 		"seconds": "{{count}}sn"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 Yayınlandı",
+		"description": "Roo Code 3.10 güçlü üretkenlik iyileştirmeleri getiriyor!",
+		"whatsNew": "Yenilikler",
+		"feature1": "Sorulara önerilen yanıtlar",
+		"feature2": "Geliştirilmiş büyük dosya işleme",
+		"feature3": "Yeniden yapılandırılmış @-mention dosya aramaları",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Duyuruyu gizle",
+		"detailsDiscussLinks": "<discordLink>Discord</discordLink> ve <redditLink>Reddit</redditLink> üzerinde daha fazla ayrıntı edinin ve tartışmalara katılın 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo tarayıcıyı kullanmak istiyor:",
+		"consoleLogs": "Konsol Kayıtları",
+		"noNewLogs": "(Yeni kayıt yok)",
+		"screenshot": "Tarayıcı ekran görüntüsü",
+		"cursor": "imleç",
+		"navigation": {
+			"step": "Adım {{current}} / {{total}}",
+			"previous": "Önceki",
+			"next": "Sonraki"
+		},
+		"sessionStarted": "Tarayıcı Oturumu Başlatıldı",
+		"actions": {
+			"title": "Tarayıcı İşlemi: ",
+			"launch": "{{url}} adresinde tarayıcı başlat",
+			"click": "Tıkla ({{coordinate}})",
+			"type": "Yaz \"{{text}}\"",
+			"scrollDown": "Aşağı kaydır",
+			"scrollUp": "Yukarı kaydır",
+			"close": "Tarayıcıyı kapat"
+		}
 	}
 }

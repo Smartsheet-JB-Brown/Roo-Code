@@ -105,10 +105,15 @@
 		},
 		"current": "Actual"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo vol obtenir instruccions detallades per ajudar amb la tasca actual."
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo vol llegir aquest fitxer:",
+		"wantsToReadOutsideWorkspace": "Roo vol llegir aquest fitxer fora de l'espai de treball:",
 		"didRead": "Roo ha llegit aquest fitxer:",
 		"wantsToEdit": "Roo vol editar aquest fitxer:",
+		"wantsToEditOutsideWorkspace": "Roo vol editar aquest fitxer fora de l'espai de treball:",
 		"wantsToCreate": "Roo vol crear un nou fitxer:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Pensant",
 		"seconds": "{{count}}s"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 publicat",
+		"description": "Roo Code 3.10 aporta potents millores de productivitat!",
+		"whatsNew": "Novetats",
+		"feature1": "Respostes suggerides a les preguntes",
+		"feature2": "Millora en la gestió de fitxers grans",
+		"feature3": "Reconstrucció de les cerques de fitxers amb @-menció",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Amagar anunci",
+		"detailsDiscussLinks": "Obté més detalls i participa a <discordLink>Discord</discordLink> i <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo vol utilitzar el navegador:",
+		"consoleLogs": "Registres de consola",
+		"noNewLogs": "(Cap registre nou)",
+		"screenshot": "Captura de pantalla del navegador",
+		"cursor": "cursor",
+		"navigation": {
+			"step": "Pas {{current}} de {{total}}",
+			"previous": "Anterior",
+			"next": "Següent"
+		},
+		"sessionStarted": "Sessió de navegador iniciada",
+		"actions": {
+			"title": "Acció de navegació: ",
+			"launch": "Iniciar navegador a {{url}}",
+			"click": "Clic ({{coordinate}})",
+			"type": "Escriure \"{{text}}\"",
+			"scrollDown": "Desplaçar avall",
+			"scrollUp": "Desplaçar amunt",
+			"close": "Tancar navegador"
+		}
 	}
 }

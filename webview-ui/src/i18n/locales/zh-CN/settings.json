@@ -3,7 +3,8 @@
 		"save": "保存",
 		"done": "完成",
 		"cancel": "取消",
-		"reset": "重置"
+		"reset": "重置",
+		"select": "选择"
 	},
 	"header": {
 		"title": "设置",
@@ -34,12 +35,20 @@
 		"description": "允许 Roo 自动执行操作而无需批准。只有在您完全信任 AI 并了解相关安全风险的情况下才启用这些设置。",
 		"readOnly": {
 			"label": "始终批准只读操作",
-			"description": "启用后，Roo 将自动查看目录内容并读取文件，无需点击批准按钮。"
+			"description": "启用后，Roo 将自动查看目录内容并读取文件，无需点击批准按钮。",
+			"outsideWorkspace": {
+				"label": "包含工作区外的文件",
+				"description": "允许 Roo 读取当前工作区外的文件，无需批准。"
+			}
 		},
 		"write": {
 			"label": "始终批准写入操作",
 			"description": "自动创建和编辑文件而无需批准",
-			"delayLabel": "写入后延迟以允许诊断检测潜在问题"
+			"delayLabel": "写入后延迟以允许诊断检测潜在问题",
+			"outsideWorkspace": {
+				"label": "包含工作区外的文件",
+				"description": "允许 Roo 创建和编辑当前工作区外的文件，无需批准。"
+			}
 		},
 		"browser": {
 			"label": "始终批准浏览器操作",
@@ -74,7 +83,7 @@
 	},
 	"providers": {
 		"configProfile": "配置文件",
-		"description": "描述",
+		"description": "保存不同的 API 配置以快速切换提供商和设置。",
 		"apiProvider": "API 提供商",
 		"model": "模型",
 		"nameEmpty": "名称不能为空",
@@ -264,6 +273,12 @@
 		"rooignore": {
 			"label": "在列表和搜索中显示 .rooignore 文件",
 			"description": "启用后，与 .rooignore 中模式匹配的文件将在列表中显示锁定符号。禁用时，这些文件将从文件列表和搜索中完全隐藏。"
+		},
+		"maxReadFile": {
+			"label": "文件读取自动截断阈值",
+			"description": "当模型未指定起始/结束值时，Roo 读取的行数。如果此数值小于文件总行数，Roo 将生成代码定义的行号索引。特殊情况：-1 指示 Roo 读取整个文件（不创建索引），0 指示不读取任何行并仅提供行索引以获得最小上下文。较低的值可最小化初始上下文使用，允许后续精确的行范围读取。显式指定起始/结束的请求不受此设置限制。",
+			"lines": "行",
+			"always_full_read": "始终读取整个文件"
 		}
 	},
 	"terminal": {
@@ -344,6 +359,8 @@
 		"cacheReadsPrice": "缓存读取价格",
 		"cacheWritesPrice": "缓存写入价格",
 		"enableStreaming": "启用流式传输",
+		"enableR1Format": "启用R1模型传参",
+		"enableR1FormatTips": "当使用QWQ等类R1模型时需启用，防止报400错误",
 		"useAzure": "使用 Azure 服务",
 		"azureApiVersion": "设置 Azure API 版本",
 		"gemini": {
@@ -352,7 +369,11 @@
 		}
 	},
 	"modelPicker": {
-		"automaticFetch": "扩展程序会自动获取 <serviceLink>{{serviceName}}</serviceLink> 上可用的最新模型列表。如果您不确定选择哪个模型，Roo Code 与 <defaultModelLink>{{defaultModelId}}</defaultModelLink> 配合最佳。您还可以搜索\"free\"以查找当前可用的免费选项。"
+		"automaticFetch": "扩展程序会自动获取 <serviceLink>{{serviceName}}</serviceLink> 上可用的最新模型列表。如果您不确定选择哪个模型，Roo Code 与 <defaultModelLink>{{defaultModelId}}</defaultModelLink> 配合最佳。您还可以搜索\"free\"以查找当前可用的免费选项。",
+		"label": "模型",
+		"searchPlaceholder": "搜索",
+		"noMatchFound": "未找到匹配项",
+		"useCustomModel": "使用自定义：{{modelId}}"
 	},
 	"footer": {
 		"feedback": "如果您有任何问题或反馈，请随时在 <githubLink>github.com/RooVetGit/Roo-Code</githubLink> 上提出问题或加入 <redditLink>reddit.com/r/RooCode</redditLink> 或 <discordLink>discord.gg/roocode</discordLink>",
@@ -361,9 +382,60 @@
 			"label": "允许匿名错误和使用情况报告",
 			"description": "通过发送匿名使用数据和错误报告来帮助改进 Roo Code。绝不会发送代码、提示或个人信息。有关更多详细信息，请参阅我们的隐私政策。"
 		},
-		"reset": {
-			"description": "重置扩展中的所有全局状态和密钥存储。",
-			"button": "重置"
+		"settings": {
+			"import": "导入",
+			"export": "导出",
+			"reset": "重置"
 		}
+	},
+	"thinkingBudget": {
+		"maxTokens": "最大 tokens",
+		"maxThinkingTokens": "最大思考 tokens"
+	},
+	"validation": {
+		"apiKey": "您必须提供有效的 API 密钥。",
+		"awsRegion": "您必须选择一个区域来使用 AWS Bedrock。",
+		"googleCloud": "您必须提供有效的 Google Cloud 项目 ID 和区域。",
+		"modelId": "您必须提供有效的模型 ID。",
+		"modelSelector": "您必须提供有效的模型选择器。",
+		"openAi": "您必须提供有效的基础 URL、API 密钥和模型 ID。",
+		"arn": {
+			"invalidFormat": "ARN 格式无效。请检查格式要求。",
+			"regionMismatch": "警告：您的 ARN 中的区域 ({{arnRegion}}) 与您选择的区域 ({{region}}) 不匹配。这可能会导致访问问题。提供程序将使用 ARN 中的区域。"
+		},
+		"modelAvailability": "您提供的模型 ID ({{modelId}}) 不可用。请选择其他模型。"
+	},
+	"placeholders": {
+		"apiKey": "请输入 API 密钥...",
+		"profileName": "请输入配置文件名称",
+		"accessKey": "请输入访问密钥...",
+		"secretKey": "请输入密钥...",
+		"sessionToken": "请输入会话令牌...",
+		"credentialsJson": "请输入凭证 JSON...",
+		"keyFilePath": "请输入密钥文件路径...",
+		"projectId": "请输入项目 ID...",
+		"customArn": "请输入 ARN（例：arn:aws:bedrock:us-east-1:123456789012:foundation-model/my-model）",
+		"baseUrl": "请输入基础 URL...",
+		"modelId": {
+			"lmStudio": "例：meta-llama-3.1-8b-instruct",
+			"lmStudioDraft": "例：lmstudio-community/llama-3.2-1b-instruct",
+			"ollama": "例：llama3.1"
+		},
+		"numbers": {
+			"maxTokens": "例：4096",
+			"contextWindow": "例：128000",
+			"inputPrice": "例：0.0001",
+			"outputPrice": "例：0.0002",
+			"cacheWritePrice": "例：0.00005"
+		}
+	},
+	"defaults": {
+		"ollamaUrl": "默认值：http://localhost:11434",
+		"lmStudioUrl": "默认值：http://localhost:1234",
+		"geminiUrl": "默认值：https://generativelanguage.googleapis.com"
+	},
+	"labels": {
+		"customArn": "自定义 ARN",
+		"useCustomArn": "使用自定义 ARN..."
 	}
 }

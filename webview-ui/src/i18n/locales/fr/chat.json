@@ -107,9 +107,14 @@
 	},
 	"fileOperations": {
 		"wantsToRead": "Roo veut lire ce fichier :",
+		"wantsToReadOutsideWorkspace": "Roo veut lire ce fichier en dehors de l'espace de travail :",
 		"didRead": "Roo a lu ce fichier :",
 		"wantsToEdit": "Roo veut éditer ce fichier :",
+		"wantsToEditOutsideWorkspace": "Roo veut éditer ce fichier en dehors de l'espace de travail :",
 		"wantsToCreate": "Roo veut créer un nouveau fichier :"
+	},
+	"instructions": {
+		"wantsToFetch": "Roo veut récupérer des instructions détaillées pour aider à la tâche actuelle"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Roo veut voir les fichiers de premier niveau dans ce répertoire :",
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Réflexion",
 		"seconds": "{{count}}s"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 est sortie",
+		"description": "Roo Code 3.10 apporte de puissantes améliorations de productivité !",
+		"whatsNew": "Quoi de neuf",
+		"feature1": "Réponses suggérées aux questions",
+		"feature2": "Gestion améliorée des fichiers volumineux",
+		"feature3": "Recherche de fichiers par @-mention reconstruite",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Masquer l'annonce",
+		"detailsDiscussLinks": "Obtenez plus de détails et participez aux discussions sur <discordLink>Discord</discordLink> et <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo veut utiliser le navigateur :",
+		"consoleLogs": "Journaux de console",
+		"noNewLogs": "(Pas de nouveaux journaux)",
+		"screenshot": "Capture d'écran du navigateur",
+		"cursor": "curseur",
+		"navigation": {
+			"step": "Étape {{current}} sur {{total}}",
+			"previous": "Précédent",
+			"next": "Suivant"
+		},
+		"sessionStarted": "Session de navigateur démarrée",
+		"actions": {
+			"title": "Action de navigation : ",
+			"launch": "Lancer le navigateur sur {{url}}",
+			"click": "Cliquer ({{coordinate}})",
+			"type": "Saisir \"{{text}}\"",
+			"scrollDown": "Défiler vers le bas",
+			"scrollUp": "Défiler vers le haut",
+			"close": "Fermer le navigateur"
+		}
 	}
 }

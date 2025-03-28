@@ -23,7 +23,9 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
 	setAlwaysAllowReadOnly: (value: boolean) => void
+	setAlwaysAllowReadOnlyOutsideWorkspace: (value: boolean) => void
 	setAlwaysAllowWrite: (value: boolean) => void
+	setAlwaysAllowWriteOutsideWorkspace: (value: boolean) => void
 	setAlwaysAllowExecute: (value: boolean) => void
 	setAlwaysAllowBrowser: (value: boolean) => void
 	setAlwaysAllowMcp: (value: boolean) => void
@@ -52,8 +54,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMcpEnabled: (value: boolean) => void
 	enableMcpServerCreation: boolean
 	setEnableMcpServerCreation: (value: boolean) => void
-	enableCustomModeCreation?: boolean
-	setEnableCustomModeCreation: (value: boolean) => void
 	alwaysApproveResubmit?: boolean
 	setAlwaysApproveResubmit: (value: boolean) => void
 	requestDelaySeconds: number
@@ -80,7 +80,12 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setRemoteBrowserEnabled: (value: boolean) => void
 	awsUsePromptCache?: boolean
 	setAwsUsePromptCache: (value: boolean) => void
+	maxReadFileLine: number
+	setMaxReadFileLine: (value: number) => void
 	machineId?: string
+	pinnedApiConfigs?: Record<string, boolean>
+	setPinnedApiConfigs: (value: Record<string, boolean>) => void
+	togglePinnedApiConfig: (configName: string) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -115,6 +120,7 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Extensi
 export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
+		osInfo: "",
 		clineMessages: [],
 		taskHistory: [],
 		shouldShowAnnouncement: false,
@@ -128,7 +134,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		checkpointStorage: "task",
 		fuzzyMatchThreshold: 1.0,
 		language: "en", // Default language code
-		enableCustomModeCreation: true,
 		writeDelayMs: 1000,
 		browserViewportSize: "900x600",
 		screenshotQuality: 75,
@@ -155,6 +160,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		telemetrySetting: "unset",
 		showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
 		renderContext: "sidebar",
+		maxReadFileLine: 500, // Default max read file line limit
+		pinnedApiConfigs: {}, // Empty object for pinned API configs
 	})
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
@@ -258,7 +265,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 			})),
 		setCustomInstructions: (value) => setState((prevState) => ({ ...prevState, customInstructions: value })),
 		setAlwaysAllowReadOnly: (value) => setState((prevState) => ({ ...prevState, alwaysAllowReadOnly: value })),
+		setAlwaysAllowReadOnlyOutsideWorkspace: (value) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowReadOnlyOutsideWorkspace: value })),
 		setAlwaysAllowWrite: (value) => setState((prevState) => ({ ...prevState, alwaysAllowWrite: value })),
+		setAlwaysAllowWriteOutsideWorkspace: (value) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowWriteOutsideWorkspace: value })),
 		setAlwaysAllowExecute: (value) => setState((prevState) => ({ ...prevState, alwaysAllowExecute: value })),
 		setAlwaysAllowBrowser: (value) => setState((prevState) => ({ ...prevState, alwaysAllowBrowser: value })),
 		setAlwaysAllowMcp: (value) => setState((prevState) => ({ ...prevState, alwaysAllowMcp: value })),
@@ -294,8 +305,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setCustomSupportPrompts: (value) => setState((prevState) => ({ ...prevState, customSupportPrompts: value })),
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
-		setEnableCustomModeCreation: (value) =>
-			setState((prevState) => ({ ...prevState, enableCustomModeCreation: value })),
 		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
 		setCustomModes: (value) => setState((prevState) => ({ ...prevState, customModes: value })),
 		setMaxOpenTabsContext: (value) => setState((prevState) => ({ ...prevState, maxOpenTabsContext: value })),
@@ -305,6 +314,23 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setShowRooIgnoredFiles: (value) => setState((prevState) => ({ ...prevState, showRooIgnoredFiles: value })),
 		setRemoteBrowserEnabled: (value) => setState((prevState) => ({ ...prevState, remoteBrowserEnabled: value })),
 		setAwsUsePromptCache: (value) => setState((prevState) => ({ ...prevState, awsUsePromptCache: value })),
+		setMaxReadFileLine: (value) => setState((prevState) => ({ ...prevState, maxReadFileLine: value })),
+		setPinnedApiConfigs: (value) => setState((prevState) => ({ ...prevState, pinnedApiConfigs: value })),
+		togglePinnedApiConfig: (configId) =>
+			setState((prevState) => {
+				const currentPinned = prevState.pinnedApiConfigs || {}
+				const newPinned = {
+					...currentPinned,
+					[configId]: !currentPinned[configId],
+				}
+
+				// If the config is now unpinned, remove it from the object
+				if (!newPinned[configId]) {
+					delete newPinned[configId]
+				}
+
+				return { ...prevState, pinnedApiConfigs: newPinned }
+			}),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

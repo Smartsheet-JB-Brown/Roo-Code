@@ -3,7 +3,8 @@
 		"save": "Salvar",
 		"done": "Concluído",
 		"cancel": "Cancelar",
-		"reset": "Redefinir"
+		"reset": "Redefinir",
+		"select": "Selecionar"
 	},
 	"header": {
 		"title": "Configurações",
@@ -34,12 +35,20 @@
 		"description": "Permitir que o Roo realize operações automaticamente sem exigir aprovação. Ative essas configurações apenas se confiar totalmente na IA e compreender os riscos de segurança associados.",
 		"readOnly": {
 			"label": "Aprovar sempre operações somente de leitura",
-			"description": "Quando ativado, o Roo visualizará automaticamente o conteúdo do diretório e lerá arquivos sem que você precise clicar no botão Aprovar."
+			"description": "Quando ativado, o Roo visualizará automaticamente o conteúdo do diretório e lerá arquivos sem que você precise clicar no botão Aprovar.",
+			"outsideWorkspace": {
+				"label": "Incluir arquivos fora do espaço de trabalho",
+				"description": "Permitir que o Roo leia arquivos fora do espaço de trabalho atual sem exigir aprovação."
+			}
 		},
 		"write": {
 			"label": "Aprovar sempre operações de escrita",
 			"description": "Criar e editar arquivos automaticamente sem exigir aprovação",
-			"delayLabel": "Atraso após escritas para permitir que diagnósticos detectem problemas potenciais"
+			"delayLabel": "Atraso após escritas para permitir que diagnósticos detectem problemas potenciais",
+			"outsideWorkspace": {
+				"label": "Incluir arquivos fora do espaço de trabalho",
+				"description": "Permitir que o Roo crie e edite arquivos fora do espaço de trabalho atual sem exigir aprovação."
+			}
 		},
 		"browser": {
 			"label": "Aprovar sempre ações do navegador",
@@ -74,7 +83,7 @@
 	},
 	"providers": {
 		"configProfile": "Perfil de configuração",
-		"description": "Descrição",
+		"description": "Salve diferentes configurações de API para alternar rapidamente entre provedores e configurações.",
 		"apiProvider": "Provedor de API",
 		"model": "Modelo",
 		"nameEmpty": "O nome não pode estar vazio",
@@ -264,6 +273,12 @@
 		"rooignore": {
 			"label": "Mostrar arquivos .rooignore em listas e pesquisas",
 			"description": "Quando ativado, os arquivos que correspondem aos padrões em .rooignore serão mostrados em listas com um símbolo de cadeado. Quando desativado, esses arquivos serão completamente ocultos das listas de arquivos e pesquisas."
+		},
+		"maxReadFile": {
+			"label": "Limite de auto-truncamento de leitura de arquivo",
+			"description": "O Roo lê este número de linhas quando o modelo omite valores de início/fim. Se este número for menor que o total do arquivo, o Roo gera um índice de números de linha das definições de código. Casos especiais: -1 instrui o Roo a ler o arquivo inteiro (sem indexação), e 0 instrui a não ler linhas e fornecer apenas índices de linha para contexto mínimo. Valores mais baixos minimizam o uso inicial de contexto, permitindo leituras posteriores precisas de intervalos de linhas. Requisições com início/fim explícitos não são limitadas por esta configuração.",
+			"lines": "linhas",
+			"always_full_read": "Sempre ler o arquivo inteiro"
 		}
 	},
 	"terminal": {
@@ -344,6 +359,8 @@
 		"cacheReadsPrice": "Preço de leituras de cache",
 		"cacheWritesPrice": "Preço de escritas de cache",
 		"enableStreaming": "Ativar streaming",
+		"enableR1Format": "Ativar parâmetros do modelo R1",
+		"enableR1FormatTips": "Deve ser ativado ao usar modelos R1 como QWQ, para evitar erro 400",
 		"useAzure": "Usar Azure",
 		"azureApiVersion": "Definir versão da API Azure",
 		"gemini": {
@@ -352,7 +369,11 @@
 		}
 	},
 	"modelPicker": {
-		"automaticFetch": "A extensão busca automaticamente a lista mais recente de modelos disponíveis em <serviceLink>{{serviceName}}</serviceLink>. Se você não tem certeza sobre qual modelo escolher, o Roo Code funciona melhor com <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Você também pode pesquisar por \"free\" para encontrar opções gratuitas atualmente disponíveis."
+		"automaticFetch": "A extensão busca automaticamente a lista mais recente de modelos disponíveis em <serviceLink>{{serviceName}}</serviceLink>. Se você não tem certeza sobre qual modelo escolher, o Roo Code funciona melhor com <defaultModelLink>{{defaultModelId}}</defaultModelLink>. Você também pode pesquisar por \"free\" para encontrar opções gratuitas atualmente disponíveis.",
+		"label": "Modelo",
+		"searchPlaceholder": "Pesquisar",
+		"noMatchFound": "Nenhuma correspondência encontrada",
+		"useCustomModel": "Usar personalizado: {{modelId}}"
 	},
 	"footer": {
 		"feedback": "Se tiver alguma dúvida ou feedback, sinta-se à vontade para abrir um problema em <githubLink>github.com/RooVetGit/Roo-Code</githubLink> ou juntar-se a <redditLink>reddit.com/r/RooCode</redditLink> ou <discordLink>discord.gg/roocode</discordLink>",
@@ -361,9 +382,60 @@
 			"label": "Permitir relatórios anônimos de erros e uso",
 			"description": "Ajude a melhorar o Roo Code enviando dados de uso anônimos e relatórios de erros. Nunca são enviados código, prompts ou informações pessoais. Consulte nossa política de privacidade para mais detalhes."
 		},
-		"reset": {
-			"description": "Redefinir todo o estado global e armazenamento secreto na extensão.",
-			"button": "Redefinir"
+		"settings": {
+			"import": "Importar",
+			"export": "Exportar",
+			"reset": "Redefinir"
 		}
+	},
+	"thinkingBudget": {
+		"maxTokens": "Tokens máximos",
+		"maxThinkingTokens": "Tokens máximos de pensamento"
+	},
+	"validation": {
+		"apiKey": "Você deve fornecer uma chave de API válida.",
+		"awsRegion": "Você deve escolher uma região para usar o AWS Bedrock.",
+		"googleCloud": "Você deve fornecer um ID de projeto e região do Google Cloud válidos.",
+		"modelId": "Você deve fornecer um ID de modelo válido.",
+		"modelSelector": "Você deve fornecer um seletor de modelo válido.",
+		"openAi": "Você deve fornecer uma URL base, chave de API e ID de modelo válidos.",
+		"arn": {
+			"invalidFormat": "Formato de ARN inválido. Por favor, verifique os requisitos de formato.",
+			"regionMismatch": "Aviso: A região em seu ARN ({{arnRegion}}) não corresponde à região selecionada ({{region}}). Isso pode causar problemas de acesso. O provedor usará a região do ARN."
+		},
+		"modelAvailability": "O ID do modelo ({{modelId}}) que você forneceu não está disponível. Por favor, escolha outro modelo."
+	},
+	"placeholders": {
+		"apiKey": "Digite a chave API...",
+		"profileName": "Digite o nome do perfil",
+		"accessKey": "Digite a chave de acesso...",
+		"secretKey": "Digite a chave secreta...",
+		"sessionToken": "Digite o token de sessão...",
+		"credentialsJson": "Digite o JSON de credenciais...",
+		"keyFilePath": "Digite o caminho do arquivo de chave...",
+		"projectId": "Digite o ID do projeto...",
+		"customArn": "Digite o ARN (ex: arn:aws:bedrock:us-east-1:123456789012:foundation-model/my-model)",
+		"baseUrl": "Digite a URL base...",
+		"modelId": {
+			"lmStudio": "ex: meta-llama-3.1-8b-instruct",
+			"lmStudioDraft": "ex: lmstudio-community/llama-3.2-1b-instruct",
+			"ollama": "ex: llama3.1"
+		},
+		"numbers": {
+			"maxTokens": "ex: 4096",
+			"contextWindow": "ex: 128000",
+			"inputPrice": "ex: 0.0001",
+			"outputPrice": "ex: 0.0002",
+			"cacheWritePrice": "ex: 0.00005"
+		}
+	},
+	"defaults": {
+		"ollamaUrl": "Padrão: http://localhost:11434",
+		"lmStudioUrl": "Padrão: http://localhost:1234",
+		"geminiUrl": "Padrão: https://generativelanguage.googleapis.com"
+	},
+	"labels": {
+		"customArn": "ARN personalizado",
+		"useCustomArn": "Usar ARN personalizado..."
 	}
 }

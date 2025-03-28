@@ -105,10 +105,15 @@
 		},
 		"current": "當前"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo想要獲取詳細指示以協助目前任務"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo想讀取此檔案:",
+		"wantsToReadOutsideWorkspace": "Roo想讀取此工作區外的檔案:",
 		"didRead": "Roo已讀取此檔案:",
 		"wantsToEdit": "Roo想編輯此檔案:",
+		"wantsToEditOutsideWorkspace": "Roo想編輯此工作區外的檔案:",
 		"wantsToCreate": "Roo想創建新檔案:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "思考中",
 		"seconds": "{{count}}秒"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 已發布",
+		"description": "Roo Code 3.10帶來強大的生產力提升！",
+		"whatsNew": "新功能",
+		"feature1": "問題的建議回答",
+		"feature2": "改進的大檔案處理",
+		"feature3": "重建的@-提及檔案查詢",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "隱藏公告",
+		"detailsDiscussLinks": "在<discordLink>Discord</discordLink>和<redditLink>Reddit</redditLink>取得更多詳情並參與討論 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo想使用瀏覽器:",
+		"consoleLogs": "主控台記錄",
+		"noNewLogs": "(沒有新記錄)",
+		"screenshot": "瀏覽器截圖",
+		"cursor": "游標",
+		"navigation": {
+			"step": "步驟 {{current}} / {{total}}",
+			"previous": "上一步",
+			"next": "下一步"
+		},
+		"sessionStarted": "瀏覽器工作階段已啟動",
+		"actions": {
+			"title": "瀏覽器動作: ",
+			"launch": "在 {{url}} 啟動瀏覽器",
+			"click": "點擊 ({{coordinate}})",
+			"type": "輸入 \"{{text}}\"",
+			"scrollDown": "向下捲動",
+			"scrollUp": "向上捲動",
+			"close": "關閉瀏覽器"
+		}
 	}
 }

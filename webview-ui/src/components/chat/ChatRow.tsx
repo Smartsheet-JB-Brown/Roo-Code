@@ -23,6 +23,7 @@ import McpResourceRow from "../mcp/McpResourceRow"
 import McpToolRow from "../mcp/McpToolRow"
 import { highlightMentions } from "./TaskHeader"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
+import FollowUpSuggest from "./FollowUpSuggest"
 
 interface ChatRowProps {
 	message: ClineMessage
@@ -32,6 +33,7 @@ interface ChatRowProps {
 	isStreaming: boolean
 	onToggleExpand: () => void
 	onHeightChange: (isTaller: boolean) => void
+	onSuggestionClick?: (answer: string) => void
 }
 
 interface ChatRowContentProps extends Omit<ChatRowProps, "onHeightChange"> {}
@@ -78,6 +80,7 @@ export const ChatRowContent = ({
 	isLast,
 	isStreaming,
 	onToggleExpand,
+	onSuggestionClick,
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint } = useExtensionState()
@@ -248,6 +251,13 @@ export const ChatRowContent = ({
 		return null
 	}, [message.ask, message.say, message.text])
 
+	const followUpData = useMemo(() => {
+		if (message.type === "ask" && message.ask === "followup" && !message.partial) {
+			return JSON.parse(message.text || "{}")
+		}
+		return null
+	}, [message.type, message.ask, message.partial, message.text])
+
 	if (tool) {
 		const toolIcon = (name: string) => (
 			<span
@@ -262,7 +272,11 @@ export const ChatRowContent = ({
 					<>
 						<div style={headerStyle}>
 							{toolIcon(tool.tool === "appliedDiff" ? "diff" : "edit")}
-							<span style={{ fontWeight: "bold" }}>{t("chat:fileOperations.wantsToEdit")}</span>
+							<span style={{ fontWeight: "bold" }}>
+								{tool.isOutsideWorkspace
+									? t("chat:fileOperations.wantsToEditOutsideWorkspace")
+									: t("chat:fileOperations.wantsToEdit")}
+							</span>
 						</div>
 						<CodeAccordian
 							progressStatus={message.progressStatus}
@@ -297,7 +311,9 @@ export const ChatRowContent = ({
 							{toolIcon("file-code")}
 							<span style={{ fontWeight: "bold" }}>
 								{message.type === "ask"
-									? t("chat:fileOperations.wantsToRead")
+									? tool.isOutsideWorkspace
+										? t("chat:fileOperations.wantsToReadOutsideWorkspace")
+										: t("chat:fileOperations.wantsToRead")
 									: t("chat:fileOperations.didRead")}
 							</span>
 						</div>
@@ -347,6 +363,21 @@ export const ChatRowContent = ({
 									style={{ fontSize: 13.5, margin: "1px 0" }}></span>
 							</div>
 						</div>
+					</>
+				)
+			case "fetchInstructions":
+				return (
+					<>
+						<div style={headerStyle}>
+							{toolIcon("file-code")}
+							<span style={{ fontWeight: "bold" }}>{t("chat:instructions.wantsToFetch")}</span>
+						</div>
+						<CodeAccordian
+							isLoading={message.partial}
+							code={tool.content!}
+							isExpanded={isExpanded}
+							onToggleExpand={onToggleExpand}
+						/>
 					</>
 				)
 			case "listFilesTopLevel":
@@ -418,11 +449,13 @@ export const ChatRowContent = ({
 									<Trans
 										i18nKey="chat:directoryOperations.wantsToSearch"
 										components={{ code: <code>{tool.regex}</code> }}
+										values={{ regex: tool.regex }}
 									/>
 								) : (
 									<Trans
 										i18nKey="chat:directoryOperations.didSearch"
 										components={{ code: <code>{tool.regex}</code> }}
+										values={{ regex: tool.regex }}
 									/>
 								)}
 							</span>
@@ -993,9 +1026,16 @@ export const ChatRowContent = ({
 									{title}
 								</div>
 							)}
-							<div style={{ paddingTop: 10 }}>
-								<Markdown markdown={message.text} />
+							<div style={{ paddingTop: 10, paddingBottom: 15 }}>
+								<Markdown
+									markdown={message.partial === true ? message?.text : followUpData?.question}
+								/>
 							</div>
+							<FollowUpSuggest
+								suggestions={followUpData?.suggest}
+								onSuggestionClick={onSuggestionClick}
+								ts={message?.ts}
+							/>
 						</>
 					)
 				default:

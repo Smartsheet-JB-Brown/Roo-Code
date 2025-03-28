@@ -105,10 +105,15 @@
 		},
 		"current": "当前"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo 想要获取详细指示以协助当前任务"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo想读取此文件:",
+		"wantsToReadOutsideWorkspace": "Roo想读取此工作区外的文件:",
 		"didRead": "Roo已读取此文件:",
 		"wantsToEdit": "Roo想编辑此文件:",
+		"wantsToEditOutsideWorkspace": "Roo想编辑此工作区外的文件:",
 		"wantsToCreate": "Roo想创建新文件:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "思考中",
 		"seconds": "{{count}}秒"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 已发布",
+		"description": "Roo Code 3.10带来强大的生产力提升！",
+		"whatsNew": "新特性",
+		"feature1": "问题的建议回答",
+		"feature2": "改进的大文件处理",
+		"feature3": "重建的@-提及文件查找",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "隐藏公告",
+		"detailsDiscussLinks": "在<discordLink>Discord</discordLink>和<redditLink>Reddit</redditLink>获取更多详情并参与讨论 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo想使用浏览器:",
+		"consoleLogs": "控制台日志",
+		"noNewLogs": "(没有新日志)",
+		"screenshot": "浏览器截图",
+		"cursor": "光标",
+		"navigation": {
+			"step": "步骤 {{current}} / {{total}}",
+			"previous": "上一步",
+			"next": "下一步"
+		},
+		"sessionStarted": "浏览器会话已启动",
+		"actions": {
+			"title": "浏览器操作: ",
+			"launch": "在 {{url}} 启动浏览器",
+			"click": "点击 ({{coordinate}})",
+			"type": "输入 \"{{text}}\"",
+			"scrollDown": "向下滚动",
+			"scrollUp": "向上滚动",
+			"close": "关闭浏览器"
+		}
 	}
 }

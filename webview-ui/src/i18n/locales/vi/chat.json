@@ -105,10 +105,15 @@
 		},
 		"current": "Hiện tại"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo muốn lấy hướng dẫn chi tiết để hỗ trợ nhiệm vụ hiện tại"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo muốn đọc tệp này:",
+		"wantsToReadOutsideWorkspace": "Roo muốn đọc tệp này bên ngoài không gian làm việc:",
 		"didRead": "Roo đã đọc tệp này:",
 		"wantsToEdit": "Roo muốn chỉnh sửa tệp này:",
+		"wantsToEditOutsideWorkspace": "Roo muốn chỉnh sửa tệp này bên ngoài không gian làm việc:",
 		"wantsToCreate": "Roo muốn tạo một tệp mới:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Đang suy nghĩ",
 		"seconds": "{{count}} giây"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 Đã phát hành",
+		"description": "Roo Code 3.10 mang đến những cải tiến năng suất mạnh mẽ!",
+		"whatsNew": "Có gì mới",
+		"feature1": "Gợi ý phản hồi cho câu hỏi",
+		"feature2": "Cải thiện xử lý tệp tin lớn",
+		"feature3": "Xây dựng lại tìm kiếm tệp tin bằng @-mention",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Ẩn thông báo",
+		"detailsDiscussLinks": "Nhận thêm chi tiết và thảo luận tại <discordLink>Discord</discordLink> và <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo muốn sử dụng trình duyệt:",
+		"consoleLogs": "Nhật ký bảng điều khiển",
+		"noNewLogs": "(Không có nhật ký mới)",
+		"screenshot": "Ảnh chụp màn hình trình duyệt",
+		"cursor": "con trỏ",
+		"navigation": {
+			"step": "Bước {{current}} / {{total}}",
+			"previous": "Trước",
+			"next": "Tiếp"
+		},
+		"sessionStarted": "Phiên trình duyệt đã bắt đầu",
+		"actions": {
+			"title": "Hành động trình duyệt: ",
+			"launch": "Khởi chạy trình duyệt tại {{url}}",
+			"click": "Nhấp ({{coordinate}})",
+			"type": "Gõ \"{{text}}\"",
+			"scrollDown": "Cuộn xuống",
+			"scrollUp": "Cuộn lên",
+			"close": "Đóng trình duyệt"
+		}
 	}
 }

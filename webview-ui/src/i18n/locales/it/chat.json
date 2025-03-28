@@ -80,6 +80,9 @@
 	"separator": "Separatore",
 	"edit": "Modifica...",
 	"forNextMode": "per la prossima modalità",
+	"instructions": {
+		"wantsToFetch": "Roo vuole recuperare istruzioni dettagliate per aiutare con l'attività corrente"
+	},
 	"error": "Errore",
 	"troubleMessage": "Roo sta avendo problemi...",
 	"apiRequest": {
@@ -107,8 +110,10 @@
 	},
 	"fileOperations": {
 		"wantsToRead": "Roo vuole leggere questo file:",
+		"wantsToReadOutsideWorkspace": "Roo vuole leggere questo file al di fuori dell'area di lavoro:",
 		"didRead": "Roo ha letto questo file:",
 		"wantsToEdit": "Roo vuole modificare questo file:",
+		"wantsToEditOutsideWorkspace": "Roo vuole modificare questo file al di fuori dell'area di lavoro:",
 		"wantsToCreate": "Roo vuole creare un nuovo file:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Sto pensando",
 		"seconds": "{{count}}s"
+	},
+	"announcement": {
+		"title": "🎉 Rilasciato Roo Code 3.10",
+		"description": "Roo Code 3.10 porta potenti miglioramenti di produttività!",
+		"whatsNew": "Novità",
+		"feature1": "Risposte suggerite alle domande",
+		"feature2": "Gestione migliorata dei file di grandi dimensioni",
+		"feature3": "Ricerca file tramite @-menzione ricostruita",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Nascondi annuncio",
+		"detailsDiscussLinks": "Ottieni maggiori dettagli e partecipa alle discussioni su <discordLink>Discord</discordLink> e <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo vuole utilizzare il browser:",
+		"consoleLogs": "Log della console",
+		"noNewLogs": "(Nessun nuovo log)",
+		"screenshot": "Screenshot del browser",
+		"cursor": "cursore",
+		"navigation": {
+			"step": "Passo {{current}} di {{total}}",
+			"previous": "Precedente",
+			"next": "Successivo"
+		},
+		"sessionStarted": "Sessione browser avviata",
+		"actions": {
+			"title": "Azione browser: ",
+			"launch": "Avvia browser su {{url}}",
+			"click": "Clic ({{coordinate}})",
+			"type": "Digita \"{{text}}\"",
+			"scrollDown": "Scorri verso il basso",
+			"scrollUp": "Scorri verso l'alto",
+			"close": "Chiudi browser"
+		}
 	}
 }

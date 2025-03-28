@@ -103,10 +103,15 @@
 		},
 		"current": "Current"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo wants to fetch detailed instructions to assist with the current task"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo wants to read this file:",
+		"wantsToReadOutsideWorkspace": "Roo wants to read this file outside of the workspace:",
 		"didRead": "Roo read this file:",
 		"wantsToEdit": "Roo wants to edit this file:",
+		"wantsToEditOutsideWorkspace": "Roo wants to edit this file outside of the workspace:",
 		"wantsToCreate": "Roo wants to create a new file:"
 	},
 	"directoryOperations": {
@@ -196,8 +201,42 @@
 			}
 		}
 	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 Released",
+		"description": "Roo Code 3.10 brings powerful productivity enhancements!",
+		"whatsNew": "What's New",
+		"feature1": "Suggested responses to questions",
+		"feature2": "Improved large file handling",
+		"feature3": "Rebuilt @-mention file lookups",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Hide announcement",
+		"detailsDiscussLinks": "Get more details and discuss in <discordLink>Discord</discordLink> and <redditLink>Reddit</redditLink> 🚀"
+	},
 	"reasoning": {
 		"thinking": "Thinking",
 		"seconds": "{{count}}s"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo wants to use the browser:",
+		"consoleLogs": "Console Logs",
+		"noNewLogs": "(No new logs)",
+		"screenshot": "Browser screenshot",
+		"cursor": "cursor",
+		"navigation": {
+			"step": "Step {{current}} of {{total}}",
+			"previous": "Previous",
+			"next": "Next"
+		},
+		"sessionStarted": "Browser Session Started",
+		"actions": {
+			"title": "Browse Action: ",
+			"launch": "Launch browser at {{url}}",
+			"click": "Click ({{coordinate}})",
+			"type": "Type \"{{text}}\"",
+			"scrollDown": "Scroll down",
+			"scrollUp": "Scroll up",
+			"close": "Close browser"
+		}
 	}
 }

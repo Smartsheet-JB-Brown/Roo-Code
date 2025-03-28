@@ -105,10 +105,15 @@
 		},
 		"current": "Aktuell"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo möchte detaillierte Anweisungen abrufen, um bei der aktuellen Aufgabe zu helfen"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo möchte diese Datei lesen:",
+		"wantsToReadOutsideWorkspace": "Roo möchte diese Datei außerhalb des Arbeitsbereichs lesen:",
 		"didRead": "Roo hat diese Datei gelesen:",
 		"wantsToEdit": "Roo möchte diese Datei bearbeiten:",
+		"wantsToEditOutsideWorkspace": "Roo möchte diese Datei außerhalb des Arbeitsbereichs bearbeiten:",
 		"wantsToCreate": "Roo möchte eine neue Datei erstellen:"
 	},
 	"directoryOperations": {
@@ -147,7 +152,7 @@
 		"troubleshooting": "Immer noch Probleme?"
 	},
 	"powershell": {
-		"issues": "Es scheint, dass du Probleme mit Windows PowerShell hast, bitte sieh dir diesen"
+		"issues": "Es scheint, dass du Probleme mit Windows PowerShell hast, bitte sieh dir dies an"
 	},
 	"autoApprove": {
 		"title": "Automatische Genehmigung:",
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Denke nach",
 		"seconds": "{{count}}s"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 veröffentlicht",
+		"description": "Roo Code 3.10 bringt leistungsstarke Produktivitätsverbesserungen!",
+		"whatsNew": "Was ist neu",
+		"feature1": "Vorgeschlagene Antworten auf Fragen",
+		"feature2": "Verbesserte Handhabung großer Dateien",
+		"feature3": "Überarbeitete @-Erwähnungs-Dateisuche",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Ankündigung ausblenden",
+		"detailsDiscussLinks": "Erhalte mehr Details und diskutiere auf <discordLink>Discord</discordLink> und <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo möchte den Browser verwenden:",
+		"consoleLogs": "Konsolenprotokolle",
+		"noNewLogs": "(Keine neuen Protokolle)",
+		"screenshot": "Browser-Screenshot",
+		"cursor": "Cursor",
+		"navigation": {
+			"step": "Schritt {{current}} von {{total}}",
+			"previous": "Zurück",
+			"next": "Weiter"
+		},
+		"sessionStarted": "Browser-Sitzung gestartet",
+		"actions": {
+			"title": "Browser-Aktion: ",
+			"launch": "Browser starten auf {{url}}",
+			"click": "Klicken ({{coordinate}})",
+			"type": "Eingeben \"{{text}}\"",
+			"scrollDown": "Nach unten scrollen",
+			"scrollUp": "Nach oben scrollen",
+			"close": "Browser schließen"
+		}
 	}
 }

@@ -105,10 +105,15 @@
 		},
 		"current": "Bieżący"
 	},
+	"instructions": {
+		"wantsToFetch": "Roo chce pobrać szczegółowe instrukcje, aby pomóc w bieżącym zadaniu"
+	},
 	"fileOperations": {
 		"wantsToRead": "Roo chce przeczytać ten plik:",
+		"wantsToReadOutsideWorkspace": "Roo chce przeczytać ten plik poza obszarem roboczym:",
 		"didRead": "Roo przeczytał ten plik:",
 		"wantsToEdit": "Roo chce edytować ten plik:",
+		"wantsToEditOutsideWorkspace": "Roo chce edytować ten plik poza obszarem roboczym:",
 		"wantsToCreate": "Roo chce utworzyć nowy plik:"
 	},
 	"directoryOperations": {
@@ -199,5 +204,39 @@
 	"reasoning": {
 		"thinking": "Myślenie",
 		"seconds": "{{count}} s"
+	},
+	"announcement": {
+		"title": "🎉 Roo Code 3.10 wydany",
+		"description": "Roo Code 3.10 przynosi potężne usprawnienia produktywności!",
+		"whatsNew": "Co nowego",
+		"feature1": "Sugerowane odpowiedzi na pytania",
+		"feature2": "Ulepszenia obsługi dużych plików",
+		"feature3": "Przebudowane wyszukiwanie plików przez @-wzmianki",
+		"feature4": "",
+		"feature5": "",
+		"hideButton": "Ukryj ogłoszenie",
+		"detailsDiscussLinks": "Uzyskaj więcej szczegółów i dołącz do dyskusji na <discordLink>Discord</discordLink> i <redditLink>Reddit</redditLink> 🚀"
+	},
+	"browser": {
+		"rooWantsToUse": "Roo chce użyć przeglądarki:",
+		"consoleLogs": "Logi konsoli",
+		"noNewLogs": "(Brak nowych logów)",
+		"screenshot": "Zrzut ekranu przeglądarki",
+		"cursor": "kursor",
+		"navigation": {
+			"step": "Krok {{current}} z {{total}}",
+			"previous": "Poprzedni",
+			"next": "Następny"
+		},
+		"sessionStarted": "Sesja przeglądarki rozpoczęta",
+		"actions": {
+			"title": "Akcja przeglądarki: ",
+			"launch": "Uruchom przeglądarkę na {{url}}",
+			"click": "Kliknij ({{coordinate}})",
+			"type": "Wpisz \"{{text}}\"",
+			"scrollDown": "Przewiń w dół",
+			"scrollUp": "Przewiń w górę",
+			"close": "Zamknij przeglądarkę"
+		}
 	}
 }
