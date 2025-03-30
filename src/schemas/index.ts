@@ -278,11 +278,11 @@ export type CustomSupportPrompts = z.infer<typeof customSupportPromptsSchema>
  */
 
 export const experimentIds = [
-	"experimentalDiffStrategy",
 	"search_and_replace",
+	"experimentalDiffStrategy",
+	"multi_search_and_replace",
 	"insert_content",
 	"powerSteering",
-	"multi_search_and_replace",
 ] as const
 
 export const experimentIdsSchema = z.enum(experimentIds)
@@ -294,11 +294,11 @@ export type ExperimentId = z.infer<typeof experimentIdsSchema>
  */
 
 const experimentsSchema = z.object({
-	experimentalDiffStrategy: z.boolean(),
 	search_and_replace: z.boolean(),
+	experimentalDiffStrategy: z.boolean(),
+	multi_search_and_replace: z.boolean(),
 	insert_content: z.boolean(),
 	powerSteering: z.boolean(),
-	multi_search_and_replace: z.boolean(),
 })
 
 export type Experiments = z.infer<typeof experimentsSchema>
@@ -516,6 +516,7 @@ export const globalSettingsSchema = z.object({
 	screenshotQuality: z.number().optional(),
 	remoteBrowserEnabled: z.boolean().optional(),
 	remoteBrowserHost: z.string().optional(),
+	cachedChromeHostUrl: z.string().optional(),
 
 	enableCheckpoints: z.boolean().optional(),
 	checkpointStorage: checkpointStoragesSchema.optional(),
@@ -621,6 +622,7 @@ const globalSettingsRecord: GlobalSettingsRecord = {
 	customModePrompts: undefined,
 	customSupportPrompts: undefined,
 	enhancementApiConfigId: undefined,
+	cachedChromeHostUrl: undefined,
 }
 
 export const GLOBAL_SETTINGS_KEYS = Object.keys(globalSettingsRecord) as Keys<GlobalSettings>[]
@@ -794,7 +796,7 @@ export type TokenUsage = z.infer<typeof tokenUsageSchema>
  * TypeDefinition
  */
 
-type TypeDefinition = {
+export type TypeDefinition = {
 	schema: z.ZodTypeAny
 	identifier: string
 }
@@ -805,3 +807,6 @@ export const typeDefinitions: TypeDefinition[] = [
 	{ schema: clineMessageSchema, identifier: "ClineMessage" },
 	{ schema: tokenUsageSchema, identifier: "TokenUsage" },
 ]
+
+// Also export as default for ESM compatibility
+export default { typeDefinitions }

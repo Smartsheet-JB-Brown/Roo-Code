@@ -12,6 +12,8 @@
 		"export": "Exportar historial de tasques",
 		"delete": "Eliminar tasca (Shift + Clic per ometre confirmació)"
 	},
+	"unpin": "desancorar",
+	"pin": "ancorar",
 	"tokenProgress": {
 		"availableSpace": "Espai disponible: {{amount}} tokens",
 		"tokensUsed": "Tokens utilitzats: {{used}} de {{total}}",
@@ -157,7 +159,7 @@
 	"autoApprove": {
 		"title": "Aprovació automàtica:",
 		"none": "Cap",
-		"description": "L'aprovació automàtica permet a Roo Code realitzar accions sense demanar permís. Activa-la només per a accions en les que confies plenament.",
+		"description": "L'aprovació automàtica permet a Roo Code realitzar accions sense demanar permís. Activa-la només per a accions en les que confies plenament. Configuració més detallada disponible a la <settingsLink>Configuració</settingsLink>.",
 		"actions": {
 			"readFiles": {
 				"label": "Llegir fitxers i directoris",

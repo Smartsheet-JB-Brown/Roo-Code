@@ -50,7 +50,7 @@ import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
 import { BrowserSession } from "../../services/browser/BrowserSession"
-import { discoverChromeInstances } from "../../services/browser/browserDiscovery"
+import { discoverChromeHostUrl, tryChromeHostUrl } from "../../services/browser/browserDiscovery"
 import { searchWorkspaceFiles } from "../../services/search/file-search"
 import { fileExistsAtPath } from "../../utils/fs"
 import { playSound, setSoundEnabled, setSoundVolume } from "../../utils/sound"
@@ -102,7 +102,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	protected mcpHub?: McpHub // Change from private to protected
 	private latestAnnouncementId = "mar-20-2025-3-10" // update to some unique identifier when we add a new announcement
 	private settingsImportedAt?: number
-	private contextProxy: ContextProxy
+	public readonly contextProxy: ContextProxy
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -1250,7 +1250,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 					}
 					case "openProjectMcpSettings": {
 						if (!vscode.workspace.workspaceFolders?.length) {
-							vscode.window.showErrorMessage(t("common:no_workspace"))
+							vscode.window.showErrorMessage(t("common:errors.no_workspace"))
 							return
 						}
 
@@ -1420,74 +1420,17 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 						await this.postStateToWebview()
 						break
 					case "testBrowserConnection":
-						try {
-							const browserSession = new BrowserSession(this.context)
-							// If no text is provided, try auto-discovery
-							if (!message.text) {
-								try {
-									const discoveredHost = await discoverChromeInstances()
-									if (discoveredHost) {
-										// Test the connection to the discovered host
-										const result = await browserSession.testConnection(discoveredHost)
-										// Send the result back to the webview
-										await this.postMessageToWebview({
-											type: "browserConnectionResult",
-											success: result.success,
-											text: `Auto-discovered and tested connection to Chrome at ${discoveredHost}: ${result.message}`,
-											values: { endpoint: result.endpoint },
-										})
-									} else {
-										await this.postMessageToWebview({
-											type: "browserConnectionResult",
-											success: false,
-											text: "No Chrome instances found on the network. Make sure Chrome is running with remote debugging enabled (--remote-debugging-port=9222).",
-										})
-									}
-								} catch (error) {
-									await this.postMessageToWebview({
-										type: "browserConnectionResult",
-										success: false,
-										text: `Error during auto-discovery: ${error instanceof Error ? error.message : String(error)}`,
-									})
-								}
-							} else {
-								// Test the provided URL
-								const result = await browserSession.testConnection(message.text)
-
+						// If no text is provided, try auto-discovery
+						if (!message.text) {
+							// Use testBrowserConnection for auto-discovery
+							const chromeHostUrl = await discoverChromeHostUrl()
+							if (chromeHostUrl) {
 								// Send the result back to the webview
 								await this.postMessageToWebview({
 									type: "browserConnectionResult",
-									success: result.success,
-									text: result.message,
-									values: { endpoint: result.endpoint },
-								})
-							}
-						} catch (error) {
-							await this.postMessageToWebview({
-								type: "browserConnectionResult",
-								success: false,
-								text: `Error testing connection: ${error instanceof Error ? error.message : String(error)}`,
-							})
-						}
-						break
-					case "discoverBrowser":
-						try {
-							const discoveredHost = await discoverChromeInstances()
-
-							if (discoveredHost) {
-								// Don't update the remoteBrowserHost state when auto-discovering
-								// This way we don't override the user's preference
-
-								// Test the connection to get the endpoint
-								const browserSession = new BrowserSession(this.context)
-								const result = await browserSession.testConnection(discoveredHost)
-
-								// Send the result back to the webview
-								await this.postMessageToWebview({
-									type: "browserConnectionResult",
-									success: true,
-									text: `Successfully discovered and connected to Chrome at ${discoveredHost}`,
-									values: { endpoint: result.endpoint },
+									success: !!chromeHostUrl,
+									text: `Auto-discovered and tested connection to Chrome: ${chromeHostUrl}`,
+									values: { endpoint: chromeHostUrl },
 								})
 							} else {
 								await this.postMessageToWebview({
@@ -1496,11 +1439,17 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 									text: "No Chrome instances found on the network. Make sure Chrome is running with remote debugging enabled (--remote-debugging-port=9222).",
 								})
 							}
-						} catch (error) {
+						} else {
+							// Test the provided URL
+							const customHostUrl = message.text
+							const hostIsValid = await tryChromeHostUrl(message.text)
+							// Send the result back to the webview
 							await this.postMessageToWebview({
 								type: "browserConnectionResult",
-								success: false,
-								text: `Error discovering browser: ${error instanceof Error ? error.message : String(error)}`,
+								success: hostIsValid,
+								text: hostIsValid
+									? `Successfully connected to Chrome: ${customHostUrl}`
+									: "Failed to connect to Chrome",
 							})
 						}
 						break
@@ -1590,6 +1539,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 							t("common:confirmation.just_this_message"),
 							t("common:confirmation.this_and_subsequent"),
 						)
+
 						if (
 							(answer === t("common:confirmation.just_this_message") ||
 								answer === t("common:confirmation.this_and_subsequent")) &&
@@ -1598,9 +1548,11 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 							message.value
 						) {
 							const timeCutoff = message.value - 1000 // 1 second buffer before the message to delete
+
 							const messageIndex = this.getCurrentCline()!.clineMessages.findIndex(
 								(msg) => msg.ts && msg.ts >= timeCutoff,
 							)
+
 							const apiConversationHistoryIndex =
 								this.getCurrentCline()?.apiConversationHistory.findIndex(
 									(msg) => msg.ts && msg.ts >= timeCutoff,
@@ -1621,6 +1573,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 										const nextUserMessageIndex = this.getCurrentCline()!.clineMessages.findIndex(
 											(msg) => msg === nextUserMessage,
 										)
+
 										// Keep messages before current message and after next user message
 										await this.getCurrentCline()!.overwriteClineMessages([
 											...this.getCurrentCline()!.clineMessages.slice(0, messageIndex),
@@ -2032,12 +1985,11 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 
 						await this.updateGlobalState("experiments", updatedExperiments)
 
-						// Update diffStrategy in current Cline instance if it exists
-						if (message.values[EXPERIMENT_IDS.DIFF_STRATEGY] !== undefined && this.getCurrentCline()) {
-							await this.getCurrentCline()!.updateDiffStrategy(
-								Experiments.isEnabled(updatedExperiments, EXPERIMENT_IDS.DIFF_STRATEGY),
-								Experiments.isEnabled(updatedExperiments, EXPERIMENT_IDS.MULTI_SEARCH_AND_REPLACE),
-							)
+						const currentCline = this.getCurrentCline()
+
+						// Update diffStrategy in current Cline instance if it exists.
+						if (message.values[EXPERIMENT_IDS.DIFF_STRATEGY_UNIFIED] !== undefined && currentCline) {
+							await currentCline.updateDiffStrategy(updatedExperiments)
 						}
 
 						await this.postStateToWebview()
@@ -2135,13 +2087,13 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 				language,
 			} = await this.getState()
 
-			// Create diffStrategy based on current model and settings
-			const diffStrategy = getDiffStrategy(
-				apiConfiguration.apiModelId || apiConfiguration.openRouterModelId || "",
+			// Create diffStrategy based on current model and settings.
+			const diffStrategy = getDiffStrategy({
+				model: apiConfiguration.apiModelId || apiConfiguration.openRouterModelId || "",
+				experiments,
 				fuzzyMatchThreshold,
-				Experiments.isEnabled(experiments, EXPERIMENT_IDS.DIFF_STRATEGY),
-				Experiments.isEnabled(experiments, EXPERIMENT_IDS.MULTI_SEARCH_AND_REPLACE),
-			)
+			})
+
 			const cwd = this.cwd
 
 			const mode = message.mode ?? defaultModeSlug
@@ -2197,6 +2149,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	public async handleModeSwitch(newMode: Mode) {
 		// Capture mode switch telemetry event
 		const currentTaskId = this.getCurrentCline()?.taskId
+
 		if (currentTaskId) {
 			telemetryService.captureModeSwitch(currentTaskId, newMode)
 		}
@@ -2213,8 +2166,10 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		// If this mode has a saved config, use it
 		if (savedConfigId) {
 			const config = listApiConfig?.find((c) => c.id === savedConfigId)
+
 			if (config?.name) {
 				const apiConfig = await this.providerSettingsManager.loadConfig(config.name)
+
 				await Promise.all([
 					this.updateGlobalState("currentApiConfigName", config.name),
 					this.updateApiConfiguration(apiConfig),
@@ -2226,6 +2181,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 
 			if (currentApiConfigName) {
 				const config = listApiConfig?.find((c) => c.name === currentApiConfigName)
+
 				if (config?.id) {
 					await this.providerSettingsManager.setModeConfig(newMode, config.id)
 				}
@@ -2602,6 +2558,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			screenshotQuality,
 			remoteBrowserHost,
 			remoteBrowserEnabled,
+			cachedChromeHostUrl,
 			writeDelayMs,
 			terminalOutputLineLimit,
 			terminalShellIntegrationTimeout,
@@ -2670,6 +2627,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			screenshotQuality: screenshotQuality ?? 75,
 			remoteBrowserHost,
 			remoteBrowserEnabled: remoteBrowserEnabled ?? false,
+			cachedChromeHostUrl: cachedChromeHostUrl,
 			writeDelayMs: writeDelayMs ?? 1000,
 			terminalOutputLineLimit: terminalOutputLineLimit ?? 500,
 			terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? TERMINAL_SHELL_INTEGRATION_TIMEOUT,
@@ -2755,6 +2713,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			screenshotQuality: stateValues.screenshotQuality ?? 75,
 			remoteBrowserHost: stateValues.remoteBrowserHost,
 			remoteBrowserEnabled: stateValues.remoteBrowserEnabled ?? false,
+			cachedChromeHostUrl: stateValues.cachedChromeHostUrl as string | undefined,
 			fuzzyMatchThreshold: stateValues.fuzzyMatchThreshold ?? 1.0,
 			writeDelayMs: stateValues.writeDelayMs ?? 1000,
 			terminalOutputLineLimit: stateValues.terminalOutputLineLimit ?? 500,

@@ -249,6 +249,7 @@ type GlobalSettings = {
 	screenshotQuality?: number | undefined
 	remoteBrowserEnabled?: boolean | undefined
 	remoteBrowserHost?: string | undefined
+	cachedChromeHostUrl?: string | undefined
 	enableCheckpoints?: boolean | undefined
 	checkpointStorage?: ("task" | "workspace") | undefined
 	ttsEnabled?: boolean | undefined
@@ -266,11 +267,11 @@ type GlobalSettings = {
 	fuzzyMatchThreshold?: number | undefined
 	experiments?:
 		| {
-				experimentalDiffStrategy: boolean
 				search_and_replace: boolean
+				experimentalDiffStrategy: boolean
+				multi_search_and_replace: boolean
 				insert_content: boolean
 				powerSteering: boolean
-				multi_search_and_replace: boolean
 		  }
 		| undefined
 	language?:

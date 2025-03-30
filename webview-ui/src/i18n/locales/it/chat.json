@@ -12,6 +12,8 @@
 		"export": "Esporta cronologia attività",
 		"delete": "Elimina attività (Shift + Clic per saltare la conferma)"
 	},
+	"unpin": "sblocca",
+	"pin": "blocca",
 	"tokenProgress": {
 		"availableSpace": "Spazio disponibile: {{amount}} tokens",
 		"tokensUsed": "Tokens utilizzati: {{used}} di {{total}}",
@@ -157,7 +159,7 @@
 	"autoApprove": {
 		"title": "Auto-approvazione:",
 		"none": "Nessuna",
-		"description": "L'auto-approvazione permette a Roo Code di eseguire azioni senza chiedere permesso. Abilita solo per azioni di cui ti fidi completamente.",
+		"description": "L'auto-approvazione permette a Roo Code di eseguire azioni senza chiedere permesso. Abilita solo per azioni di cui ti fidi completamente. Configurazione più dettagliata disponibile nelle <settingsLink>Impostazioni</settingsLink>.",
 		"actions": {
 			"readFiles": {
 				"label": "Leggi file e directory",
