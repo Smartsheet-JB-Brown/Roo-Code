@@ -726,37 +726,37 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	 * @returns An object with validation results: { isValid, arnRegion, errorMessage }
 	 */
 	private validateBedrockArn(arn: string, region?: string) {
-		// Validate ARN format
-		const arnRegex =
-			/^arn:aws:bedrock:([^:]+):(\d+):(foundation-model|provisioned-model|default-prompt-router|prompt-router)\/(.+)$/
-		const match = arn.match(arnRegex)
+		// First, try a simpler regex for standard Bedrock ARNs
 
-		if (!match) {
-			return {
-				isValid: false,
-				arnRegion: undefined,
-				errorMessage:
-					"Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name",
+		const simpleArnRegex = /^arn:aws:bedrock:([^:]+):/
+		let match = arn.match(simpleArnRegex)
+
+		if (match) {
+			// If the simple regex matches, extract the region from the first capture group
+			const arnRegion = match[1]
+
+			// Check if region in ARN matches provided region (if specified)
+			if (region && arnRegion !== region) {
+				return {
+					isValid: true,
+					arnRegion,
+					errorMessage: `Warning: The region in your ARN (${arnRegion}) does not match your selected region (${region}). This may cause access issues. The provider will use the region from the ARN.`,
+				}
 			}
-		}
 
-		// Extract region from ARN
-		const arnRegion = match[1]
-
-		// Check if region in ARN matches provided region (if specified)
-		if (region && arnRegion !== region) {
+			// ARN is valid and region matches (or no region was provided to check against)
 			return {
 				isValid: true,
 				arnRegion,
-				errorMessage: `Warning: The region in your ARN (${arnRegion}) does not match your selected region (${region}). This may cause access issues. The provider will use the region from the ARN.`,
+				errorMessage: undefined,
 			}
 		}
 
-		// ARN is valid and region matches (or no region was provided to check against)
+		// If we get here, none of our regexes matched
 		return {
-			isValid: true,
-			arnRegion,
-			errorMessage: undefined,
+			isValid: false,
+			arnRegion: undefined,
+			errorMessage: "Invalid ARN format. ARN should follow the AWS Bedrock ARN pattern.",
 		}
 	}
 
@@ -777,7 +777,10 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 1. The ARN is correct and points to a valid model
 2. Your AWS credentials have permission to access this model (check IAM policies)
 3. The region in the ARN {regionInfo} matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state{customModelInfo}`,
+4. If using a provisioned model, ensure it's active and not in a failed state{customModelInfo}
+
+{errorDetails}
+`,
 			logLevel: "error",
 		},
 		NOT_FOUND: {
@@ -903,7 +906,11 @@ Suggestions:
 		}
 
 		// Add context-specific template variables
-		templateVars.regionInfo = `(${this?.client?.config?.region})`
+		const region =
+			typeof this?.client?.config?.region === "function"
+				? this?.client?.config?.region()
+				: this?.client?.config?.region
+		templateVars.regionInfo = `(${region})`
 
 		// Replace template variables
 		for (const [key, value] of Object.entries(templateVars)) {
