@@ -777,10 +777,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 1. The ARN is correct and points to a valid model
 2. Your AWS credentials have permission to access this model (check IAM policies)
 3. The region in the ARN {regionInfo} matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state{customModelInfo}
-
-{errorDetails}
-`,
+4. If using a provisioned model, ensure it's active and not in a failed state {customModelInfo}`,
 			logLevel: "error",
 		},
 		NOT_FOUND: {
@@ -789,7 +786,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
 2. The model exists in the specified region
 3. The account ID in the ARN is correct
-4. The resource type is one of: foundation-model, provisioned-model, or default-prompt-router`,
+4. The resource type is one of: inference-profile, provisioned-model, prompt-router, or default-prompt-router`,
 			logLevel: "error",
 		},
 		THROTTLING: {
