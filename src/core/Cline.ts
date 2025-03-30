@@ -332,17 +332,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 	}
 
 	private async addToClineMessages(message: ClineMessage) {
-		// Find the correct position to insert the message based on timestamp
-		const insertIndex = this.clineMessages.findIndex((existingMsg) => existingMsg.ts > message.ts)
-
-		if (insertIndex === -1) {
-			// If no message with a later timestamp is found, append to the end
-			this.clineMessages.push(message)
-		} else {
-			// Insert the message at the correct position to maintain chronological order
-			this.clineMessages.splice(insertIndex, 0, message)
-		}
-
+		this.clineMessages.push(message)
 		await this.providerRef.deref()?.postStateToWebview()
 		this.emit("message", { action: "created", message })
 		await this.saveClineMessages()
@@ -519,8 +509,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 			throw new Error(`[Cline#say] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
-		const sayTs = (checkpoint?.startTime as number) ?? Date.now()
-
 		if (partial !== undefined) {
 			const lastMessage = this.clineMessages.at(-1)
 			const isUpdatingPreviousPartial =
@@ -535,6 +523,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 					this.updateClineMessage(lastMessage)
 				} else {
 					// this is a new partial message, so add it with partial state
+					const sayTs = Date.now()
 					await this.addToClineMessages({ ts: sayTs, type: "say", say: type, text, images, partial })
 				}
 			} else {
@@ -553,11 +542,13 @@ export class Cline extends EventEmitter<ClineEvents> {
 					this.updateClineMessage(lastMessage)
 				} else {
 					// This is a new and complete message, so add it like normal.
+					const sayTs = Date.now()
 					await this.addToClineMessages({ ts: sayTs, type: "say", say: type, text, images })
 				}
 			}
 		} else {
 			// this is a new non-partial message, so add it like normal
+			const sayTs = Date.now()
 			await this.addToClineMessages({ ts: sayTs, type: "say", say: type, text, images, checkpoint })
 		}
 	}
@@ -1221,7 +1212,21 @@ export class Cline extends EventEmitter<ClineEvents> {
 				}
 
 				const baseDelay = requestDelaySeconds || 5
-				const exponentialDelay = Math.ceil(baseDelay * Math.pow(2, retryAttempt))
+				let exponentialDelay = Math.ceil(baseDelay * Math.pow(2, retryAttempt))
+
+				// If the error is a 429, and the error details contain a retry delay, use that delay instead of exponential backoff
+				if (error.status === 429) {
+					const geminiRetryDetails = error.errorDetails?.find(
+						(detail: any) => detail["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
+					)
+					if (geminiRetryDetails) {
+						const match = geminiRetryDetails?.retryDelay?.match(/^(\d+)s$/)
+						if (match) {
+							exponentialDelay = Number(match[1]) + 1
+						}
+					}
+				}
+
 				// Wait for the greater of the exponential delay or the rate limit delay
 				const finalDelay = Math.max(exponentialDelay, rateLimitDelay)
 
@@ -2394,16 +2399,14 @@ export class Cline extends EventEmitter<ClineEvents> {
 				}
 			})
 
-			service.on("checkpoint", ({ isFirst, fromHash: from, toHash: to, startTime }) => {
+			service.on("checkpoint", ({ isFirst, fromHash: from, toHash: to }) => {
 				try {
 					this.providerRef.deref()?.postMessageToWebview({ type: "currentCheckpointUpdated", text: to })
 
-					this.say("checkpoint_saved", to, undefined, undefined, { isFirst, from, to, startTime }).catch(
-						(err) => {
-							log("[Cline#initializeCheckpoints] caught unexpected error in say('checkpoint_saved')")
-							console.error(err)
-						},
-					)
+					this.say("checkpoint_saved", to, undefined, undefined, { isFirst, from, to }).catch((err) => {
+						log("[Cline#initializeCheckpoints] caught unexpected error in say('checkpoint_saved')")
+						console.error(err)
+					})
 				} catch (err) {
 					log(
 						"[Cline#initializeCheckpoints] caught unexpected error in on('checkpoint'), disabling checkpoints",
