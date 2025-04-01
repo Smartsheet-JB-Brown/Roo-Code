@@ -29,7 +29,7 @@ type ProviderSettings = {
 	glamaModelId?: string | undefined
 	glamaModelInfo?:
 		| ({
-				maxTokens?: number | undefined
+				maxTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -51,7 +51,7 @@ type ProviderSettings = {
 	openRouterModelId?: string | undefined
 	openRouterModelInfo?:
 		| ({
-				maxTokens?: number | undefined
+				maxTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -91,7 +91,7 @@ type ProviderSettings = {
 	openAiModelId?: string | undefined
 	openAiCustomModelInfo?:
 		| ({
-				maxTokens?: number | undefined
+				maxTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -136,7 +136,7 @@ type ProviderSettings = {
 	unboundModelId?: string | undefined
 	unboundModelInfo?:
 		| ({
-				maxTokens?: number | undefined
+				maxTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -157,7 +157,7 @@ type ProviderSettings = {
 	requestyModelId?: string | undefined
 	requestyModelInfo?:
 		| ({
-				maxTokens?: number | undefined
+				maxTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -272,7 +272,6 @@ type GlobalSettings = {
 		| {
 				search_and_replace: boolean
 				experimentalDiffStrategy: boolean
-				multi_search_and_replace: boolean
 				insert_content: boolean
 				powerSteering: boolean
 		  }
