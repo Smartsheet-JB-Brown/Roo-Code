@@ -160,16 +160,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		this.options.modelTemperature ?? BEDROCK_DEFAULT_TEMPERATURE
 		this.costModelConfig = this.getModel()
 
-		if (this.options.awsUseCrossRegionInference) {
-			// Get the current region
-			const region = this.options.awsRegion || ""
-			// Use the helper method to get the appropriate prefix for this region
-			const prefix = AwsBedrockHandler.getPrefixForRegion(region)
-
-			// Apply the prefix if one was found, otherwise use the model ID as is
-			this.costModelConfig.id = prefix ? `${prefix}${this.costModelConfig.id}` : this.costModelConfig.id
-		}
-
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region: this.options.awsRegion,
 		}
@@ -307,7 +297,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				if (streamEvent?.trace?.promptRouter?.invokedModelId) {
 					try {
 						let invokedModelArn = this.parseArn(streamEvent.trace.promptRouter.invokedModelId)
-						if (invokedModelArn.modelId) {
+						if (invokedModelArn?.modelId) {
 							//update the in-use model info to be based on the invoked Model Id for the router
 							//so that pricing, context window, caching etc have values that can be used
 							//However, we want to keep the id of the model to be the ID for the router for
