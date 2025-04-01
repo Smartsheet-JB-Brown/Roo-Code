@@ -103,12 +103,17 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
-			awsCustomArn: "arn:aws:bedrock:us-west-2:699475926481:default-prompt-router/anthropic.claude:1",
+			awsCustomArn: "arn:aws:bedrock:us-west-2:123456789:default-prompt-router/anthropic.claude:1",
 		}
 
 		const handler = new AwsBedrockHandler(mockOptions)
 
-		// Create a spy on the getModel method before mocking it
+		// Verify that getModel returns the updated model info
+		const initialModel = handler.getModel()
+		//the default prompt router model has an input price of 3. After the stream is handled it should be updated to 8
+		expect(initialModel.info.inputPrice).toBe(3)
+
+		// Create a spy on the getModel
 		const getModelByIdSpy = jest.spyOn(handler, "getModelById")
 
 		// Mock the stream to include an event with invokedModelId and usage metadata
@@ -120,7 +125,7 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 						trace: {
 							promptRouter: {
 								invokedModelId:
-									"arn:aws:bedrock:us-west-2:699475926481:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+									"arn:aws:bedrock:us-west-2:699475926481:inference-profile/us.anthropic.claude-2-1-v1:0",
 								usage: {
 									inputTokens: 150,
 									outputTokens: 250,
@@ -159,13 +164,13 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 			events.push(event)
 		}
 
-		// Verify that getModelById was called with the full ARN
-		expect(getModelByIdSpy).toHaveBeenCalledWith("anthropic.claude-3-5-sonnet-20240620-v1:0")
+		// Verify that getModelById was called with the id, not the full arn
+		expect(getModelByIdSpy).toHaveBeenCalledWith("anthropic.claude-2-1-v1:0", "inference-profile")
 
 		// Verify that getModel returns the updated model info
 		const costModel = handler.getModel()
 		//expect(costModel.id).toBe("anthropic.claude-3-5-sonnet-20240620-v1:0")
-		expect(costModel.info.inputPrice).toBe(3)
+		expect(costModel.info.inputPrice).toBe(8)
 
 		// Verify that a usage event was emitted after updating the costModelConfig
 		const usageEvents = events.filter((event) => event.type === "usage")

@@ -296,17 +296,15 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 				if (streamEvent?.trace?.promptRouter?.invokedModelId) {
 					try {
-						let invokedModelArn = this.parseArn(streamEvent.trace.promptRouter.invokedModelId)
-						if (invokedModelArn?.modelId) {
-							//update the in-use model info to be based on the invoked Model Id for the router
-							//so that pricing, context window, caching etc have values that can be used
-							//However, we want to keep the id of the model to be the ID for the router for
-							//subsequent requests so they are sent back through the router
-							let invokedModel = this.getModelById(invokedModelArn.modelId as string)
-							if (invokedModel) {
-								invokedModel.id = modelConfig.id
-								this.costModelConfig = invokedModel
-							}
+						//update the in-use model info to be based on the invoked Model Id for the router
+						//so that pricing, context window, caching etc have values that can be used
+						//However, we want to keep the id of the model to be the ID for the router for
+						//subsequent requests so they are sent back through the router
+						let invokedArnInfo = this.parseArn(streamEvent.trace.promptRouter.invokedModelId)
+						let invokedModel = this.getModelById(invokedArnInfo.modelId as string, invokedArnInfo.modelType)
+						if (invokedModel) {
+							invokedModel.id = modelConfig.id
+							this.costModelConfig = invokedModel
 						}
 
 						// Handle metadata events for the promptRouter.
@@ -626,26 +624,28 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	//Prompt Router responses come back in a different sequence and the model used is in the response and must be fetched by name
-	getModelById(modelId: string): { id: BedrockModelId | string; info: SharedModelInfo } {
+	getModelById(modelId: string, modelType?: string): { id: BedrockModelId | string; info: SharedModelInfo } {
 		// Try to find the model in bedrockModels
 		let baseModelId = this.parseBaseModelId(modelId)
+		const id = baseModelId as BedrockModelId
+		let model
 		if (baseModelId in bedrockModels) {
-			const id = baseModelId as BedrockModelId
-
 			//Do a deep copy of the model info so that later in the code the model id and maxTokens can be set.
 			// The bedrockModels array is a constant and updating the model ID from the returned invokedModelID value
 			// in a prompt router response isn't possible on the constant.
-			let model = JSON.parse(JSON.stringify(bedrockModels[id]))
-
-			// If modelMaxTokens is explicitly set in options, override the default
-			if (this.options.modelMaxTokens && this.options.modelMaxTokens > 0) {
-				model.maxTokens = this.options.modelMaxTokens
-			}
-
-			return { id, info: model }
+			model = { id: id, info: JSON.parse(JSON.stringify(bedrockModels[id])) }
+		} else if (modelType && modelType.includes("router")) {
+			model = this.getModelById(bedrockDefaultPromptRouterModelId as string)
+		} else {
+			model = this.getModelById(bedrockDefaultModelId as string)
 		}
 
-		return { id: bedrockDefaultModelId, info: bedrockModels[bedrockDefaultModelId] }
+		// If modelMaxTokens is explicitly set in options, override the default
+		if (this.options.modelMaxTokens && this.options.modelMaxTokens > 0) {
+			model.info.maxTokens = this.options.modelMaxTokens
+		}
+
+		return model
 	}
 
 	override getModel(): { id: BedrockModelId | string; info: SharedModelInfo } {
@@ -657,12 +657,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		// If custom ARN is provided, use it
 		if (this.options.awsCustomArn) {
-			modelConfig = this.getModelById(this.arnInfo.modelId)
-
-			if (!modelConfig)
-				// An ARN was used, but no model info match found, use default model values for cost calculations and context window
-				// But continue using the ARN as the identifier in the Bedrock interaction
-				modelConfig = this.getModelById(bedrockDefaultPromptRouterModelId)
+			modelConfig = this.getModelById(this.arnInfo.modelId, this.arnInfo.modelType)
 
 			//If the user entered an ARN for a foundation-model they've done the same thing as picking from our list of options.
 			//We leave the model data matching the same as if a drop-down input method was used by not overwriting the model ID with the user input ARN
@@ -864,7 +859,11 @@ Please verify:
 			messageTemplate: `Request was throttled or rate limited. Please try:
 1. Reducing the frequency of requests
 2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed`,
+3. Contact AWS support to request a quota increase if needed
+
+{formattedErrorDetails}
+
+`,
 			logLevel: "error",
 		},
 		TOO_MANY_TOKENS: {

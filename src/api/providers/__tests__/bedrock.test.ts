@@ -77,13 +77,11 @@ describe("AwsBedrockHandler", () => {
 
 				const modelInfo = customArnHandler.getModel()
 
-				// Verify the ARN is preserved as the ID
 				expect(modelInfo.id).toBe(
 					"arn:aws:bedrock:ap-northeast-3:123456789012:inference-profile/apne3.anthropic.claude-3-5-sonnet-20241022-v2:0",
-				)
-
-				// Verify the model info is defined
-				expect(modelInfo.info).toBeDefined()
+				),
+					// Verify the model info is defined
+					expect(modelInfo.info).toBeDefined()
 
 				// Verify parseArn was called with the correct ARN
 				expect(parseArnMock).toHaveBeenCalledWith(
@@ -102,177 +100,21 @@ describe("AwsBedrockHandler", () => {
 			}
 		})
 
-		it("should use default model when custom-arn is selected but no ARN is provided", () => {
+		it("should use default prompt router model when prompt router arn is entered but no model can be identified from the ARN", () => {
 			const customArnHandler = new AwsBedrockHandler({
-				apiModelId: "custom-arn",
+				awsCustomArn:
+					"arn:aws:bedrock:ap-northeast-3:123456789012:default-prompt-router/my_router_arn_no_model",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
-				// No awsCustomArn provided
 			})
 			const modelInfo = customArnHandler.getModel()
-			// Should fall back to default model
-			expect(modelInfo.id).not.toBe("custom-arn")
+			// Should fall back to default prompt router model
+			expect(modelInfo.id).toBe(
+				"arn:aws:bedrock:ap-northeast-3:123456789012:default-prompt-router/my_router_arn_no_model",
+			) // bedrockDefaultPromptRouterModelId
 			expect(modelInfo.info).toBeDefined()
-		})
-	})
-
-	describe("invokedModelId handling", () => {
-		it("should update costModelConfig when invokedModelId is present in custom ARN scenario", async () => {
-			const customArnHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-				awsAccessKey: "test-access-key",
-				awsSecretKey: "test-secret-key",
-				awsRegion: "us-east-1",
-				awsCustomArn: "arn:aws:bedrock:us-east-1:123456789:foundation-model/custom-model",
-			})
-
-			const mockStreamEvent = {
-				trace: {
-					promptRouter: {
-						invokedModelId: "arn:aws:bedrock:us-east-1:123456789:foundation-model/custom-model:0",
-					},
-				},
-			}
-
-			jest.spyOn(customArnHandler, "getModel").mockReturnValue({
-				id: "custom-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-
-			await customArnHandler.createMessage("system prompt", [{ role: "user", content: "user message" }]).next()
-
-			expect(customArnHandler.getModel()).toEqual({
-				id: "custom-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-		})
-
-		it("should update costModelConfig when invokedModelId is present in default model scenario", async () => {
-			handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-				awsAccessKey: "test-access-key",
-				awsSecretKey: "test-secret-key",
-				awsRegion: "us-east-1",
-			})
-
-			const mockStreamEvent = {
-				trace: {
-					promptRouter: {
-						invokedModelId: "arn:aws:bedrock:us-east-1:123456789:foundation-model/default-model:0",
-					},
-				},
-			}
-
-			jest.spyOn(handler, "getModel").mockReturnValue({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-
-			await handler.createMessage("system prompt", [{ role: "user", content: "user message" }]).next()
-
-			expect(handler.getModel()).toEqual({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-		})
-
-		it("should not update costModelConfig when invokedModelId is not present", async () => {
-			handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-				awsAccessKey: "test-access-key",
-				awsSecretKey: "test-secret-key",
-				awsRegion: "us-east-1",
-			})
-
-			const mockStreamEvent = {
-				trace: {
-					promptRouter: {
-						// No invokedModelId present
-					},
-				},
-			}
-
-			jest.spyOn(handler, "getModel").mockReturnValue({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-
-			await handler.createMessage("system prompt", [{ role: "user", content: "user message" }]).next()
-
-			expect(handler.getModel()).toEqual({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-		})
-
-		it("should not update costModelConfig when invokedModelId cannot be parsed", async () => {
-			handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-				awsAccessKey: "test-access-key",
-				awsSecretKey: "test-secret-key",
-				awsRegion: "us-east-1",
-			})
-
-			const mockStreamEvent = {
-				trace: {
-					promptRouter: {
-						invokedModelId: "invalid-arn",
-					},
-				},
-			}
-
-			jest.spyOn(handler, "getModel").mockReturnValue({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
-
-			await handler.createMessage("system prompt", [{ role: "user", content: "user message" }]).next()
-
-			expect(handler.getModel()).toEqual({
-				id: "default-model",
-				info: {
-					maxTokens: 4096,
-					contextWindow: 128_000,
-					supportsPromptCache: false,
-					supportsImages: true,
-				},
-			})
+			expect(modelInfo.info.maxTokens).toBe(4096)
 		})
 	})
 })
