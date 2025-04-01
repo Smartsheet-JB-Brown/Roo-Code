@@ -412,7 +412,7 @@ const config = {
 
 ### Example 4: Adding Messages (With Token Comparison)
 
-In this example, we'll demonstrate how the algorithm handles the case when new messages have a token count small enough that cachePoints should not be changed:
+In this example, we'll demonstrate how the algorithm handles the case when new messages have a token count small enough that cache points should not be changed:
 
 **Updated Input Configuration with Previous Cache Points:**
 
@@ -459,7 +459,7 @@ const config = {
 2. It calculates the token count of the new messages (210 tokens).
 3. It analyzes the token distribution between existing cache points and finds the smallest gap (260 tokens).
 4. It compares the token count of new messages (210) with the smallest gap (260).
-5. Since the new messages have less tokens than the smallest gap (210 <> 260), it decides not to re-allocate cachePoints
+5. Since the new messages have less tokens than the smallest gap (210 < 260), it decides not to re-allocate cache points
 6. All existing cache points are preserved, and no cache point is allocated for the new messages.
 
 **Output Cache Point Placements (Unchanged):**
@@ -504,9 +504,9 @@ const config = {
 [Assistant]: Certainly! Supervised learning and unsupervised learning are two fundamental paradigms in machine learning with...
 ```
 
-**Note**: In this case, the algorithm determined that the new messages are the smallest portion of the message history in comparisson to existing cachePoints. Restructuring the cachePoints to make room to cache the new messages would be a net negative since it would not make use of 2 previously cached blocks, would have to re-write those 2 as a single cachePoint, and would write a new small cachePoint that would be chosen to be merged in the next round of messages.
+**Note**: In this case, the algorithm determined that the new messages are the smallest portion of the message history in comparison to existing cache points. Restructuring the cache points to make room to cache the new messages would be a net negative since it would not make use of 2 previously cached blocks, would have to re-write those 2 as a single cache point, and would write a new small cache point that would be chosen to be merged in the next round of messages.
 
-### Example 5: Adding Messages that reallocate cachePoints
+### Example 5: Adding Messages that reallocate cache points
 
 Now let's see what happens when we add messages with a larger token count:
 
@@ -608,7 +608,7 @@ const config = {
 
 ### Key Observations
 
-1. **Simple Initial Placement Logic**: The last user message in the range that meets the minimum token threshold is set as a cachePoint.
+1. **Simple Initial Placement Logic**: The last user message in the range that meets the minimum token threshold is set as a cache point.
 
 2. **User Message Boundary Requirement**: Cache points are placed exclusively after user messages, not after assistant messages. This ensures cache points are placed at natural conversation boundaries where the user has provided input.
 
