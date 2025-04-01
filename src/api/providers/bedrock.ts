@@ -534,12 +534,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		info: { maxTokens: 0, contextWindow: 0, supportsPromptCache: false, supportsImages: false },
 	}
 
-	/**
-	 * Validates an AWS Bedrock ARN format and optionally checks if the region in the ARN matches the provided region
-	 * @param arn The ARN string to validate
-	 * @param region Optional region to check against the ARN's region
-	 * @returns An object with validation results: { isValid, arnRegion, errorMessage }
-	 */
 	private parseArn(arn: string, region?: string) {
 		/*
 		 * VIA Roo analysis: platform-independent Regex. It's designed to parse AWS Bedrock ARNs and doesn't rely on any platform-specific features
@@ -564,10 +558,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		const arnRegex = /^arn:aws:bedrock:([^:]+):([^:]*):(?:([^\/]+)\/(.+)|([^\/]+))$/
 		let match = arn.match(arnRegex)
-
-		/*
-
-		*/
 
 		if (match && match[1] && match[3] && match[4]) {
 			// Create the result object
