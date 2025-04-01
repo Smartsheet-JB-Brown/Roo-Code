@@ -840,16 +840,20 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	> = {
 		ACCESS_DENIED: {
 			patterns: ["access", "denied", "permission"],
-			messageTemplate: `You don't have access to the model with the specified ARN. Please verify:
-1. The ARN is correct and points to a valid model
-2. Your AWS credentials have permission to access this model (check IAM policies)
-3. The region in the ARN {regionInfo} matches the region where the model is deployed
-4. If using a provisioned model, ensure it's active and not in a failed state {customModelInfo}`,
+			messageTemplate: `You don't have access to the model specified. 
+
+Please verify:
+1. Try cross-region inference if you're using a foundation model
+2. If using an ARN, verify the ARN is correct and points to a valid model
+3. Your AWS credentials have permission to access this model (check IAM policies)
+4. The region in the ARN matches the region where the model is deployed
+5. If using a provisioned model, ensure it's active and not in a failed state`,
 			logLevel: "error",
 		},
 		NOT_FOUND: {
 			patterns: ["not found", "does not exist"],
 			messageTemplate: `The specified ARN does not exist or is invalid. Please check:
+
 1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
 2. The model exists in the specified region
 3. The account ID in the ARN is correct`,
@@ -878,6 +882,12 @@ Suggestions:
 3. Use a model with a larger context window
 4. If rate limited, reduce request frequency
 5. Check your AWS Bedrock quotas and limits`,
+			logLevel: "error",
+		},
+		ON_DEMAND_NOT_SUPPORTED: {
+			patterns: ["with on-demand throughput isn’t supported."],
+			messageTemplate: `1. Try enabling cross-region inference in settings.
+2. Or, create an inference profile and then leverage the "Use custom ARN..." option of the model selector in settings.`,
 			logLevel: "error",
 		},
 		ABORT: {
