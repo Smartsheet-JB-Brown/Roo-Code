@@ -426,13 +426,18 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			const command = new ConverseCommand(payload)
 			const response = await this.client.send(command)
 
-			if (response.output && response.output instanceof Uint8Array) {
+			if (
+				response?.output?.message?.content &&
+				response.output.message.content.length > 0 &&
+				response.output.message.content[0].text &&
+				response.output.message.content[0].text.trim().length > 0
+			) {
 				try {
-					const outputStr = new TextDecoder().decode(response.output)
-					const output = JSON.parse(outputStr)
-					if (output.content) {
-						return output.content
-					}
+					//const outputStr = new TextDecoder().decode(response.output.message.content[0].text)
+					//const output = JSON.parse(outputStr)
+					//if (response.output.message.content[0].text) {
+					return response.output.message.content[0].text
+					//}
 				} catch (parseError) {
 					logger.error("Failed to parse Bedrock response", {
 						ctx: "bedrock",
