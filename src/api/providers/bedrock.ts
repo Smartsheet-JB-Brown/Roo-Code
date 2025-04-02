@@ -497,10 +497,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			previousCachePointPlacements: previousPlacements,
 		}
 
-		// Inline the logic from convertWithOptimalCaching and CacheStrategyFactory.createStrategy
-		let strategy = new MultiPointStrategy(config)
-
 		// Determine optimal cache points
+		let strategy = new MultiPointStrategy(config)
 		const result = strategy.determineOptimalCachePoints()
 
 		// Store cache point placements for future use if conversation ID is provided
@@ -626,18 +624,24 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	//Prompt Router responses come back in a different sequence and the model used is in the response and must be fetched by name
 	getModelById(modelId: string, modelType?: string): { id: BedrockModelId | string; info: SharedModelInfo } {
 		// Try to find the model in bedrockModels
-		let baseModelId = this.parseBaseModelId(modelId)
-		const id = baseModelId as BedrockModelId
+		const baseModelId = this.parseBaseModelId(modelId) as BedrockModelId
+
 		let model
 		if (baseModelId in bedrockModels) {
 			//Do a deep copy of the model info so that later in the code the model id and maxTokens can be set.
 			// The bedrockModels array is a constant and updating the model ID from the returned invokedModelID value
 			// in a prompt router response isn't possible on the constant.
-			model = { id: id, info: JSON.parse(JSON.stringify(bedrockModels[id])) }
+			model = { id: baseModelId, info: JSON.parse(JSON.stringify(bedrockModels[baseModelId])) }
 		} else if (modelType && modelType.includes("router")) {
-			model = this.getModelById(bedrockDefaultPromptRouterModelId as string)
+			model = {
+				id: bedrockDefaultPromptRouterModelId,
+				info: JSON.parse(JSON.stringify(bedrockModels[bedrockDefaultPromptRouterModelId])),
+			}
 		} else {
-			model = this.getModelById(bedrockDefaultModelId as string)
+			model = {
+				id: bedrockDefaultModelId,
+				info: JSON.parse(JSON.stringify(bedrockModels[bedrockDefaultModelId])),
+			}
 		}
 
 		// If modelMaxTokens is explicitly set in options, override the default
