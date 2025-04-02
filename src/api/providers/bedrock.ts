@@ -889,7 +889,8 @@ Suggestions:
 		},
 		ON_DEMAND_NOT_SUPPORTED: {
 			patterns: ["with on-demand throughput isn’t supported."],
-			messageTemplate: `1. Try enabling cross-region inference in settings.
+			messageTemplate: `
+1. Try enabling cross-region inference in settings.
 2. Or, create an inference profile and then leverage the "Use custom ARN..." option of the model selector in settings.`,
 			logLevel: "error",
 		},
