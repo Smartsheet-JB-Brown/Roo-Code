@@ -187,7 +187,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		const usePromptCache = Boolean(this.options.awsUsePromptCache && this.supportsAwsPromptCache(modelConfig))
 
 		// Generate a conversation ID based on the first few messages to maintain cache consistency
-		// This is a simple approach - in a real application, you might want to use a more robust ID system
 		const conversationId =
 			messages.length > 0
 				? `conv_${messages[0].role}_${
@@ -232,16 +231,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				10 * 60 * 1000,
 			)
 
-			// Log the payload for debugging custom ARN issues
-			if (this.options.awsCustomArn) {
-				// logger.debug("Using custom ARN for Bedrock request", {
-				// 	ctx: "bedrock",
-				// 	customArn: this.options.awsCustomArn,
-				// 	clientRegion: this.client.config.region,
-				// 	payload: JSON.stringify(payload, null, 2),
-				// })
-			}
-
 			const command = new ConverseStreamCommand(payload)
 			const response = await this.client.send(command, {
 				abortSignal: controller.signal,
@@ -273,15 +262,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 					// Check both field naming conventions for cache tokens
 					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
 					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
-
-					// logger.debug("Bedrock usage amounts before yielding", {
-					// 	ctx: "bedrock",
-					// 	inputTokens: usage.inputTokens || 0,
-					// 	outputTokens: usage.outputTokens || 0,
-					// 	cacheReadTokens,
-					// 	cacheWriteTokens,
-					// 	modelId: modelId,
-					// })
 
 					// Always include all available token information
 					yield {
@@ -316,15 +296,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 								routerUsage.cacheReadTokens || routerUsage.cacheReadInputTokenCount || 0
 							const cacheWriteTokens =
 								routerUsage.cacheWriteTokens || routerUsage.cacheWriteInputTokenCount || 0
-
-							// logger.debug("Bedrock prompt router usage amounts before yielding", {
-							// 	ctx: "bedrock",
-							// 	inputTokens: routerUsage.inputTokens || 0,
-							// 	outputTokens: routerUsage.outputTokens || 0,
-							// 	cacheReadTokens,
-							// 	cacheWriteTokens,
-							// 	invokedModelId: streamEvent.trace.promptRouter.invokedModelId,
-							// })
 
 							yield {
 								type: "usage",
@@ -433,11 +404,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				response.output.message.content[0].text.trim().length > 0
 			) {
 				try {
-					//const outputStr = new TextDecoder().decode(response.output.message.content[0].text)
-					//const output = JSON.parse(outputStr)
-					//if (response.output.message.content[0].text) {
 					return response.output.message.content[0].text
-					//}
 				} catch (parseError) {
 					logger.error("Failed to parse Bedrock response", {
 						ctx: "bedrock",
