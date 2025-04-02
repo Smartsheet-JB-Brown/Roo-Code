@@ -131,6 +131,9 @@
 		"awsSessionToken": "AWS 會話權杖",
 		"awsRegion": "AWS 區域",
 		"awsCrossRegion": "使用跨區域推論",
+		"enablePromptCaching": "啟用提示快取",
+		"enablePromptCachingTitle": "啟用提示快取以提升支援的模型效能並降低成本。",
+		"cacheUsageNote": "注意：如果您沒有看到快取使用情況，請嘗試選擇其他模型，然後重新選擇您想要的模型。",
 		"vscodeLmModel": "語言模型",
 		"vscodeLmWarning": "注意：此為實驗性整合，提供者支援可能不同。若遇到模型不支援錯誤，請聯繫提供者。",
 		"googleCloudSetup": {
