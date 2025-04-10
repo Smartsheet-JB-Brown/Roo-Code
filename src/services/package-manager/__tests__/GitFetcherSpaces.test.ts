@@ -16,15 +16,15 @@ describe.skip('Git command with spaces in paths', () => {
     // Set up our mocks
     const mockExecFn = jest.fn().mockResolvedValue({ stdout: '', stderr: '' });
     (promisify as unknown as jest.Mock).mockReturnValue(mockExecFn);
-
+    
     // Import the module that contains our fix
     const execAsync = promisify(exec);
-
+    
     // Execute the command with a path that contains spaces
     const url = 'https://github.com/example/repo';
     const repoDir = '/path/with spaces/to/repo';
     await execAsync(`git clone "${url}" "${repoDir}"`);
-
+    
     // Verify that exec was called with the properly quoted command
     expect(exec).toHaveBeenCalledWith(
       `git clone "${url}" "${repoDir}"`,

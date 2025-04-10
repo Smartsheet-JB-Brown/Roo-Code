@@ -12,11 +12,11 @@ const execAsync = promisify(exec);
  */
 export class GitFetcher {
   private readonly cacheDir: string;
-
+  
   constructor(private readonly context: vscode.ExtensionContext) {
     this.cacheDir = path.join(context.globalStorageUri.fsPath, "package-manager-cache");
   }
-
+  
   /**
    * Fetches repository data from a Git URL
    * @param url The Git repository URL
@@ -24,7 +24,7 @@ export class GitFetcher {
    */
   async fetchRepository(url: string): Promise<PackageManagerRepository> {
     console.log(`GitFetcher: Fetching repository from ${url}`);
-
+    
     try {
       // Ensure cache directory exists
       try {
@@ -34,12 +34,12 @@ export class GitFetcher {
         console.error(`GitFetcher: Error creating cache directory: ${mkdirError.message}`);
         throw new Error(`Failed to create cache directory: ${mkdirError.message}`);
       }
-
+      
       // Create a safe directory name from the URL
       const repoName = this.getRepoNameFromUrl(url);
       const repoDir = path.join(this.cacheDir, repoName);
       console.log(`GitFetcher: Repository directory: ${repoDir}`);
-
+      
       // Clone or pull repository with timeout protection
       try {
         console.log(`GitFetcher: Cloning or pulling repository ${url}`);
@@ -49,20 +49,20 @@ export class GitFetcher {
         console.error(`GitFetcher: Git operation failed: ${gitError.message}`);
         throw new Error(`Git operation failed: ${gitError.message}`);
       }
-
+      
       try {
         // Validate repository structure
         console.log(`GitFetcher: Validating repository structure`);
         await this.validateRepositoryStructure(repoDir);
-
+        
         // Parse metadata
         console.log(`GitFetcher: Parsing repository metadata`);
         const metadata = await this.parseRepositoryMetadata(repoDir);
-
+        
         // Parse items
         console.log(`GitFetcher: Parsing package manager items`);
         const items = await this.parsePackageManagerItems(repoDir, url);
-
+        
         console.log(`GitFetcher: Successfully fetched repository with ${items.length} items`);
         return {
           metadata,
@@ -72,10 +72,10 @@ export class GitFetcher {
       } catch (validationError) {
         // Log the validation error
         console.error(`GitFetcher: Repository validation failed: ${validationError.message}`);
-
+        
         // Show error message
         vscode.window.showErrorMessage(`Failed to fetch repository: ${validationError.message}`);
-
+        
         // Return empty repository
         return {
           metadata: {},
@@ -88,7 +88,7 @@ export class GitFetcher {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`GitFetcher: Failed to fetch repository: ${errorMessage}`);
       vscode.window.showErrorMessage(`Failed to fetch repository: ${errorMessage}`);
-
+      
       // Return empty repository
       return {
         metadata: {},
@@ -97,7 +97,7 @@ export class GitFetcher {
       };
     }
   }
-
+  
   /**
    * Extracts a safe directory name from a Git URL
    * @param url The Git repository URL
@@ -109,7 +109,7 @@ export class GitFetcher {
     const repoName = urlParts[urlParts.length - 1].replace(/\.git$/, "");
     return repoName.replace(/[^a-zA-Z0-9-_]/g, "-");
   }
-
+  
   /**
    * Clones or pulls a Git repository
    * @param url The Git repository URL
@@ -117,16 +117,16 @@ export class GitFetcher {
    */
   private async cloneOrPullRepository(url: string, repoDir: string): Promise<void> {
     console.log(`GitFetcher: Checking if repository exists at ${repoDir}`);
-
+    
     try {
       // Check if repository already exists
       const repoExists = await fs.stat(path.join(repoDir, ".git"))
         .then(() => true)
         .catch(() => false);
-
+      
       if (repoExists) {
         console.log(`GitFetcher: Repository exists, attempting to pull latest changes`);
-
+        
         try {
           // Try to pull latest changes with timeout
           const pullPromise = execAsync("git pull", { cwd: repoDir, timeout: 20000 });
@@ -134,13 +134,13 @@ export class GitFetcher {
           console.log(`GitFetcher: Successfully pulled latest changes`);
         } catch (pullError) {
           console.error(`GitFetcher: Failed to pull repository: ${pullError.message}`);
-
+          
           // If pull fails, try to remove the directory and clone again
           console.log(`GitFetcher: Attempting to remove and re-clone repository`);
           try {
             await fs.rm(repoDir, { recursive: true, force: true });
             console.log(`GitFetcher: Removed existing repository directory`);
-
+            
             // Clone with timeout
             const clonePromise = execAsync(`git clone "${url}" "${repoDir}"`, { timeout: 30000 });
             await clonePromise;
@@ -152,7 +152,7 @@ export class GitFetcher {
         }
       } else {
         console.log(`GitFetcher: Repository does not exist, cloning from ${url}`);
-
+        
         // Clone repository with timeout
         const clonePromise = execAsync(`git clone "${url}" "${repoDir}"`, { timeout: 30000 });
         await clonePromise;
@@ -163,7 +163,7 @@ export class GitFetcher {
       throw new Error(`Failed to clone or pull repository: ${error.message}`);
     }
   }
-
+  
   /**
    * Validates that a repository follows the expected structure
    * @param repoDir The repository directory
@@ -171,31 +171,31 @@ export class GitFetcher {
   private async validateRepositoryStructure(repoDir: string): Promise<void> {
     // Check for required files
     const metadataPath = path.join(repoDir, "metadata.yml");
-
+    
     const metadataExists = await fs.stat(metadataPath)
       .then(() => true)
       .catch(() => false);
-
+      
     if (!metadataExists) {
       throw new Error("Repository is missing metadata.yml file");
     }
-
+    
     // Check for at least one of the item type directories
     const mcpServersDir = path.join(repoDir, "mcp-servers");
     const rolesDir = path.join(repoDir, "roles");
     const storageSystemsDir = path.join(repoDir, "storage-systems");
     const itemsDir = path.join(repoDir, "items"); // For backward compatibility
-
+    
     const mcpServersDirExists = await fs.stat(mcpServersDir).then(() => true).catch(() => false);
     const rolesDirExists = await fs.stat(rolesDir).then(() => true).catch(() => false);
     const storageSystemsDirExists = await fs.stat(storageSystemsDir).then(() => true).catch(() => false);
     const itemsDirExists = await fs.stat(itemsDir).then(() => true).catch(() => false);
-
+    
     if (!mcpServersDirExists && !rolesDirExists && !storageSystemsDirExists && !itemsDirExists) {
       throw new Error("Repository is missing item directories (mcp-servers, roles, storage-systems, or items)");
     }
   }
-
+  
   /**
    * Parses the repository metadata file
    * @param repoDir The repository directory
@@ -205,7 +205,7 @@ export class GitFetcher {
     // Parse metadata.yml file
     const metadataPath = path.join(repoDir, "metadata.yml");
     const metadataContent = await fs.readFile(metadataPath, "utf-8");
-
+    
     // For now, we'll return a simple object
     // In a future update, we'll add a YAML parser dependency
     try {
@@ -223,7 +223,7 @@ export class GitFetcher {
       };
     }
   }
-
+  
   /**
    * Parses package manager items from a repository
    * @param repoDir The repository directory
@@ -232,7 +232,7 @@ export class GitFetcher {
    */
   private async parsePackageManagerItems(repoDir: string, repoUrl: string, branch: string = "main"): Promise<PackageManagerItem[]> {
     const items: PackageManagerItem[] = [];
-
+    
     // Check for items in each directory type
     const directoryTypes = [
       { path: path.join(repoDir, "mcp-servers"), type: "mcp-server", urlPath: "mcp-servers" },
@@ -240,23 +240,23 @@ export class GitFetcher {
       { path: path.join(repoDir, "storage-systems"), type: "storage", urlPath: "storage-systems" },
       { path: path.join(repoDir, "items"), type: "other", urlPath: "items" } // For backward compatibility
     ];
-
+    
     for (const dirType of directoryTypes) {
       try {
         // Check if directory exists
         const dirExists = await fs.stat(dirType.path)
           .then(() => true)
           .catch(() => false);
-
+        
         if (!dirExists) continue;
-
+        
         // Get all subdirectories
         const itemDirs = await fs.readdir(dirType.path);
-
+        
         for (const itemDir of itemDirs) {
           const itemPath = path.join(dirType.path, itemDir);
           const stats = await fs.stat(itemPath);
-
+          
           if (stats.isDirectory()) {
             try {
               // Parse item metadata
@@ -264,10 +264,10 @@ export class GitFetcher {
               const metadataExists = await fs.stat(metadataPath)
                 .then(() => true)
                 .catch(() => false);
-
+                
               if (metadataExists) {
                 const metadataContent = await fs.readFile(metadataPath, "utf-8");
-
+                
                 // For now, we'll parse the YAML content manually
                 // In a future update, we'll add a YAML parser dependency
                 const name = metadataContent.match(/name:\s*["']?([^"'\n]+)["']?/)?.[1] || itemDir;
@@ -276,13 +276,13 @@ export class GitFetcher {
                 const type = metadataContent.match(/type:\s*["']?([^"'\n]+)["']?/)?.[1] || dirType.type;
                 const author = metadataContent.match(/author:\s*["']?([^"'\n]+)["']?/)?.[1];
                 const version = metadataContent.match(/version:\s*["']?([^"'\n]+)["']?/)?.[1];
-
+                
                 // Parse tags if present
                 const tagsMatch = metadataContent.match(/tags:\s*\[(.*?)\]/);
                 const tags = tagsMatch ?
                   tagsMatch[1].split(",").map(tag => tag.trim().replace(/["']/g, "")) :
                   undefined;
-
+                
                 const item: PackageManagerItem = {
                   name,
                   description,
@@ -293,7 +293,7 @@ export class GitFetcher {
                   tags,
                   version
                 };
-
+                
                 items.push(item);
               }
             } catch (error) {
@@ -305,7 +305,7 @@ export class GitFetcher {
         console.error(`Failed to parse directory ${dirType.path}:`, error);
       }
     }
-
+    
     return items;
   }
 }

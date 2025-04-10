@@ -31,12 +31,12 @@ export async function handlePackageManagerMessages(
       try {
         console.log("Package Manager: Received request to fetch package manager items")
         console.log("DEBUG: Processing package manager request")
-
+        
         // Wrap the entire initialization in a try-catch block
         try {
           // Initialize default sources if none exist
           let sources = await provider.contextProxy.getValue("packageManagerSources") as PackageManagerSource[] || []
-
+          
           if (!sources || sources.length === 0) {
             console.log("Package Manager: No sources found, initializing default sources")
             sources = [
@@ -46,21 +46,21 @@ export async function handlePackageManagerMessages(
                 enabled: true
               }
           ];
-
+          
           // Save the default sources
           await provider.contextProxy.setValue("packageManagerSources", sources)
           console.log("Package Manager: Default sources initialized")
         }
-
+        
         console.log(`Package Manager: Fetching items from ${sources.length} sources`)
         console.log(`DEBUG: PackageManagerManager instance: ${packageManagerManager ? "exists" : "null"}`)
-
+        
         // Add timing information
         const startTime = Date.now()
-
+        
         // Simplify the initialization by limiting the number of items and adding more error handling
         let items: PackageManagerItem[] = [];
-
+        
         try {
           console.log("DEBUG: Starting to fetch items from sources");
           // Only fetch from the first enabled source to reduce complexity
@@ -68,7 +68,7 @@ export async function handlePackageManagerMessages(
           if (enabledSources.length > 0) {
             const firstSource = enabledSources[0];
             console.log(`Package Manager: Fetching items from first source: ${firstSource.url}`);
-
+            
             // Get items from the first source only
             const sourceItems = await packageManagerManager.getPackageManagerItems([firstSource]);
             items = sourceItems;
@@ -81,19 +81,19 @@ export async function handlePackageManagerMessages(
           // Continue with empty items array
           items = [];
         }
-
+        
         console.log("DEBUG: Fetch completed, preparing to send items to webview");
         const endTime = Date.now()
-
+        
         console.log(`Package Manager: Found ${items.length} items in ${endTime - startTime}ms`)
         console.log(`Package Manager: First item:`, items.length > 0 ? items[0] : 'No items')
-
+        
         // Send the items to the webview
         console.log("DEBUG: Creating message to send items to webview");
-
+        
         // Get the current state to include apiConfiguration to prevent welcome screen from showing
         const currentState = await provider.getState();
-
+        
         const message = {
           type: "state",
           state: {
@@ -103,20 +103,20 @@ export async function handlePackageManagerMessages(
             packageManagerItems: items
           }
         } as ExtensionMessage;
-
+        
         console.log(`Package Manager: Sending message to webview:`, message);
         console.log("DEBUG: About to call postMessageToWebview with apiConfiguration:",
           currentState.apiConfiguration ? "present" : "missing");
         provider.postMessageToWebview(message);
         console.log("DEBUG: Called postMessageToWebview");
         console.log(`Package Manager: Message sent to webview`);
-
+        
         } catch (initError) {
           console.error("Error in package manager initialization:", initError);
           // Send an empty items array to the webview to prevent the spinner from spinning forever
           // Get the current state to include apiConfiguration to prevent welcome screen from showing
           const currentState = await provider.getState();
-
+          
           provider.postMessageToWebview({
             type: "state",
             state: {
@@ -139,7 +139,7 @@ export async function handlePackageManagerMessages(
         // Enforce maximum of 10 sources
         const MAX_SOURCES = 10;
         let updatedSources: PackageManagerSource[];
-
+        
         if (message.sources.length > MAX_SOURCES) {
           // Truncate to maximum allowed and show warning
           updatedSources = message.sources.slice(0, MAX_SOURCES);
@@ -147,10 +147,10 @@ export async function handlePackageManagerMessages(
         } else {
           updatedSources = message.sources;
         }
-
+        
         // Update the global state with the new sources
         await updateGlobalState("packageManagerSources", updatedSources);
-
+        
         // Clean up cache directories for repositories that are no longer in the sources list
         try {
           console.log("Package Manager: Cleaning up cache directories for removed sources");
@@ -159,7 +159,7 @@ export async function handlePackageManagerMessages(
         } catch (error) {
           console.error("Package Manager: Error during cache cleanup:", error);
         }
-
+        
         // Update the webview with the new state
         await provider.postStateToWebview();
       }
@@ -180,24 +180,24 @@ export async function handlePackageManagerMessages(
       }
       return true;
     }
-
+    
     case "refreshPackageManagerSource": {
       if (message.url) {
         try {
           console.log(`Package Manager: Received request to refresh source ${message.url}`);
-
+          
           // Get the current sources
           const sources = await provider.contextProxy.getValue("packageManagerSources") as PackageManagerSource[] || [];
-
+          
           // Find the source with the matching URL
           const source = sources.find(s => s.url === message.url);
-
+          
           if (source) {
             try {
               // Refresh the repository
               await packageManagerManager.refreshRepository(message.url);
               vscode.window.showInformationMessage(`Successfully refreshed package manager source: ${source.name || message.url}`);
-
+              
               // Trigger a fetch to update the UI with the refreshed data
               const currentState = await provider.getState();
               provider.postMessageToWebview({
@@ -226,8 +226,8 @@ export async function handlePackageManagerMessages(
       }
       return true;
     }
-
-
+    
+    
     default:
       return false
   }

@@ -19,7 +19,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   const [items, setItems] = useState<PackageManagerItem[]>([]);
   const [activeTab, setActiveTab] = useState<"browse" | "sources">("browse");
   const [refreshingUrls, setRefreshingUrls] = useState<string[]>([]);
-
+  
   // Track activeTab changes
   useEffect(() => {
     console.log("DEBUG: activeTab changed to", activeTab);
@@ -27,7 +27,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   const [filters, setFilters] = useState({ type: "", search: "" });
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
+  
   // Debug state changes
   useEffect(() => {
     console.log("DEBUG: items state changed", {
@@ -35,10 +35,10 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       isFetching
     });
   }, [items]);
-
+  
   // Track if we're currently fetching items to prevent duplicate requests
   const [isFetching, setIsFetching] = useState(false);
-
+  
   // Use a ref to track if we've already fetched items
   const hasInitialFetch = useRef(false);
 
@@ -67,7 +67,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   // Always fetch items when component mounts, regardless of other conditions
   useEffect(() => {
     console.log("DEBUG: PackageManagerView mount effect triggered");
-
+    
     // Force fetch on mount, ignoring all conditions
     setTimeout(() => {
       console.log("DEBUG: Forcing fetch on component mount");
@@ -75,10 +75,10 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       fetchPackageManagerItems();
       hasInitialFetch.current = true;
     }, 500); // Small delay to ensure component is fully mounted
-
-
+    
+    
   }, []); // Empty dependency array means this runs once on mount
-
+  
   // Additional effect for when packageManagerSources changes
   useEffect(() => {
     console.log("DEBUG: PackageManagerView packageManagerSources effect triggered", {
@@ -87,7 +87,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       isFetching,
       itemsLength: items.length
     });
-
+    
     // Only fetch if packageManagerSources changes and we're not already fetching
     if (packageManagerSources && hasInitialFetch.current && !isFetching) {
       console.log("DEBUG: Calling fetchPackageManagerItems due to sources change");
@@ -98,13 +98,13 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   // Handle message from extension
   useEffect(() => {
     console.log("DEBUG: Setting up message handler");
-
+    
     const handleMessage = (event: MessageEvent) => {
       console.log("DEBUG: Message received in PackageManagerView", event.data);
       console.log("DEBUG: Message type:", event.data.type);
       console.log("DEBUG: Message state:", event.data.state ? "exists" : "undefined");
       const message = event.data;
-
+      
       // Handle action messages - specifically for packageManagerButtonClicked
       if (message.type === "action" && message.action === "packageManagerButtonClicked") {
         console.log("DEBUG: Received packageManagerButtonClicked action, triggering fetch");
@@ -126,7 +126,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
           return updated;
         });
       }
-
+      
       // Handle state messages with packageManagerItems
       if (message.type === "state" && message.state) {
         console.log("DEBUG: Received state message", message.state);
@@ -134,17 +134,17 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
         if (message.state.packageManagerItems) {
           console.log("DEBUG: packageManagerItems length:", message.state.packageManagerItems.length);
         }
-
+        
         // Check for packageManagerItems
         if (message.state.packageManagerItems) {
           const receivedItems = message.state.packageManagerItems || [];
           console.log("DEBUG: Received packageManagerItems", receivedItems.length);
           console.log("DEBUG: Full message state:", message.state);
-
+          
           if (receivedItems.length > 0) {
             console.log("DEBUG: First item:", receivedItems[0]);
             console.log("DEBUG: All items:", JSON.stringify(receivedItems));
-
+            
             // Force a new array reference to ensure React detects the change
             setItems([...receivedItems]);
             setIsFetching(false);
@@ -170,28 +170,28 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
     if (filters.type && item.type !== filters.type) {
       return false;
     }
-
+    
     // Filter by search term
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       const nameMatch = item.name.toLowerCase().includes(searchTerm);
       const descMatch = item.description.toLowerCase().includes(searchTerm);
       const authorMatch = item.author?.toLowerCase().includes(searchTerm);
-
+      
       if (!nameMatch && !descMatch && !authorMatch) {
         return false;
       }
     }
-
+    
     return true;
   });
   console.log("DEBUG: After filtering", { filteredItemsCount: filteredItems.length });
-
+  
   // Sort items
   console.log("DEBUG: Sorting items", { filteredItemsCount: filteredItems.length, sortBy, sortOrder });
   const sortedItems = [...filteredItems].sort((a, b) => {
     let comparison = 0;
-
+    
     switch (sortBy) {
       case "name":
         comparison = a.name.localeCompare(b.name);
@@ -211,12 +211,12 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       default:
         comparison = a.name.localeCompare(b.name);
     }
-
+    
     return sortOrder === "asc" ? comparison : -comparison;
   });
-  console.log("DEBUG: Final sorted items", {
-    sortedItemsCount: sortedItems.length,
-    firstItem: sortedItems.length > 0 ? sortedItems[0].name : 'none'
+  console.log("DEBUG: Final sorted items", { 
+    sortedItemsCount: sortedItems.length, 
+    firstItem: sortedItems.length > 0 ? sortedItems[0].name : 'none' 
   });
 
   // Add debug logging right before rendering
@@ -226,7 +226,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       firstItem: sortedItems.length > 0 ? `${sortedItems[0].name} (${sortedItems[0].type})` : 'none'
     });
   }, [sortedItems]);
-
+  
   // Log right before rendering
   console.log("DEBUG: About to render with", {
     itemsLength: items.length,
@@ -234,7 +234,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
     sortedItemsLength: sortedItems.length,
     activeTab
   });
-
+  
   return (
     <Tab>
       <TabHeader className="flex justify-between items-center">
@@ -306,12 +306,12 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                 </div>
               </div>
             </div>
-
+            
             {console.log("DEBUG: Rendering condition", {
               sortedItemsLength: sortedItems.length,
               condition: sortedItems.length === 0 ? "empty" : "has items"
             })}
-
+            
             {sortedItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
                 <p>No package manager items found</p>
@@ -373,7 +373,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
 
 const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
   const { t } = useAppTranslation();
-
+  
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "role":
@@ -386,7 +386,7 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
         return "Other";
     }
   };
-
+  
   const getTypeColor = (type: string) => {
     switch (type) {
       case "role":
@@ -399,7 +399,7 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
         return "bg-gray-600";
     }
   };
-
+  
   const handleOpenUrl = () => {
     console.log(`PackageManagerItemCard: Opening URL: ${item.url}`);
     vscode.postMessage({
@@ -424,14 +424,14 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
           {getTypeLabel(item.type)}
         </span>
       </div>
-
+      
       <p className="my-2 text-vscode-foreground">{item.description}</p>
-
+      
       {item.tags && item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 my-2">
           {item.tags.map(tag => (
-            <span
-              key={tag}
+            <span 
+              key={tag} 
               className="px-2 py-1 text-xs bg-vscode-badge-background text-vscode-badge-foreground rounded-full"
             >
               {tag}
@@ -439,7 +439,7 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
           ))}
         </div>
       )}
-
+      
       <div className="flex justify-between items-center mt-4">
         <div className="flex items-center gap-4 text-sm text-vscode-descriptionForeground">
           {item.version && (
@@ -467,7 +467,7 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
             </span>
           )}
         </div>
-
+        
         <Button onClick={handleOpenUrl}>
           <span className="codicon codicon-link-external mr-2"></span>
           View on GitHub
@@ -528,7 +528,7 @@ const PackageManagerSourcesConfig = ({
     };
 
     onSourcesChange([...sources, newSource]);
-
+    
     // Reset form
     setNewSourceUrl("");
     setNewSourceName("");
@@ -545,11 +545,11 @@ const PackageManagerSourcesConfig = ({
     const updatedSources = sources.filter((_, i) => i !== index);
     onSourcesChange(updatedSources);
   };
-
+  
   const handleRefreshSource = (url: string) => {
     // Add URL to refreshing list
     setRefreshingUrls(prev => [...prev, url]);
-
+    
     // Send message to refresh this specific source
     vscode.postMessage({
       type: "refreshPackageManagerSource",
@@ -563,7 +563,7 @@ const PackageManagerSourcesConfig = ({
       <p className="text-vscode-descriptionForeground mb-4">
         Add Git repositories that contain package manager items. These repositories will be fetched when browsing the package manager.
       </p>
-
+      
       <div className="mb-6">
         <h5 className="text-vscode-foreground mb-2">Add New Source</h5>
         <div className="flex flex-col gap-2 mb-2">

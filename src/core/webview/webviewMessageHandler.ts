@@ -73,11 +73,11 @@ export const webviewMessageHandler = async (
 			console.log(`DEBUG: About to call postStateToWebview`);
 			await provider.postStateToWebview();
 			console.log(`DEBUG: After calling postStateToWebview`);
-
+			
 			console.log(`DEBUG: About to initialize workspace tracker file paths`);
 			provider.workspaceTracker?.initializeFilePaths(); // don't await
 			console.log(`DEBUG: After initializing workspace tracker file paths`);
-
+			
 			// Continue with the rest of the webviewDidLaunch case
 			console.log(`DEBUG: Continuing with webviewDidLaunch case`);
 			getTheme().then((theme) => {
@@ -85,7 +85,7 @@ export const webviewMessageHandler = async (
 				provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) });
 			});
 
-
+			
 			// If MCP Hub is already initialized, update the webview with current server list
 			console.log(`DEBUG: Getting MCP Hub`);
 			const mcpHub = provider.getMcpHub();
@@ -1363,7 +1363,7 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		}
-
+		
 }
 
 // Handle package manager related messages

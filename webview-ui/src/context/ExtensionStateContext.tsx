@@ -197,13 +197,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 						hasPackageManagerItems: !!newState.packageManagerItems,
 						packageManagerItemsCount: newState.packageManagerItems?.length || 0
 					});
-
+					
 					setState((prevState) => mergeExtensionState(prevState, newState))
-
+					
 					const shouldShowWelcome = !checkExistKey(newState.apiConfiguration);
 					console.log("DEBUG: Setting showWelcome to", shouldShowWelcome,
 						"based on apiConfiguration check:", newState.apiConfiguration ? "has config" : "missing config");
-
+					
 					setShowWelcome(shouldShowWelcome)
 					setDidHydrateState(true)
 					break

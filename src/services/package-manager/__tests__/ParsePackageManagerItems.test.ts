@@ -22,21 +22,21 @@ jest.mock('vscode', () => ({
 
 describe('Parse Package Manager Items', () => {
   let gitFetcher: GitFetcher;
-
+  
   const mockContext = {
     globalStorageUri: { fsPath: '/mock/storage/path' }
   } as unknown as vscode.ExtensionContext;
-
+  
   beforeEach(() => {
     gitFetcher = new GitFetcher(mockContext);
     jest.clearAllMocks();
   });
-
+  
   // Helper function to access private method
   const parsePackageManagerItems = async (repoDir: string, repoUrl: string) => {
     return (gitFetcher as any).parsePackageManagerItems(repoDir, repoUrl);
   };
-
+  
   describe('directory structure handling', () => {
     it('should parse items from mcp-servers directory', async () => {
       // Mock directory structure
@@ -50,7 +50,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('Not found'));
       });
-
+      
       // Mock readdir to return items in mcp-servers directory
       mockedFs.readdir.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -59,7 +59,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.resolve([] as any);
       });
-
+      
       // Mock readFile to return metadata content
       mockedFs.readFile.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -68,17 +68,17 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('File not found'));
       });
-
+      
       // Call the method
       const items = await parsePackageManagerItems('/mock/repo', 'https://github.com/example/repo');
-
+      
       // Assertions
       expect(items).toHaveLength(1);
       expect(items[0].name).toBe('File Analyzer MCP Server');
       expect(items[0].type).toBe('mcp-server');
       expect(items[0].url).toBe('https://github.com/example/repo/tree/main/mcp-servers/file-analyzer');
     });
-
+    
     it('should parse items from roles directory', async () => {
       // Mock directory structure
       mockedFs.stat.mockImplementation((path) => {
@@ -91,7 +91,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('Not found'));
       });
-
+      
       // Mock readdir to return items in roles directory
       mockedFs.readdir.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -100,7 +100,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.resolve([] as any);
       });
-
+      
       // Mock readFile to return metadata content
       mockedFs.readFile.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -109,17 +109,17 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('File not found'));
       });
-
+      
       // Call the method
       const items = await parsePackageManagerItems('/mock/repo', 'https://github.com/example/repo');
-
+      
       // Assertions
       expect(items).toHaveLength(1);
       expect(items[0].name).toBe('Full-Stack Developer Role');
       expect(items[0].type).toBe('role');
       expect(items[0].url).toBe('https://github.com/example/repo/tree/main/roles/developer-role');
     });
-
+    
     it('should parse items from storage-systems directory', async () => {
       // Mock directory structure
       mockedFs.stat.mockImplementation((path) => {
@@ -132,7 +132,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('Not found'));
       });
-
+      
       // Mock readdir to return items in storage-systems directory
       mockedFs.readdir.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -141,7 +141,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.resolve([] as any);
       });
-
+      
       // Mock readFile to return metadata content
       mockedFs.readFile.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -150,17 +150,17 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('File not found'));
       });
-
+      
       // Call the method
       const items = await parsePackageManagerItems('/mock/repo', 'https://github.com/example/repo');
-
+      
       // Assertions
       expect(items).toHaveLength(1);
       expect(items[0].name).toBe('GitHub Storage System');
       expect(items[0].type).toBe('storage');
       expect(items[0].url).toBe('https://github.com/example/repo/tree/main/storage-systems/github-storage');
     });
-
+    
     it('should parse items from items directory (backward compatibility)', async () => {
       // Mock directory structure
       mockedFs.stat.mockImplementation((path) => {
@@ -173,7 +173,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('Not found'));
       });
-
+      
       // Mock readdir to return items in items directory
       mockedFs.readdir.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -182,7 +182,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.resolve([] as any);
       });
-
+      
       // Mock readFile to return metadata content
       mockedFs.readFile.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -191,17 +191,17 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('File not found'));
       });
-
+      
       // Call the method
       const items = await parsePackageManagerItems('/mock/repo', 'https://github.com/example/repo');
-
+      
       // Assertions
       expect(items).toHaveLength(1);
       expect(items[0].name).toBe('Generic Item');
       expect(items[0].type).toBe('other');
       expect(items[0].url).toBe('https://github.com/example/repo/tree/main/items/generic-item');
     });
-
+    
     it('should parse items from multiple directories', async () => {
       // Mock directory structure
       mockedFs.stat.mockImplementation((path) => {
@@ -214,7 +214,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('Not found'));
       });
-
+      
       // Mock readdir to return items in each directory
       mockedFs.readdir.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -229,7 +229,7 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.resolve([] as any);
       });
-
+      
       // Mock readFile to return metadata content
       mockedFs.readFile.mockImplementation((path) => {
         const pathStr = path.toString();
@@ -244,25 +244,25 @@ describe('Parse Package Manager Items', () => {
         }
         return Promise.reject(new Error('File not found'));
       });
-
+      
       // Call the method
       const items = await parsePackageManagerItems('/mock/repo', 'https://github.com/example/repo');
-
+      
       // Assertions
       expect(items).toHaveLength(3);
-
+      
       // Check for MCP server item
       const mcpServerItem = items.find((item: PackageManagerItem) => item.type === 'mcp-server');
       expect(mcpServerItem).toBeDefined();
       expect(mcpServerItem?.name).toBe('File Analyzer MCP Server');
       expect(mcpServerItem?.url).toBe('https://github.com/example/repo/tree/main/mcp-servers/file-analyzer');
-
+      
       // Check for role item
       const roleItem = items.find((item: PackageManagerItem) => item.type === 'role');
       expect(roleItem).toBeDefined();
       expect(roleItem?.name).toBe('Full-Stack Developer Role');
       expect(roleItem?.url).toBe('https://github.com/example/repo/tree/main/roles/developer-role');
-
+      
       // Check for storage system item
       const storageItem = items.find((item: PackageManagerItem) => item.type === 'storage');
       expect(storageItem).toBeDefined();
