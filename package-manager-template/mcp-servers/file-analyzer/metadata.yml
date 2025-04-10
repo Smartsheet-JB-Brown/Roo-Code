@@ -1,0 +1,7 @@
+name: "File Analyzer MCP Server"
+description: "An MCP server that analyzes files for code quality, security issues, and performance optimizations"
+type: "mcp-server"
+author: "Roo Team"
+version: "1.0.0"
+lastUpdated: "2025-04-08"
+tags: ["file-analyzer", "code-quality", "security", "performance"]

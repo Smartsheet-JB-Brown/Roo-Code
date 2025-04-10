@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { ApiConfiguration, ApiProvider } from "./api"
 import { Mode, PromptComponent, ModeConfig } from "./modes"
+import { PackageManagerSource } from "../services/package-manager/types"
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
 
@@ -121,6 +122,12 @@ export interface WebviewMessage {
 		| "maxReadFileLine"
 		| "searchFiles"
 		| "toggleApiConfigPin"
+		| "packageManagerSources"
+		| "fetchPackageManagerItems"
+		| "packageManagerButtonClicked"
+		| "refreshPackageManagerSource"
+		| "repositoryRefreshComplete"
+		| "openExternal"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
@@ -146,6 +153,8 @@ export interface WebviewMessage {
 	source?: "global" | "project"
 	requestId?: string
 	ids?: string[]
+	sources?: PackageManagerSource[]
+	url?: string // For openExternal
 }
 
 export const checkoutDiffPayloadSchema = z.object({

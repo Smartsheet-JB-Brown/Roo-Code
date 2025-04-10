@@ -19,6 +19,7 @@ import { ClineProvider } from "./core/webview/ClineProvider"
 import { CodeActionProvider } from "./core/CodeActionProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { McpServerManager } from "./services/mcp/McpServerManager"
+import { PackageManagerManager } from "./services/package-manager"
 import { telemetryService } from "./services/telemetry/TelemetryService"
 import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
 import { API } from "./exports/api"
@@ -65,9 +66,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	if (!context.globalState.get("allowedCommands")) {
 		context.globalState.update("allowedCommands", defaultCommands)
 	}
+const provider = new ClineProvider(context, outputChannel, "sidebar")
 
-	const provider = new ClineProvider(context, outputChannel, "sidebar")
-	telemetryService.setProvider(provider)
+// Initialize package manager
+const packageManagerManager = new PackageManagerManager(context)
+provider.setPackageManagerManager(packageManagerManager)
+telemetryService.setProvider(provider)
+
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {

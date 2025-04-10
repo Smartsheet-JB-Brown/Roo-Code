@@ -13,10 +13,13 @@ import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import McpView from "./components/mcp/McpView"
+import PackageManagerView from "./components/package-manager/PackageManagerView"
 import PromptsView from "./components/prompts/PromptsView"
 import { HumanRelayDialog } from "./components/human-relay/HumanRelayDialog"
 
-type Tab = "settings" | "history" | "mcp" | "prompts" | "chat"
+
+
+type Tab = "settings" | "history" | "mcp" | "prompts" | "chat" | "packageManager"
 
 const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]>, Tab>> = {
 	chatButtonClicked: "chat",
@@ -24,6 +27,7 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 	promptsButtonClicked: "prompts",
 	mcpButtonClicked: "mcp",
 	historyButtonClicked: "history",
+	packageManagerButtonClicked: "packageManager",
 }
 
 const App = () => {
@@ -105,6 +109,7 @@ const App = () => {
 			{tab === "mcp" && <McpView onDone={() => switchTab("chat")} />}
 			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
 			{tab === "settings" && <SettingsView ref={settingsRef} onDone={() => setTab("chat")} />}
+			{tab === "packageManager" && <PackageManagerView onDone={() => switchTab("chat")} />}
 			<ChatView
 				isHidden={tab !== "chat"}
 				showAnnouncement={showAnnouncement}

@@ -42,12 +42,23 @@ import { getDiffStrategy } from "../diff/DiffStrategy"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildApiHandler } from "../../api"
 import { GlobalState } from "../../schemas"
+import { PackageManagerManager } from "../../services/package-manager"
+import { handlePackageManagerMessages } from "./packageManagerMessageHandler"
 
-export const webviewMessageHandler = async (provider: ClineProvider, message: WebviewMessage) => {
+// Track if package manager data has been loaded
+let packageManagerDataLoaded = false;
+
+export const webviewMessageHandler = async (
+	provider: ClineProvider,
+	message: WebviewMessage,
+	packageManagerManager?: PackageManagerManager
+) => {
 	// Utility functions provided for concise get/update of global state via contextProxy API.
 	const getGlobalState = <K extends keyof GlobalState>(key: K) => provider.contextProxy.getValue(key)
 	const updateGlobalState = async <K extends keyof GlobalState>(key: K, value: GlobalState[K]) =>
 		await provider.contextProxy.setValue(key, value)
+
+
 
 	switch (message.type) {
 		case "webviewDidLaunch":
@@ -55,18 +66,40 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			const customModes = await provider.customModesManager.getCustomModes()
 			await updateGlobalState("customModes", customModes)
 
-			provider.postStateToWebview()
-			provider.workspaceTracker?.initializeFilePaths() // don't await
+			// Don't handle package manager messages in webviewDidLaunch
+			// They will be handled by the fetchPackageManagerItems case
+			console.log(`DEBUG: webviewDidLaunch - skipping package manager handling, will be triggered by explicit fetchPackageManagerItems`);
 
-			getTheme().then((theme) => provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }))
+			console.log(`DEBUG: About to call postStateToWebview`);
+			await provider.postStateToWebview();
+			console.log(`DEBUG: After calling postStateToWebview`);
+
+			console.log(`DEBUG: About to initialize workspace tracker file paths`);
+			provider.workspaceTracker?.initializeFilePaths(); // don't await
+			console.log(`DEBUG: After initializing workspace tracker file paths`);
+
+			// Continue with the rest of the webviewDidLaunch case
+			console.log(`DEBUG: Continuing with webviewDidLaunch case`);
+			getTheme().then((theme) => {
+				console.log(`DEBUG: Got theme, posting to webview`);
+				provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) });
+			});
+
 
 			// If MCP Hub is already initialized, update the webview with current server list
-			const mcpHub = provider.getMcpHub()
+			console.log(`DEBUG: Getting MCP Hub`);
+			const mcpHub = provider.getMcpHub();
 			if (mcpHub) {
+				console.log(`DEBUG: MCP Hub exists, getting servers`);
+				const servers = mcpHub!.getAllServers();
+				console.log(`DEBUG: Got servers, posting to webview`);
 				provider.postMessageToWebview({
 					type: "mcpServers",
-					mcpServers: mcpHub.getAllServers(),
-				})
+					mcpServers: servers,
+				});
+				console.log(`DEBUG: Posted MCP servers to webview`);
+			} else {
+				console.log(`DEBUG: MCP Hub is undefined, skipping server list update`);
 			}
 
 			// Post last cached models in case the call to endpoint fails.
@@ -228,7 +261,23 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			})
 
 			provider.isViewLaunched = true
-			break
+			break;
+		case "fetchPackageManagerItems":
+			if (packageManagerManager) {
+				console.log(`DEBUG: Handling explicit fetchPackageManagerItems message`);
+				try {
+					// Use non-null assertion to tell TypeScript that packageManagerManager is definitely not undefined here
+					console.log(`DEBUG: Before calling handlePackageManagerMessages for fetchPackageManagerItems`);
+					const result = await handlePackageManagerMessages(provider, message, packageManagerManager!);
+					console.log(`DEBUG: After calling handlePackageManagerMessages for fetchPackageManagerItems, result: ${result}`);
+					console.log(`DEBUG: Package manager message handled successfully: ${message.type}`);
+				} catch (error) {
+					console.error(`DEBUG: Error handling package manager message: ${error}`);
+				}
+			} else {
+				console.log(`DEBUG: packageManagerManager is undefined, skipping package manager message handling`);
+			}
+			break;
 		case "newTask":
 			// Code that should run in response to the hello message command
 			//vscode.window.showInformationMessage(message.text!)
@@ -1314,9 +1363,24 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			await provider.postStateToWebview()
 			break
 		}
-	}
+
 }
 
+// Handle package manager related messages
+if (packageManagerManager &&
+    (message.type === "packageManagerSources" ||
+     message.type === "openExternal" ||
+     message.type === "refreshPackageManagerSource")) {
+  try {
+    console.log(`DEBUG: Routing ${message.type} message to packageManagerMessageHandler`);
+    const result = await handlePackageManagerMessages(provider, message, packageManagerManager);
+    console.log(`DEBUG: Package manager message handled successfully: ${message.type}, result: ${result}`);
+  } catch (error) {
+    console.error(`DEBUG: Error handling package manager message: ${error}`);
+  }
+}
+
+}
 const generateSystemPrompt = async (provider: ClineProvider, message: WebviewMessage) => {
 	const {
 		apiConfiguration,

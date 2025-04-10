@@ -37,6 +37,7 @@ import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
+import { PackageManagerManager } from "../../services/package-manager"
 import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
 import { fileExistsAtPath } from "../../utils/fs"
 import { setSoundEnabled } from "../../utils/sound"
@@ -75,6 +76,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		return this._workspaceTracker
 	}
 	protected mcpHub?: McpHub // Change from private to protected
+	private packageManagerManager?: PackageManagerManager
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -747,7 +749,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	 * @param webview A reference to the extension webview
 	 */
 	private setWebviewMessageListener(webview: vscode.Webview) {
-		const onReceiveMessage = async (message: WebviewMessage) => webviewMessageHandler(this, message)
+		const onReceiveMessage = async (message: WebviewMessage) => webviewMessageHandler(this, message, this.packageManagerManager)
 
 		webview.onDidReceiveMessage(onReceiveMessage, null, this.disposables)
 	}
@@ -1200,6 +1202,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			showRooIgnoredFiles,
 			language,
 			maxReadFileLine,
+			packageManagerSources,
 		} = await this.getState()
 
 		const telemetryKey = process.env.POSTHOG_API_KEY
@@ -1275,6 +1278,13 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			renderContext: this.renderContext,
 			maxReadFileLine: maxReadFileLine ?? 500,
 			settingsImportedAt: this.settingsImportedAt,
+			packageManagerSources: packageManagerSources ?? [
+				{
+					url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
+					name: "Official Roo-Code Package Manager",
+					enabled: true
+				}
+			],
 		}
 	}
 
@@ -1357,6 +1367,13 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			telemetrySetting: stateValues.telemetrySetting || "unset",
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
+			packageManagerSources: stateValues.packageManagerSources ?? [
+				{
+					url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
+					name: "Official Roo-Code Package Manager",
+					enabled: true
+				}
+			],
 		}
 	}
 
@@ -1449,6 +1466,14 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	// Add public getter
 	public getMcpHub(): McpHub | undefined {
 		return this.mcpHub
+	}
+
+	/**
+	 * Set the package manager manager instance
+	 * @param packageManagerManager The package manager manager instance
+	 */
+	public setPackageManagerManager(packageManagerManager: PackageManagerManager) {
+		this.packageManagerManager = packageManagerManager
 	}
 
 	/**

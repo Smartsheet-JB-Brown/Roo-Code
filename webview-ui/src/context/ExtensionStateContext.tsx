@@ -11,6 +11,7 @@ import { Mode, CustomModePrompts, defaultModeSlug, defaultPrompts, ModeConfig } 
 import { CustomSupportPrompts } from "../../../src/shared/support-prompt"
 import { experimentDefault, ExperimentId } from "../../../src/shared/experiments"
 import { TelemetrySetting } from "../../../src/shared/TelemetrySetting"
+import { PackageManagerSource } from "../../../src/services/package-manager/types"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -86,6 +87,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	pinnedApiConfigs?: Record<string, boolean>
 	setPinnedApiConfigs: (value: Record<string, boolean>) => void
 	togglePinnedApiConfig: (configName: string) => void
+	packageManagerSources?: PackageManagerSource[]
+	setPackageManagerSources: (value: PackageManagerSource[]) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -160,6 +163,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
 		renderContext: "sidebar",
 		maxReadFileLine: 500, // Default max read file line limit
+		packageManagerSources: [
+			{
+				url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
+				name: "Official Roo-Code Package Manager",
+				enabled: true
+			}
+		],
 		pinnedApiConfigs: {}, // Empty object for pinned API configs
 	})
 
@@ -182,8 +192,19 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 			switch (message.type) {
 				case "state": {
 					const newState = message.state!
+					console.log("DEBUG: ExtensionStateContext received state message:", {
+						hasApiConfig: !!newState.apiConfiguration,
+						hasPackageManagerItems: !!newState.packageManagerItems,
+						packageManagerItemsCount: newState.packageManagerItems?.length || 0
+					});
+
 					setState((prevState) => mergeExtensionState(prevState, newState))
-					setShowWelcome(!checkExistKey(newState.apiConfiguration))
+
+					const shouldShowWelcome = !checkExistKey(newState.apiConfiguration);
+					console.log("DEBUG: Setting showWelcome to", shouldShowWelcome,
+						"based on apiConfiguration check:", newState.apiConfiguration ? "has config" : "missing config");
+
+					setShowWelcome(shouldShowWelcome)
 					setDidHydrateState(true)
 					break
 				}
@@ -330,6 +351,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 				return { ...prevState, pinnedApiConfigs: newPinned }
 			}),
+		setPackageManagerSources: (value) => setState((prevState) => ({ ...prevState, packageManagerSources: value })),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

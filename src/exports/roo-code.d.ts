@@ -336,6 +336,13 @@ type GlobalSettings = {
 		  }
 		| undefined
 	enhancementApiConfigId?: string | undefined
+	packageManagerSources?:
+		| {
+				url: string
+				name?: string | undefined
+				enabled: boolean
+		  }[]
+		| undefined
 }
 
 type ClineMessage = {

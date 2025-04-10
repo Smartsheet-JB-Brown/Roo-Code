@@ -16,6 +16,7 @@ import {
 import { McpServer } from "./mcp"
 import { GitCommit } from "../utils/git"
 import { Mode } from "./modes"
+import { PackageManagerItem, PackageManagerSource } from "../services/package-manager/types"
 
 export type { ApiConfigMeta, ToolProgressStatus }
 
@@ -69,6 +70,7 @@ export interface ExtensionMessage {
 		| "maxReadFileLine"
 		| "fileSearchResults"
 		| "toggleApiConfigPin"
+		| "repositoryRefreshComplete"
 	text?: string
 	action?:
 		| "chatButtonClicked"
@@ -76,6 +78,7 @@ export interface ExtensionMessage {
 		| "settingsButtonClicked"
 		| "historyButtonClicked"
 		| "promptsButtonClicked"
+		| "packageManagerButtonClicked"
 		| "didBecomeVisible"
 	invoke?: "newChat" | "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
 	state?: ExtensionState
@@ -111,6 +114,8 @@ export interface ExtensionMessage {
 		label?: string
 	}>
 	error?: string
+	items?: PackageManagerItem[]
+	url?: string // For repositoryRefreshComplete
 }
 
 export type ExtensionState = Pick<
@@ -203,6 +208,8 @@ export type ExtensionState = Pick<
 
 	renderContext: "sidebar" | "editor"
 	settingsImportedAt?: number
+	packageManagerSources?: PackageManagerSource[]
+	packageManagerItems?: PackageManagerItem[]
 }
 
 export type { ClineMessage, ClineAsk, ClineSay }
