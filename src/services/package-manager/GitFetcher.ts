@@ -276,6 +276,7 @@ export class GitFetcher {
                 const type = metadataContent.match(/type:\s*["']?([^"'\n]+)["']?/)?.[1] || dirType.type;
                 const author = metadataContent.match(/author:\s*["']?([^"'\n]+)["']?/)?.[1];
                 const version = metadataContent.match(/version:\s*["']?([^"'\n]+)["']?/)?.[1];
+                const sourceUrl = metadataContent.match(/sourceUrl:\s*["']?([^"'\n]+)["']?/)?.[1];
                 
                 // Parse tags if present
                 const tagsMatch = metadataContent.match(/tags:\s*\[(.*?)\]/);
@@ -291,7 +292,8 @@ export class GitFetcher {
                   repoUrl,
                   author,
                   tags,
-                  version
+                  version,
+                  sourceUrl
                 };
                 
                 items.push(item);

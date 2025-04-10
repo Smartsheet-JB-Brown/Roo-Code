@@ -52,6 +52,7 @@ author: "Author Name"
 version: "1.0.0"
 lastUpdated: "2025-04-08"
 tags: ["tag1", "tag2"]
+sourceUrl: "https://github.com/username/repo" # Optional URL for the "view source" button
 ```
 
 ## Testing

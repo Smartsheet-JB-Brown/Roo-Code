@@ -38,9 +38,13 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   
   // Track if we're currently fetching items to prevent duplicate requests
   const [isFetching, setIsFetching] = useState(false);
+  // Track if the fetch was manually triggered by a refresh button
+  const isManualRefresh = useRef(false);
   
   // Use a ref to track if we've already fetched items
   const hasInitialFetch = useRef(false);
+  // Track the last sources we fetched to avoid duplicate fetches
+  const lastSourcesKey = useRef<string | null>(null);
 
   // Fetch function without debounce for immediate execution
   const fetchPackageManagerItems = useCallback(() => {
@@ -88,10 +92,19 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       itemsLength: items.length
     });
     
-    // Only fetch if packageManagerSources changes and we're not already fetching
-    if (packageManagerSources && hasInitialFetch.current && !isFetching) {
-      console.log("DEBUG: Calling fetchPackageManagerItems due to sources change");
-      fetchPackageManagerItems();
+    // Only fetch if packageManagerSources changes, we're not already fetching, and this isn't the initial render
+    if (packageManagerSources && hasInitialFetch.current && !isFetching && packageManagerSources.length > 0) {
+      // Generate a key based on the current sources
+      const sourcesKey = JSON.stringify(packageManagerSources.map(s => s.url));
+
+      // Only fetch if the sources have changed and it's not a manual refresh
+      if (sourcesKey !== lastSourcesKey.current && !isManualRefresh.current) {
+        console.log("DEBUG: Calling fetchPackageManagerItems due to sources change");
+        lastSourcesKey.current = sourcesKey;
+        fetchPackageManagerItems();
+      } else {
+        console.log("DEBUG: Skipping fetch because sources haven't changed or manual refresh is in progress");
+      }
     }
   }, [packageManagerSources, fetchPackageManagerItems, isFetching]);
 
@@ -147,12 +160,23 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
             
             // Force a new array reference to ensure React detects the change
             setItems([...receivedItems]);
-            setIsFetching(false);
-            console.log("DEBUG: States updated - items:", receivedItems.length, "isFetching: false");
+
+            // Update the fetching state in a separate call to avoid triggering another fetch
+            setTimeout(() => {
+              setIsFetching(false);
+              isManualRefresh.current = false; // Reset the manual refresh flag
+              console.log("DEBUG: States updated - items:", receivedItems.length, "isFetching: false, isManualRefresh: false");
+            }, 0);
           } else {
             console.log("DEBUG: Received empty items array");
             setItems([]);
-            setIsFetching(false);
+
+            // Update the fetching state in a separate call to avoid triggering another fetch
+            setTimeout(() => {
+              setIsFetching(false);
+              isManualRefresh.current = false; // Reset the manual refresh flag
+              console.log("DEBUG: States updated - items: 0, isFetching: false, isManualRefresh: false");
+            }, 0);
           }
         }
       }
@@ -317,6 +341,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                 <p>No package manager items found</p>
                 <Button
                   onClick={() => {
+                    isManualRefresh.current = true;
                     vscode.postMessage({
                       type: "fetchPackageManagerItems",
                       forceRefresh: true
@@ -336,6 +361,7 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                   </p>
                   <Button
                     onClick={() => {
+                      isManualRefresh.current = true;
                       vscode.postMessage({
                         type: "fetchPackageManagerItems",
                         forceRefresh: true
@@ -374,6 +400,16 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
 const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
   const { t } = useAppTranslation();
   
+  // Helper function to validate URL
+  const isValidUrl = (urlString: string): boolean => {
+    try {
+      new URL(urlString);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "role":
@@ -401,12 +437,14 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
   };
   
   const handleOpenUrl = () => {
-    console.log(`PackageManagerItemCard: Opening URL: ${item.url}`);
+    // Use sourceUrl if it exists and is a valid URL, otherwise fall back to url
+    const urlToOpen = item.sourceUrl && isValidUrl(item.sourceUrl) ? item.sourceUrl : item.url;
+    console.log(`PackageManagerItemCard: Opening URL: ${urlToOpen}`);
     vscode.postMessage({
       type: "openExternal",
-      url: item.url
+      url: urlToOpen
     });
-    console.log(`PackageManagerItemCard: Sent openExternal message with URL: ${item.url}`);
+    console.log(`PackageManagerItemCard: Sent openExternal message with URL: ${urlToOpen}`);
   };
 
   return (
@@ -470,7 +508,7 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
         
         <Button onClick={handleOpenUrl}>
           <span className="codicon codicon-link-external mr-2"></span>
-          View on GitHub
+          {item.sourceUrl && isValidUrl(item.sourceUrl) ? "View Source" : "View on GitHub"}
         </Button>
       </div>
     </div>

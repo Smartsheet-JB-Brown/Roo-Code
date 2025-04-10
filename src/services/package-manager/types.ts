@@ -13,6 +13,7 @@ export interface PackageManagerItem {
   lastUpdated?: string;
   stars?: number;
   downloads?: number;
+  sourceUrl?: string; // Optional URL to use for the "view source" button
 }
 
 /**
