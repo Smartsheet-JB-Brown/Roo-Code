@@ -4,6 +4,7 @@ import fs from "fs/promises"
 import EventEmitter from "events"
 
 import { Anthropic } from "@anthropic-ai/sdk"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
 import delay from "delay"
 import axios from "axios"
 import pWaitFor from "p-wait-for"
@@ -1278,13 +1279,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			renderContext: this.renderContext,
 			maxReadFileLine: maxReadFileLine ?? 500,
 			settingsImportedAt: this.settingsImportedAt,
-			packageManagerSources: packageManagerSources ?? [
-				{
-					url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
-					name: "Official Roo-Code Package Manager",
-					enabled: true
-				}
-			],
+			packageManagerSources: packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
 		}
 	}
 
@@ -1367,13 +1362,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			telemetrySetting: stateValues.telemetrySetting || "unset",
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
-			packageManagerSources: stateValues.packageManagerSources ?? [
-				{
-					url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
-					name: "Official Roo-Code Package Manager",
-					enabled: true
-				}
-			],
+			packageManagerSources: stateValues.packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
 		}
 	}
 

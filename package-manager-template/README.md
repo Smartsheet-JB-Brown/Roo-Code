@@ -35,9 +35,7 @@ The `metadata.yml` file at the root of the repository contains information about
 ```yaml
 name: "Example Package Manager Repository"
 description: "A collection of example package manager items for Roo-Code"
-author: "Roo Team"
 version: "1.0.0"
-lastUpdated: "2025-04-08"
 ```
 
 ## Item Metadata
@@ -48,9 +46,7 @@ Each item in the package manager has its own `metadata.yml` file that contains i
 name: "Item Name"
 description: "Item description"
 type: "role|mcp-server|storage|other"
-author: "Author Name"
 version: "1.0.0"
-lastUpdated: "2025-04-08"
 tags: ["tag1", "tag2"]
 sourceUrl: "https://github.com/username/repo" # Optional URL for the "view source" button
 ```

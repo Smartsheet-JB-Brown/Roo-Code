@@ -16,13 +16,13 @@ export class GitFetcher {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.cacheDir = path.join(context.globalStorageUri.fsPath, "package-manager-cache");
   }
-  
   /**
    * Fetches repository data from a Git URL
    * @param url The Git repository URL
+   * @param sourceName Optional name to override the repository name
    * @returns A PackageManagerRepository object containing metadata and items
    */
-  async fetchRepository(url: string): Promise<PackageManagerRepository> {
+  async fetchRepository(url: string, sourceName?: string): Promise<PackageManagerRepository> {
     console.log(`GitFetcher: Fetching repository from ${url}`);
     
     try {
@@ -41,10 +41,11 @@ export class GitFetcher {
       console.log(`GitFetcher: Repository directory: ${repoDir}`);
       
       // Clone or pull repository with timeout protection
+      let activeBranch: string;
       try {
         console.log(`GitFetcher: Cloning or pulling repository ${url}`);
-        await this.cloneOrPullRepository(url, repoDir);
-        console.log(`GitFetcher: Repository cloned/pulled successfully`);
+        activeBranch = await this.cloneOrPullRepository(url, repoDir);
+        console.log(`GitFetcher: Repository cloned/pulled successfully on branch ${activeBranch}`);
       } catch (gitError) {
         console.error(`GitFetcher: Git operation failed: ${gitError.message}`);
         throw new Error(`Git operation failed: ${gitError.message}`);
@@ -61,7 +62,9 @@ export class GitFetcher {
         
         // Parse items
         console.log(`GitFetcher: Parsing package manager items`);
-        const items = await this.parsePackageManagerItems(repoDir, url);
+        // Use the provided sourceName if available, otherwise use metadata name or fallback to URL-derived name
+        const itemSourceName = sourceName || metadata.name || this.getRepoNameFromUrl(url);
+        const items = await this.parsePackageManagerItems(repoDir, url, activeBranch, itemSourceName);
         
         console.log(`GitFetcher: Successfully fetched repository with ${items.length} items`);
         return {
@@ -115,7 +118,7 @@ export class GitFetcher {
    * @param url The Git repository URL
    * @param repoDir The directory to clone to or pull in
    */
-  private async cloneOrPullRepository(url: string, repoDir: string): Promise<void> {
+  private async cloneOrPullRepository(url: string, repoDir: string): Promise<string> {
     console.log(`GitFetcher: Checking if repository exists at ${repoDir}`);
     
     try {
@@ -158,6 +161,12 @@ export class GitFetcher {
         await clonePromise;
         console.log(`GitFetcher: Successfully cloned repository`);
       }
+
+      // Get the active branch name
+      const { stdout: branchName } = await execAsync("git rev-parse --abbrev-ref HEAD", { cwd: repoDir });
+      console.log(`GitFetcher: Active branch is ${branchName.trim()}`);
+      return branchName.trim();
+
     } catch (error) {
       console.error(`GitFetcher: Failed to clone or pull repository: ${error.message}`);
       throw new Error(`Failed to clone or pull repository: ${error.message}`);
@@ -228,9 +237,11 @@ export class GitFetcher {
    * Parses package manager items from a repository
    * @param repoDir The repository directory
    * @param repoUrl The repository URL
+   * @param branch The branch to use (default: "main")
+   * @param sourceName The name of the source repository
    * @returns An array of PackageManagerItem objects
    */
-  private async parsePackageManagerItems(repoDir: string, repoUrl: string, branch: string = "main"): Promise<PackageManagerItem[]> {
+  private async parsePackageManagerItems(repoDir: string, repoUrl: string, branch: string = "main", sourceName?: string): Promise<PackageManagerItem[]> {
     const items: PackageManagerItem[] = [];
     
     // Check for items in each directory type
@@ -284,18 +295,46 @@ export class GitFetcher {
                   tagsMatch[1].split(",").map(tag => tag.trim().replace(/["']/g, "")) :
                   undefined;
                 
-                const item: PackageManagerItem = {
+                // Create base item without author and lastUpdated
+                let item: PackageManagerItem = {
                   name,
                   description,
                   type: type as "role" | "mcp-server" | "storage" | "other",
                   url: `${repoUrl}/tree/${branch}/${dirType.urlPath}/${itemDir}`,
                   repoUrl,
-                  author,
+                  sourceName: sourceName,
                   tags,
                   version,
                   sourceUrl
                 };
-                
+
+                // Try to get the last non-merge commit info
+                try {
+                  // Get the last non-merge commit by any author for this path
+                  const { stdout: commitInfo } = await execAsync(
+                    `git log --no-merges -1 --format="%aI%n%an" -- "${itemPath}"`,
+                    { cwd: repoDir }
+                  );
+
+                  // Split into date and author (they're on separate lines)
+                  const [lastCommitDate, commitAuthor] = commitInfo.trim().split('\n');
+                  // Update item with both date and author from git
+                  item = {
+                    ...item,
+                    lastUpdated: lastCommitDate.trim(), // ISO 8601 format
+                    author: commitAuthor.trim() // Use Git author instead of metadata author
+                  };
+                } catch (error) {
+                  console.error(`Failed to get commit info for ${itemPath}:`, error);
+                  // If git info fails, try to use author from metadata as fallback
+                  if (author) {
+                    item = {
+                      ...item,
+                      author
+                    };
+                  }
+                }
+
                 items.push(item);
               }
             } catch (error) {

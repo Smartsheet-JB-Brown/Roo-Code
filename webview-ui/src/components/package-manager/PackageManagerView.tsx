@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react";
 import { useExtensionState } from "../../context/ExtensionStateContext";
@@ -6,13 +6,12 @@ import { useAppTranslation } from "../../i18n/TranslationContext";
 import { Tab, TabContent, TabHeader } from "../common/Tab";
 import { vscode } from "@/utils/vscode";
 import { PackageManagerItem, PackageManagerSource } from "../../../../src/services/package-manager/types";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk";
 
-type PackageManagerViewProps = {
-  onDone: () => void;
-};
+type PackageManagerViewProps = {};
 
 
-const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
+const PackageManagerView = ({}: PackageManagerViewProps) => {
   const { packageManagerSources, setPackageManagerSources } = useExtensionState();
   console.log("DEBUG: PackageManagerView initialized with sources:", packageManagerSources);
   const { t } = useAppTranslation();
@@ -24,7 +23,9 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   useEffect(() => {
     console.log("DEBUG: activeTab changed to", activeTab);
   }, [activeTab]);
-  const [filters, setFilters] = useState({ type: "", search: "" });
+  const [filters, setFilters] = useState({ type: "", search: "", tags: [] as string[] });
+  const [tagSearch, setTagSearch] = useState("");
+  const [isTagInputActive, setIsTagInputActive] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   
@@ -207,6 +208,20 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       }
     }
     
+    // Filter by tags (OR logic - item passes if it has ANY of the selected tags)
+    if (filters.tags.length > 0) {
+      // If the item has no tags, it doesn't match when tag filtering is active
+      if (!item.tags || item.tags.length === 0) {
+        return false;
+      }
+
+      // Check if any of the item's tags match any of the selected tags
+      const hasMatchingTag = item.tags.some(tag => filters.tags.includes(tag));
+      if (!hasMatchingTag) {
+        return false;
+      }
+    }
+
     return true;
   });
   console.log("DEBUG: After filtering", { filteredItemsCount: filteredItems.length });
@@ -226,12 +241,6 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
       case "lastUpdated":
         comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "");
         break;
-      case "stars":
-        comparison = (a.stars || 0) - (b.stars || 0);
-        break;
-      case "downloads":
-        comparison = (a.downloads || 0) - (b.downloads || 0);
-        break;
       default:
         comparison = a.name.localeCompare(b.name);
     }
@@ -243,13 +252,25 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
     firstItem: sortedItems.length > 0 ? sortedItems[0].name : 'none' 
   });
 
+  // Collect all unique tags from items
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    items.forEach(item => {
+      if (item.tags && item.tags.length > 0) {
+        item.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    return Array.from(tagSet).sort();
+  }, [items]);
+
   // Add debug logging right before rendering
   useEffect(() => {
     console.log("DEBUG: Rendering with", {
       sortedItemsCount: sortedItems.length,
-      firstItem: sortedItems.length > 0 ? `${sortedItems[0].name} (${sortedItems[0].type})` : 'none'
+      firstItem: sortedItems.length > 0 ? `${sortedItems[0].name} (${sortedItems[0].type})` : 'none',
+      availableTags: allTags.length
     });
-  }, [sortedItems]);
+  }, [sortedItems, allTags]);
   
   // Log right before rendering
   console.log("DEBUG: About to render with", {
@@ -278,7 +299,6 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
           >
             Sources
           </Button>
-          <Button onClick={onDone}>Done</Button>
         </div>
       </TabHeader>
 
@@ -293,41 +313,125 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="w-full p-2 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded"
               />
-              <div className="flex justify-between mt-2">
-                <div>
-                  <label className="mr-2">Filter by type:</label>
-                  <select
-                    value={filters.type}
-                    onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded"
-                  >
-                    <option value="">All types</option>
-                    <option value="role">Role</option>
-                    <option value="mcp-server">MCP Server</option>
-                    <option value="storage">Storage</option>
-                    <option value="other">Other</option>
-                  </select>
+              <div className="flex flex-col gap-3 mt-2">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <div className="whitespace-nowrap">
+                    <label className="mr-2">Filter by type:</label>
+                    <select
+                      value={filters.type}
+                      onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                      className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded"
+                    >
+                      <option value="">All types</option>
+                      <option value="role">Role</option>
+                      <option value="mcp-server">MCP Server</option>
+                      <option value="storage">Storage</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="whitespace-nowrap">
+                    <label className="mr-2">Sort by:</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded mr-2"
+                    >
+                      <option value="name">Name</option>
+                      <option value="author">Author</option>
+                      <option value="lastUpdated">Last Updated</option>
+                    </select>
+                    <button
+                      onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                      className="p-1 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground rounded"
+                    >
+                      {sortOrder === "asc" ? "↑" : "↓"}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="mr-2">Sort by:</label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded mr-2"
-                  >
-                    <option value="name">Name</option>
-                    <option value="author">Author</option>
-                    <option value="lastUpdated">Last Updated</option>
-                    <option value="stars">Stars</option>
-                    <option value="downloads">Downloads</option>
-                  </select>
-                  <button
-                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                    className="p-1 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground rounded"
-                  >
-                    {sortOrder === "asc" ? "↑" : "↓"}
-                  </button>
-                </div>
+
+                {allTags.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center">
+                        <label className="mr-2">Filter by tags:</label>
+                        <span className="text-xs text-vscode-descriptionForeground">
+                          ({allTags.length} available)
+                        </span>
+                      </div>
+                      {filters.tags.length > 0 && (
+                        <button
+                          onClick={() => setFilters({ ...filters, tags: [] })}
+                          className="p-1 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground rounded text-xs"
+                        >
+                          Clear tags ({filters.tags.length})
+                        </button>
+                      )}
+                    </div>
+                    <Command className="rounded-lg border border-vscode-dropdown-border">
+                      <CommandInput
+                        placeholder="Type to search and select tags..."
+                        value={tagSearch}
+                        onValueChange={setTagSearch}
+                        onFocus={() => setIsTagInputActive(true)}
+                        onBlur={(e) => {
+                          // Only hide if not clicking within the command list
+                          if (!e.relatedTarget?.closest('[cmdk-list]')) {
+                            setIsTagInputActive(false);
+                          }
+                        }}
+                        className="w-full p-1 bg-vscode-input-background text-vscode-input-foreground border-b border-vscode-dropdown-border"
+                      />
+                      {(isTagInputActive || tagSearch) && (
+                        <CommandList className="max-h-[200px] overflow-y-auto bg-vscode-dropdown-background">
+                          <CommandEmpty className="p-2 text-sm text-vscode-descriptionForeground">
+                            No matching tags found
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {allTags
+                              .filter(tag => tag.toLowerCase().includes(tagSearch.toLowerCase()))
+                              .map(tag => (
+                                <CommandItem
+                                  key={tag}
+                                  onSelect={() => {
+                                    const isSelected = filters.tags.includes(tag);
+                                    if (isSelected) {
+                                      setFilters({
+                                        ...filters,
+                                        tags: filters.tags.filter(t => t !== tag)
+                                      });
+                                    } else {
+                                      setFilters({
+                                        ...filters,
+                                        tags: [...filters.tags, tag]
+                                      });
+                                    }
+                                  }}
+                                  className={`flex items-center gap-2 p-1 cursor-pointer text-sm hover:bg-vscode-button-secondaryBackground ${
+                                    filters.tags.includes(tag)
+                                      ? 'bg-vscode-button-background text-vscode-button-foreground'
+                                      : 'text-vscode-dropdown-foreground'
+                                  }`}
+                                  onMouseDown={(e) => {
+                                    // Prevent blur event when clicking items
+                                    e.preventDefault();
+                                  }}
+                                >
+                                  <span className={`codicon ${filters.tags.includes(tag) ? 'codicon-check' : ''}`} />
+                                  {tag}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      )}
+                    </Command>
+                    <div className="text-xs text-vscode-descriptionForeground mt-1">
+                      {filters.tags.length > 0
+                        ? `Showing items with any of the selected tags (${filters.tags.length} selected)`
+                        : 'Click tags to filter items'}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -342,15 +446,14 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                 <Button
                   onClick={() => {
                     isManualRefresh.current = true;
-                    vscode.postMessage({
-                      type: "fetchPackageManagerItems",
-                      forceRefresh: true
-                    } as any);
+                    setIsFetching(false); // Reset fetching state first
+                    fetchPackageManagerItems(); // Use the fetchPackageManagerItems function
                   }}
                   className="mt-4"
+                  disabled={isFetching}
                 >
-                  <span className="codicon codicon-refresh mr-2"></span>
-                  Refresh
+                  <span className={`codicon ${isFetching ? 'codicon-sync codicon-modifier-spin' : 'codicon-refresh'} mr-2`}></span>
+                  {isFetching ? "Refreshing..." : "Refresh"}
                 </Button>
               </div>
             ) : (
@@ -362,20 +465,26 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
                   <Button
                     onClick={() => {
                       isManualRefresh.current = true;
-                      vscode.postMessage({
-                        type: "fetchPackageManagerItems",
-                        forceRefresh: true
-                      } as any);
+                      setIsFetching(false); // Reset fetching state first
+                      fetchPackageManagerItems(); // Use the fetchPackageManagerItems function
                     }}
                     size="sm"
+                    disabled={isFetching}
                   >
-                    <span className="codicon codicon-refresh mr-2"></span>
-                    Refresh
+                    <span className={`codicon ${isFetching ? 'codicon-sync codicon-modifier-spin' : 'codicon-refresh'} mr-2`}></span>
+                    {isFetching ? "Refreshing..." : "Refresh"}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {sortedItems.map((item) => (
-                    <PackageManagerItemCard key={`${item.repoUrl}-${item.name}`} item={item} />
+                    <PackageManagerItemCard
+                      key={`${item.repoUrl}-${item.name}`}
+                      item={item}
+                      filters={filters}
+                      setFilters={setFilters}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                    />
                   ))}
                 </div>
               </div>
@@ -397,7 +506,19 @@ const PackageManagerView = ({ onDone }: PackageManagerViewProps) => {
   );
 };
 
-const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
+const PackageManagerItemCard = ({
+  item,
+  filters,
+  setFilters,
+  activeTab,
+  setActiveTab
+}: {
+  item: PackageManagerItem;
+  filters: { type: string; search: string; tags: string[] };
+  setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>;
+  activeTab: "browse" | "sources";
+  setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>;
+}) => {
   const { t } = useAppTranslation();
   
   // Helper function to validate URL
@@ -468,12 +589,38 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
       {item.tags && item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 my-2">
           {item.tags.map(tag => (
-            <span 
-              key={tag} 
-              className="px-2 py-1 text-xs bg-vscode-badge-background text-vscode-badge-foreground rounded-full"
+            <button
+              key={tag}
+              className={`px-2 py-1 text-xs rounded-full hover:bg-vscode-button-secondaryBackground ${
+                filters.tags.includes(tag)
+                  ? 'bg-vscode-button-background text-vscode-button-foreground'
+                  : 'bg-vscode-badge-background text-vscode-badge-foreground'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                // Toggle tag selection
+                if (filters.tags.includes(tag)) {
+                  // Remove tag if already selected
+                  setFilters({
+                    ...filters,
+                    tags: filters.tags.filter(t => t !== tag)
+                  });
+                } else {
+                  // Add tag if not already selected
+                  setFilters({
+                    ...filters,
+                    tags: [...filters.tags, tag]
+                  });
+                  // Switch to browse tab if not already there
+                  if (activeTab !== "browse") {
+                    setActiveTab("browse");
+                  }
+                }
+              }}
+              title={filters.tags.includes(tag) ? `Remove tag filter: ${tag}` : `Filter by tag: ${tag}`}
             >
               {tag}
-            </span>
+            </button>
           ))}
         </div>
       )}
@@ -489,30 +636,161 @@ const PackageManagerItemCard = ({ item }: { item: PackageManagerItem }) => {
           {item.lastUpdated && (
             <span className="flex items-center">
               <span className="codicon codicon-calendar mr-1"></span>
-              {item.lastUpdated}
-            </span>
-          )}
-          {item.stars !== undefined && (
-            <span className="flex items-center">
-              <span className="codicon codicon-star-full mr-1"></span>
-              {item.stars}
-            </span>
-          )}
-          {item.downloads !== undefined && (
-            <span className="flex items-center">
-              <span className="codicon codicon-cloud-download mr-1"></span>
-              {item.downloads}
+              {new Date(item.lastUpdated).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
             </span>
           )}
         </div>
         
         <Button onClick={handleOpenUrl}>
           <span className="codicon codicon-link-external mr-2"></span>
-          {item.sourceUrl && isValidUrl(item.sourceUrl) ? "View Source" : "View on GitHub"}
+          {item.sourceUrl ? "View" : `View on ${item.sourceName || "Source"}`}
         </Button>
       </div>
     </div>
   );
+};
+
+// Validation utilities for the frontend
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
+const validateSourceUrl = (url: string): ValidationError[] => {
+  const errors: ValidationError[] = [];
+
+  // Check if URL is empty
+  if (!url) {
+    errors.push({
+      field: "url",
+      message: "URL cannot be empty"
+    });
+    return errors;
+  }
+
+  // Check if URL is valid format
+  try {
+    new URL(url);
+  } catch (e) {
+    errors.push({
+      field: "url",
+      message: "Invalid URL format"
+    });
+  }
+
+  // Check for non-visible characters (except spaces)
+  const nonVisibleCharRegex = /[^\S ]/;
+  if (nonVisibleCharRegex.test(url)) {
+    errors.push({
+      field: "url",
+      message: "URL contains non-visible characters other than spaces"
+    });
+  }
+
+  return errors;
+};
+
+const validateSourceName = (name?: string): ValidationError[] => {
+  const errors: ValidationError[] = [];
+
+  // Skip validation if name is not provided
+  if (!name) {
+    return errors;
+  }
+
+  // Check name length
+  if (name.length > 20) {
+    errors.push({
+      field: "name",
+      message: "Name must be 20 characters or less"
+    });
+  }
+
+  // Check for non-visible characters (except spaces)
+  const nonVisibleCharRegex = /[^\S ]/;
+  if (nonVisibleCharRegex.test(name)) {
+    errors.push({
+      field: "name",
+      message: "Name contains non-visible characters other than spaces"
+    });
+  }
+
+  return errors;
+};
+
+const validateSourceDuplicates = (
+  sources: PackageManagerSource[],
+  newUrl: string,
+  newName?: string
+): ValidationError[] => {
+  const errors: ValidationError[] = [];
+
+  if (newUrl) {
+    // Check for duplicate URLs (case and whitespace insensitive)
+    const normalizedNewUrl = newUrl.toLowerCase().replace(/\s+/g, '');
+    const duplicateUrl = sources.some(source =>
+      source.url.toLowerCase().replace(/\s+/g, '') === normalizedNewUrl
+    );
+
+    if (duplicateUrl) {
+      errors.push({
+        field: "url",
+        message: "This URL is already in the list (case and whitespace insensitive match)"
+      });
+    }
+  }
+
+  if (newName) {
+    // Check for duplicate names (case and whitespace insensitive)
+    const normalizedNewName = newName.toLowerCase().replace(/\s+/g, '');
+    const duplicateName = sources.some(source =>
+      source.name && source.name.toLowerCase().replace(/\s+/g, '') === normalizedNewName
+    );
+
+    if (duplicateName) {
+      errors.push({
+        field: "name",
+        message: "This name is already in use (case and whitespace insensitive match)"
+      });
+    }
+  }
+
+  return errors;
+};
+
+/**
+ * Checks if a URL is a valid Git repository URL
+ * @param url The URL to validate
+ * @returns True if the URL is a valid Git repository URL, false otherwise
+ */
+const isValidGitRepositoryUrl = (url: string): boolean => {
+  // Trim the URL to remove any leading/trailing whitespace
+  const trimmedUrl = url.trim();
+
+  // HTTPS pattern (GitHub, GitLab, Bitbucket, etc.)
+  // Examples:
+  // - https://github.com/username/repo
+  // - https://github.com/username/repo.git
+  // - https://gitlab.com/username/repo
+  // - https://bitbucket.org/username/repo
+  const httpsPattern = /^https?:\/\/(github\.com|gitlab\.com|bitbucket\.org|dev\.azure\.com)\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\/.+)*(\.git)?$/;
+
+  // SSH pattern
+  // Examples:
+  // - git@github.com:username/repo.git
+  // - git@gitlab.com:username/repo.git
+  const sshPattern = /^git@(github\.com|gitlab\.com|bitbucket\.org):([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(\.git)?$/;
+
+  // Git protocol pattern
+  // Examples:
+  // - git://github.com/username/repo.git
+  const gitProtocolPattern = /^git:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\.git)?$/;
+
+  return httpsPattern.test(trimmedUrl) || sshPattern.test(trimmedUrl) || gitProtocolPattern.test(trimmedUrl);
 };
 
 const PackageManagerSourcesConfig = ({
@@ -545,10 +823,48 @@ const PackageManagerSourcesConfig = ({
       return;
     }
 
-    // Check if URL already exists
-    if (sources.some(source => source.url === newSourceUrl)) {
-      setError("This URL is already in the list");
+    // Check for non-visible characters in URL (except spaces)
+    const nonVisibleCharRegex = /[^\S ]/;
+    if (nonVisibleCharRegex.test(newSourceUrl)) {
+      setError("URL contains non-visible characters other than spaces");
       return;
+    }
+
+    // Check if URL is a valid Git repository URL
+    if (!isValidGitRepositoryUrl(newSourceUrl)) {
+      setError("URL must be a valid Git repository URL (e.g., https://github.com/username/repo)");
+      return;
+    }
+
+    // Check if URL already exists (case and whitespace insensitive)
+    const normalizedNewUrl = newSourceUrl.toLowerCase().replace(/\s+/g, '');
+    if (sources.some(source => source.url.toLowerCase().replace(/\s+/g, '') === normalizedNewUrl)) {
+      setError("This URL is already in the list (case and whitespace insensitive match)");
+      return;
+    }
+
+    // Validate name if provided
+    if (newSourceName) {
+      // Check name length
+      if (newSourceName.length > 20) {
+        setError("Name must be 20 characters or less");
+        return;
+      }
+
+      // Check for non-visible characters in name (except spaces)
+      if (nonVisibleCharRegex.test(newSourceName)) {
+        setError("Name contains non-visible characters other than spaces");
+        return;
+      }
+
+      // Check if name already exists (case and whitespace insensitive)
+      const normalizedNewName = newSourceName.toLowerCase().replace(/\s+/g, '');
+      if (sources.some(source =>
+        source.name && source.name.toLowerCase().replace(/\s+/g, '') === normalizedNewName
+      )) {
+        setError("This name is already in use (case and whitespace insensitive match)");
+        return;
+      }
     }
 
     // Check if maximum number of sources has been reached
@@ -615,11 +931,19 @@ const PackageManagerSourcesConfig = ({
             }}
             className="p-2 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded"
           />
+          <p className="text-xs text-vscode-descriptionForeground mt-1 mb-2">
+            Supported formats: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), or Git protocol (git://github.com/username/repo.git)
+          </p>
           <input
             type="text"
-            placeholder="Display name (optional)"
+            placeholder="Display name (optional, max 20 chars)"
             value={newSourceName}
-            onChange={(e) => setNewSourceName(e.target.value)}
+            onChange={(e) => {
+              // Limit input to 20 characters
+              setNewSourceName(e.target.value.slice(0, 20));
+              setError("");
+            }}
+            maxLength={20} // HTML attribute to limit input length
             className="p-2 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded"
           />
         </div>

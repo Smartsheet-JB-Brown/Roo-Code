@@ -7,12 +7,11 @@ export interface PackageManagerItem {
   type: "role" | "mcp-server" | "storage" | "other";
   url: string;
   repoUrl: string;
+  sourceName?: string; // Name of the source repository
   author?: string;
   tags?: string[];
   version?: string;
   lastUpdated?: string;
-  stars?: number;
-  downloads?: number;
   sourceUrl?: string; // Optional URL to use for the "view source" button
 }
 

@@ -4,6 +4,8 @@ import { WebviewMessage } from "../../shared/WebviewMessage"
 import { ExtensionMessage } from "../../shared/ExtensionMessage"
 import { PackageManagerManager } from "../../services/package-manager"
 import { PackageManagerItem, PackageManagerSource } from "../../services/package-manager/types"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
+import { validateSources } from "../../services/package-manager/validation"
 import { GlobalState } from "../../schemas"
 
 /**
@@ -39,13 +41,7 @@ export async function handlePackageManagerMessages(
           
           if (!sources || sources.length === 0) {
             console.log("Package Manager: No sources found, initializing default sources")
-            sources = [
-              {
-                url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
-                name: "Official Roo-Code Package Manager",
-                enabled: true
-              }
-          ];
+            sources = [DEFAULT_PACKAGE_MANAGER_SOURCE];
           
           // Save the default sources
           await provider.contextProxy.setValue("packageManagerSources", sources)
@@ -148,7 +144,36 @@ export async function handlePackageManagerMessages(
           updatedSources = message.sources;
         }
         
-        // Update the global state with the new sources
+        // Validate sources using the validation utility
+        const validationErrors = validateSources(updatedSources);
+
+        // Filter out invalid sources
+        if (validationErrors.length > 0) {
+          console.log("Package Manager: Validation errors found in sources", validationErrors);
+
+          // Create a map of invalid indices
+          const invalidIndices = new Set<number>();
+          validationErrors.forEach(error => {
+            // Extract index from error message (Source #X: ...)
+            const match = error.message.match(/Source #(\d+):/);
+            if (match && match[1]) {
+              const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+              if (index >= 0 && index < updatedSources.length) {
+                invalidIndices.add(index);
+              }
+            }
+          });
+
+          // Filter out invalid sources
+          updatedSources = updatedSources.filter((_, index) => !invalidIndices.has(index));
+
+          // Show validation errors
+          const errorMessage = `Package manager sources validation failed:\n${validationErrors.map(e => e.message).join('\n')}`;
+          console.error(errorMessage);
+          vscode.window.showErrorMessage(errorMessage);
+        }
+
+        // Update the global state with the validated sources
         await updateGlobalState("packageManagerSources", updatedSources);
         
         // Clean up cache directories for repositories that are no longer in the sources list
@@ -194,8 +219,8 @@ export async function handlePackageManagerMessages(
           
           if (source) {
             try {
-              // Refresh the repository
-              await packageManagerManager.refreshRepository(message.url);
+              // Refresh the repository with the source name
+              await packageManagerManager.refreshRepository(message.url, source.name);
               vscode.window.showInformationMessage(`Successfully refreshed package manager source: ${source.name || message.url}`);
               
               // Trigger a fetch to update the UI with the refreshed data

@@ -12,6 +12,7 @@ import { CustomSupportPrompts } from "../../../src/shared/support-prompt"
 import { experimentDefault, ExperimentId } from "../../../src/shared/experiments"
 import { TelemetrySetting } from "../../../src/shared/TelemetrySetting"
 import { PackageManagerSource } from "../../../src/services/package-manager/types"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../../src/services/package-manager/constants"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -163,13 +164,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
 		renderContext: "sidebar",
 		maxReadFileLine: 500, // Default max read file line limit
-		packageManagerSources: [
-			{
-				url: "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test",
-				name: "Official Roo-Code Package Manager",
-				enabled: true
-			}
-		],
+		packageManagerSources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 		pinnedApiConfigs: {}, // Empty object for pinned API configs
 	})
 

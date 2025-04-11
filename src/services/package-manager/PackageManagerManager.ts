@@ -36,7 +36,8 @@ export class PackageManagerManager {
     for (const source of enabledSources) {
       try {
         console.log(`PackageManagerManager: Processing source ${source.url}`);
-        const repo = await this.getRepositoryData(source.url);
+        // Pass the source name to getRepositoryData
+        const repo = await this.getRepositoryData(source.url, false, source.name);
         
         if (repo.items && repo.items.length > 0) {
           console.log(`PackageManagerManager: Found ${repo.items.length} items in ${source.url}`);
@@ -66,9 +67,10 @@ export class PackageManagerManager {
    * Gets repository data from a URL, using cache if available
    * @param url The repository URL
    * @param forceRefresh Whether to bypass the cache and force a refresh
+   * @param sourceName The name of the source
    * @returns A PackageManagerRepository object
    */
-  async getRepositoryData(url: string, forceRefresh: boolean = false): Promise<PackageManagerRepository> {
+  async getRepositoryData(url: string, forceRefresh: boolean = false, sourceName?: string): Promise<PackageManagerRepository> {
     try {
       console.log(`PackageManagerManager: Getting repository data for ${url}`);
       
@@ -87,7 +89,7 @@ export class PackageManagerManager {
       console.log(`PackageManagerManager: Cache miss or expired for ${url}, fetching fresh data`);
       
       // Fetch fresh data with timeout protection
-      const fetchPromise = this.gitFetcher.fetchRepository(url);
+      const fetchPromise = this.gitFetcher.fetchRepository(url, sourceName);
       
       // Create a timeout promise
       const timeoutPromise = new Promise<PackageManagerRepository>((_, reject) => {
@@ -119,14 +121,15 @@ export class PackageManagerManager {
   /**
    * Refreshes a specific repository, bypassing the cache
    * @param url The repository URL to refresh
+   * @param sourceName Optional name of the source
    * @returns The refreshed repository data
    */
-  async refreshRepository(url: string): Promise<PackageManagerRepository> {
+  async refreshRepository(url: string, sourceName?: string): Promise<PackageManagerRepository> {
     console.log(`PackageManagerManager: Refreshing repository ${url}`);
     
     try {
       // Force a refresh by bypassing the cache
-      const data = await this.getRepositoryData(url, true);
+      const data = await this.getRepositoryData(url, true, sourceName);
       console.log(`PackageManagerManager: Repository ${url} refreshed successfully`);
       return data;
     } catch (error) {
