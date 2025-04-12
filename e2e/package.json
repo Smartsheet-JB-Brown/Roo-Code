@@ -8,12 +8,9 @@
 		"test": "npm run build && npx dotenvx run -f .env.local -- node ./out/runTest.js",
 		"ci": "npm run vscode-test && npm run test",
 		"build": "rimraf out && tsc -p tsconfig.json",
-		"vscode-test": "cd .. && npm run vscode-test",
-		"clean": "rimraf out"
+		"vscode-test": "cd .. && npm run vscode-test"
 	},
-	"dependencies": {
-		"npm-run-all": "^4.1.5"
-	},
+	"dependencies": {},
 	"devDependencies": {
 		"@types/mocha": "^10.0.10",
 		"@vscode/test-cli": "^0.0.9",

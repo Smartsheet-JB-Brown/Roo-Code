@@ -5,18 +5,19 @@
 /**
  * Default package manager repository URL
  */
-export const DEFAULT_PACKAGE_MANAGER_REPO_URL = "https://github.com/Smartsheet-JB-Brown/Package-Manager-Test";
+export const DEFAULT_PACKAGE_MANAGER_REPO_URL =
+	"https://github.com/RooVetGit/Roo-Code/tree/main/package-manager-template"
 
 /**
  * Default package manager repository name
  */
-export const DEFAULT_PACKAGE_MANAGER_REPO_NAME = "Roo Code";
+export const DEFAULT_PACKAGE_MANAGER_REPO_NAME = "Roo Code Package Manager Template"
 
 /**
  * Default package manager source
  */
 export const DEFAULT_PACKAGE_MANAGER_SOURCE = {
-  url: DEFAULT_PACKAGE_MANAGER_REPO_URL,
-  name: DEFAULT_PACKAGE_MANAGER_REPO_NAME,
-  enabled: true
-};
+	url: DEFAULT_PACKAGE_MANAGER_REPO_URL,
+	name: DEFAULT_PACKAGE_MANAGER_REPO_NAME,
+	enabled: true,
+}

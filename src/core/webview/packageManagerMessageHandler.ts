@@ -32,6 +32,11 @@ export async function handlePackageManagerMessages(
 			// Prevent multiple simultaneous fetches
 			if (packageManagerManager.isFetching) {
 				console.log("Package Manager: Fetch already in progress, skipping")
+				provider.postMessageToWebview({
+					type: "packageManagerButtonClicked",
+					text: "Fetch already in progress",
+				})
+				packageManagerManager.isFetching = false
 				return true
 			}
 
@@ -89,9 +94,13 @@ export async function handlePackageManagerMessages(
 					}
 					// If there are errors and no items, show error
 					else if (result.errors && result.items.length === 0) {
-						vscode.window.showErrorMessage(
-							`Failed to load package manager sources:\n${result.errors.join("\n")}`,
-						)
+						const errorMessage = `Failed to load package manager sources:\n${result.errors.join("\n")}`
+						vscode.window.showErrorMessage(errorMessage)
+						provider.postMessageToWebview({
+							type: "packageManagerButtonClicked",
+							text: errorMessage,
+						})
+						packageManagerManager.isFetching = false
 					}
 
 					console.log("DEBUG: Successfully fetched items:", result.items.length)
@@ -108,19 +117,26 @@ export async function handlePackageManagerMessages(
 					await provider.postStateToWebview()
 					console.log("Package Manager: State sent to webview")
 				} catch (initError) {
+					const errorMessage = `Package manager initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`
 					console.error("Error in package manager initialization:", initError)
-					console.error("Error in package manager initialization:", initError)
-					vscode.window.showErrorMessage(
-						`Package manager initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`,
-					)
+					vscode.window.showErrorMessage(errorMessage)
+					provider.postMessageToWebview({
+						type: "packageManagerButtonClicked",
+						text: errorMessage,
+					})
 					// The state will already be updated with empty items by PackageManagerManager
 					await provider.postStateToWebview()
+					packageManagerManager.isFetching = false
 				}
 			} catch (error) {
+				const errorMessage = `Failed to fetch package manager items: ${error instanceof Error ? error.message : String(error)}`
 				console.error("Failed to fetch package manager items:", error)
-				vscode.window.showErrorMessage(
-					`Failed to fetch package manager items: ${error instanceof Error ? error.message : String(error)}`,
-				)
+				vscode.window.showErrorMessage(errorMessage)
+				provider.postMessageToWebview({
+					type: "packageManagerButtonClicked",
+					text: errorMessage,
+				})
+				packageManagerManager.isFetching = false
 			}
 			return true
 		}

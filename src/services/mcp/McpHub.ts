@@ -430,13 +430,6 @@ export class McpHub {
 		config: z.infer<typeof ServerConfigSchema>,
 		source: "global" | "project" = "global",
 	): Promise<void> {
-		// Check if a connection is already being established
-		const existingConnection = this.findConnection(name, source)
-		if (existingConnection && existingConnection.server.status === "connecting") {
-			console.log(`Connection attempt already in progress for ${name}`)
-			return
-		}
-
 		// Remove existing connection if it exists with the same source
 		await this.deleteConnection(name, source)
 
@@ -724,66 +717,58 @@ export class McpHub {
 		newServers: Record<string, any>,
 		source: "global" | "project" = "global",
 	): Promise<void> {
-		if (this.isConnecting) {
-			console.log("Connection update already in progress, skipping")
-			return
-		}
-
 		this.isConnecting = true
-		try {
-			this.removeAllFileWatchers()
-			// Filter connections by source
-			const currentConnections = this.connections.filter(
-				(conn) => conn.server.source === source || (!conn.server.source && source === "global"),
-			)
-			const currentNames = new Set(currentConnections.map((conn) => conn.server.name))
-			const newNames = new Set(Object.keys(newServers))
+		this.removeAllFileWatchers()
+		// Filter connections by source
+		const currentConnections = this.connections.filter(
+			(conn) => conn.server.source === source || (!conn.server.source && source === "global"),
+		)
+		const currentNames = new Set(currentConnections.map((conn) => conn.server.name))
+		const newNames = new Set(Object.keys(newServers))
 
-			// Delete removed servers
-			for (const name of currentNames) {
-				if (!newNames.has(name)) {
-					await this.deleteConnection(name, source)
-				}
+		// Delete removed servers
+		for (const name of currentNames) {
+			if (!newNames.has(name)) {
+				await this.deleteConnection(name, source)
 			}
-
-			// Update or add servers
-			for (const [name, config] of Object.entries(newServers)) {
-				// Only consider connections that match the current source
-				const currentConnection = this.findConnection(name, source)
-
-				// Validate and transform the config
-				let validatedConfig: z.infer<typeof ServerConfigSchema>
-				try {
-					validatedConfig = this.validateServerConfig(config, name)
-				} catch (error) {
-					this.showErrorMessage(`Invalid configuration for MCP server "${name}"`, error)
-					continue
-				}
-
-				if (!currentConnection) {
-					// New server
-					try {
-						this.setupFileWatcher(name, validatedConfig, source)
-						await this.connectToServer(name, validatedConfig, source)
-					} catch (error) {
-						this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
-					}
-				} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
-					// Existing server with changed config
-					try {
-						this.setupFileWatcher(name, validatedConfig, source)
-						await this.deleteConnection(name, source)
-						await this.connectToServer(name, validatedConfig, source)
-					} catch (error) {
-						this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
-					}
-				}
-				// If server exists with same config, do nothing
-			}
-			await this.notifyWebviewOfServerChanges()
-		} finally {
-			this.isConnecting = false
 		}
+
+		// Update or add servers
+		for (const [name, config] of Object.entries(newServers)) {
+			// Only consider connections that match the current source
+			const currentConnection = this.findConnection(name, source)
+
+			// Validate and transform the config
+			let validatedConfig: z.infer<typeof ServerConfigSchema>
+			try {
+				validatedConfig = this.validateServerConfig(config, name)
+			} catch (error) {
+				this.showErrorMessage(`Invalid configuration for MCP server "${name}"`, error)
+				continue
+			}
+
+			if (!currentConnection) {
+				// New server
+				try {
+					this.setupFileWatcher(name, validatedConfig, source)
+					await this.connectToServer(name, validatedConfig, source)
+				} catch (error) {
+					this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
+				}
+			} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
+				// Existing server with changed config
+				try {
+					this.setupFileWatcher(name, validatedConfig, source)
+					await this.deleteConnection(name, source)
+					await this.connectToServer(name, validatedConfig, source)
+				} catch (error) {
+					this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
+				}
+			}
+			// If server exists with same config, do nothing
+		}
+		await this.notifyWebviewOfServerChanges()
+		this.isConnecting = false
 	}
 
 	private setupFileWatcher(
@@ -855,34 +840,15 @@ export class McpHub {
 	}
 
 	async restartConnection(serverName: string, source?: "global" | "project"): Promise<void> {
-		// Check if already connecting
-		if (this.isConnecting) {
-			console.log(`Global connection attempt already in progress, skipping restart for ${serverName}`)
-			return
-		}
-
 		this.isConnecting = true
 		const provider = this.providerRef.deref()
 		if (!provider) {
-			this.isConnecting = false
 			return
 		}
 
-		// Get existing connection and check its status
+		// Get existing connection and update its status
 		const connection = this.findConnection(serverName, source)
-		if (!connection) {
-			this.isConnecting = false
-			return
-		}
-
-		// Check if already connecting
-		if (connection.server.status === "connecting") {
-			console.log(`Connection attempt already in progress for ${serverName}`)
-			this.isConnecting = false
-			return
-		}
-
-		const config = connection.server.config
+		const config = connection?.server.config
 		if (config) {
 			vscode.window.showInformationMessage(t("common:info.mcp_server_restarting", { serverName }))
 			connection.server.status = "connecting"
@@ -902,18 +868,14 @@ export class McpHub {
 					vscode.window.showInformationMessage(t("common:info.mcp_server_connected", { serverName }))
 				} catch (validationError) {
 					this.showErrorMessage(`Invalid configuration for MCP server "${serverName}"`, validationError)
-					connection.server.status = "disconnected"
 				}
 			} catch (error) {
 				this.showErrorMessage(`Failed to restart ${serverName} MCP server connection`, error)
-				connection.server.status = "disconnected"
-			} finally {
-				await this.notifyWebviewOfServerChanges()
-				this.isConnecting = false
 			}
-		} else {
-			this.isConnecting = false
 		}
+
+		await this.notifyWebviewOfServerChanges()
+		this.isConnecting = false
 	}
 
 	private async notifyWebviewOfServerChanges(): Promise<void> {

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { vscode } from "@/utils/vscode"
+import { cn } from "@/lib/utils"
 import { PackageManagerItem, PackageManagerSource } from "../../../../src/services/package-manager/types"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
 
@@ -153,85 +154,109 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 	const [items, setItems] = useState<PackageManagerItem[]>([])
 	const [activeTab, setActiveTab] = useState<"browse" | "sources">("browse")
 	const [refreshingUrls, setRefreshingUrls] = useState<string[]>([])
+
+	// Clear items when switching to sources tab
+	useEffect(() => {
+		if (activeTab === "sources") {
+			setItems([])
+		}
+	}, [activeTab])
 	const [filters, setFilters] = useState({ type: "", search: "", tags: [] as string[] })
 	const [tagSearch, setTagSearch] = useState("")
 	const [isTagInputActive, setIsTagInputActive] = useState(false)
 	const [sortBy, setSortBy] = useState("name")
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
 	const [isFetching, setIsFetching] = useState(false)
-	const isManualRefresh = useRef(false)
-	const hasInitialFetch = useRef(false)
-	const lastSourcesKey = useRef<string | null>(null)
+	const fetchTimeoutRef = useRef<NodeJS.Timeout>()
 
 	const fetchPackageManagerItems = useCallback(() => {
-		if (!isFetching) {
-			setIsFetching(true)
-			try {
-				vscode.postMessage({
-					type: "fetchPackageManagerItems",
-					forceRefresh: true,
-				} as any)
-			} catch (error) {
-				console.error("Failed to fetch package manager items:", error)
-				setIsFetching(false)
-			}
+		// Clear any pending fetch timeout
+		if (fetchTimeoutRef.current) {
+			clearTimeout(fetchTimeoutRef.current)
 		}
-	}, [isFetching])
 
+		// Clear items immediately when fetching starts
+		setItems([])
+		setIsFetching(true)
+
+		try {
+			vscode.postMessage({
+				type: "fetchPackageManagerItems",
+				forceRefresh: true,
+			} as any)
+
+			// Set a timeout to reset isFetching if no response is received
+			fetchTimeoutRef.current = setTimeout(() => {
+				console.log("Fetch timeout reached, resetting state")
+				setIsFetching(false)
+				setItems([]) // Clear items on timeout
+				vscode.window.showErrorMessage("Package manager items fetch timed out. Please try again.")
+			}, 30000) // 30 second timeout to match server timeout
+		} catch (error) {
+			console.error("Failed to fetch package manager items:", error)
+			setIsFetching(false)
+			setItems([]) // Clear items on error
+		}
+	}, [])
+
+	// Fetch items on mount
 	useEffect(() => {
 		fetchPackageManagerItems()
 	}, [fetchPackageManagerItems])
 
-	// Set hasInitialFetch after the first fetch completes
+	// Fetch items when sources change
 	useEffect(() => {
-		if (!isFetching) {
-			hasInitialFetch.current = true
+		if (packageManagerSources && activeTab === "browse") {
+			fetchPackageManagerItems()
 		}
-	}, [isFetching])
-
-	useEffect(() => {
-		if (packageManagerSources && !isFetching && packageManagerSources.length > 0) {
-			const sourcesKey = JSON.stringify(packageManagerSources.map((s) => s.url))
-			if (sourcesKey !== lastSourcesKey.current && !isManualRefresh.current) {
-				lastSourcesKey.current = sourcesKey
-				// Don't fetch if this is the initial sources load
-				if (hasInitialFetch.current) {
-					fetchPackageManagerItems()
-				}
-			}
-		}
-	}, [packageManagerSources, fetchPackageManagerItems, isFetching])
-
+	}, [packageManagerSources, fetchPackageManagerItems, activeTab])
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const message = event.data
 
-			if (message.type === "action" && message.action === "packageManagerButtonClicked") {
-				setTimeout(() => {
-					vscode.postMessage({
-						type: "fetchPackageManagerItems",
-						forceRefresh: true,
-					} as any)
-				}, 100)
+			if (message.type === "packageManagerButtonClicked") {
+				if (message.text) {
+					// This is an error message
+					console.error("Package manager error:", message.text)
+					if (fetchTimeoutRef.current) {
+						clearTimeout(fetchTimeoutRef.current)
+					}
+					setIsFetching(false)
+					setItems([]) // Clear items on error
+				} else {
+					// This is a refresh request
+					fetchPackageManagerItems()
+				}
 			}
 
 			if (message.type === "repositoryRefreshComplete" && message.url) {
 				setRefreshingUrls((prev) => prev.filter((url) => url !== message.url))
+				// Trigger a fetch to update items after refresh
+				fetchPackageManagerItems()
 			}
 
-			if (message.type === "state" && message.state?.packageManagerItems) {
+			if (message.type === "state" && message.state?.packageManagerItems !== undefined) {
+				// Clear fetch timeout
+				if (fetchTimeoutRef.current) {
+					clearTimeout(fetchTimeoutRef.current)
+				}
+
 				const receivedItems = message.state.packageManagerItems || []
+				console.log("Received package manager items:", receivedItems.length)
 				setItems([...receivedItems])
-				setTimeout(() => {
-					setIsFetching(false)
-					isManualRefresh.current = false
-				}, 0)
+				setIsFetching(false)
 			}
 		}
 
 		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
-	}, [])
+		return () => {
+			window.removeEventListener("message", handleMessage)
+			// Clear any pending timeout on unmount
+			if (fetchTimeoutRef.current) {
+				clearTimeout(fetchTimeoutRef.current)
+			}
+		}
+	}, [fetchPackageManagerItems])
 
 	const filteredItems = items.filter((item) => {
 		if (filters.type && item.type !== filters.type) {
@@ -290,18 +315,26 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 
 	return (
 		<Tab>
-			<TabHeader className="flex justify-between items-center">
+			<TabHeader className="flex justify-between items-center sticky top-0 z-10 bg-vscode-editor-background border-b border-vscode-panel-border">
 				<div className="flex items-center">
 					<h3 className="text-vscode-foreground m-0">Package Manager</h3>
 				</div>
 				<div className="flex gap-2">
 					<Button
 						variant={activeTab === "browse" ? "default" : "secondary"}
+						className={cn(
+							activeTab === "browse" &&
+								"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
+						)}
 						onClick={() => setActiveTab("browse")}>
 						Browse
 					</Button>
 					<Button
 						variant={activeTab === "sources" ? "default" : "secondary"}
+						className={cn(
+							activeTab === "sources" &&
+								"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
+						)}
 						onClick={() => setActiveTab("sources")}>
 						Sources
 					</Button>
@@ -443,14 +476,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						{sortedItems.length === 0 ? (
 							<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
 								<p>No package manager items found</p>
-								<Button
-									onClick={() => {
-										isManualRefresh.current = true
-										setIsFetching(false)
-										fetchPackageManagerItems()
-									}}
-									className="mt-4"
-									disabled={isFetching}>
+								<Button onClick={fetchPackageManagerItems} className="mt-4" disabled={isFetching}>
 									<span
 										className={`codicon ${isFetching ? "codicon-sync codicon-modifier-spin" : "codicon-refresh"} mr-2`}></span>
 									{isFetching ? "Refreshing..." : "Refresh"}
@@ -462,20 +488,13 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 									<p className="text-vscode-descriptionForeground">
 										{`${sortedItems.length} items found`}
 									</p>
-									<Button
-										onClick={() => {
-											isManualRefresh.current = true
-											setIsFetching(false)
-											fetchPackageManagerItems()
-										}}
-										size="sm"
-										disabled={isFetching}>
+									<Button onClick={fetchPackageManagerItems} size="sm" disabled={isFetching}>
 										<span
 											className={`codicon ${isFetching ? "codicon-sync codicon-modifier-spin" : "codicon-refresh"} mr-2`}></span>
 										{isFetching ? "Refreshing..." : "Refresh"}
 									</Button>
 								</div>
-								<div className="grid grid-cols-1 gap-4">
+								<div className="grid grid-cols-1 gap-4 pb-4">
 									{sortedItems.map((item) => (
 										<PackageManagerItemCard
 											key={`${item.repoUrl}-${item.name}`}
@@ -497,6 +516,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						setRefreshingUrls={setRefreshingUrls}
 						onSourcesChange={(sources) => {
 							setPackageManagerSources(sources)
+							setItems([]) // Clear items when sources change
 							vscode.postMessage({ type: "packageManagerSources", sources })
 						}}
 					/>
