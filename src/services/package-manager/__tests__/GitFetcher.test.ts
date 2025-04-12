@@ -121,7 +121,7 @@ describe("GitFetcher", () => {
 
 			const mockGit = mockSimpleGit()
 			expect(mockGit.clone).toHaveBeenCalledWith(testRepoUrl, testRepoDir)
-			expect(mockGit.clean).toHaveBeenCalledWith(["--force", "-d"])
+			expect(mockGit.raw).toHaveBeenCalledWith(["clean", "-f", "-d"])
 			expect(mockGit.raw).toHaveBeenCalledWith(["reset", "--hard", "HEAD"])
 		})
 
@@ -139,7 +139,7 @@ describe("GitFetcher", () => {
 			const mockGit = mockSimpleGit()
 			expect(mockGit.fetch).toHaveBeenCalledWith("origin", "main")
 			expect(mockGit.raw).toHaveBeenCalledWith(["reset", "--hard", "origin/main"])
-			expect(mockGit.clean).toHaveBeenCalledWith(["--force", "-d"])
+			expect(mockGit.raw).toHaveBeenCalledWith(["clean", "-f", "-d"])
 			expect(mockGit.clone).not.toHaveBeenCalled()
 		})
 
@@ -197,7 +197,7 @@ describe("GitFetcher", () => {
 			// Second rm call is after pull failure
 			expect(fs.rm).toHaveBeenCalledWith(testRepoDir, { recursive: true, force: true })
 			expect(mockGit.clone).toHaveBeenCalledWith(testRepoUrl, testRepoDir)
-			expect(mockGit.clean).toHaveBeenCalledWith(["--force", "-d"])
+			expect(mockGit.raw).toHaveBeenCalledWith(["clean", "-f", "-d"])
 			expect(mockGit.raw).toHaveBeenCalledWith(["reset", "--hard", "HEAD"])
 		})
 

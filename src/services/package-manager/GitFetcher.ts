@@ -92,7 +92,7 @@ export class GitFetcher {
 					// Force pull with overwrite
 					await git.fetch("origin", "main")
 					await git.raw(["reset", "--hard", "origin/main"])
-					await git.clean(["--force", "-d"])
+					await git.raw(["clean", "-f", "-d"])
 				} catch (error) {
 					// If pull fails with specific errors that indicate repo corruption,
 					// we should remove and re-clone
@@ -133,7 +133,7 @@ export class GitFetcher {
 					await git.clone(repoUrl, repoDir)
 					// Reset to ensure clean state
 					const repoGit = simpleGit(repoDir)
-					await repoGit.clean(["--force", "-d"])
+					await repoGit.raw(["clean", "-f", "-d"])
 					await repoGit.raw(["reset", "--hard", "HEAD"])
 				} catch (error) {
 					// If clone fails, ensure we clean up any partially created directory
