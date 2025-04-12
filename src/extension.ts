@@ -38,6 +38,7 @@ import { formatLanguage } from "./shared/language"
 
 let outputChannel: vscode.OutputChannel
 let extensionContext: vscode.ExtensionContext
+let packageManagerManager: PackageManagerManager
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -66,13 +67,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	if (!context.globalState.get("allowedCommands")) {
 		context.globalState.update("allowedCommands", defaultCommands)
 	}
-const provider = new ClineProvider(context, outputChannel, "sidebar")
 
-// Initialize package manager
-const packageManagerManager = new PackageManagerManager(context)
-provider.setPackageManagerManager(packageManagerManager)
-telemetryService.setProvider(provider)
+	const provider = new ClineProvider(context, outputChannel, "sidebar")
 
+	// Initialize package manager
+	packageManagerManager = new PackageManagerManager(context)
+	provider.setPackageManagerManager(packageManagerManager)
+	telemetryService.setProvider(provider)
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {
@@ -132,6 +133,16 @@ telemetryService.setProvider(provider)
 // This method is called when your extension is deactivated
 export async function deactivate() {
 	outputChannel.appendLine("Roo-Code extension deactivated")
+
+	// Clean up package manager
+	if (packageManagerManager) {
+		try {
+			await packageManagerManager.cleanup()
+		} catch (error) {
+			console.error("Failed to clean up package manager:", error)
+		}
+	}
+
 	// Clean up MCP server manager
 	await McpServerManager.cleanup(extensionContext)
 	telemetryService.shutdown()

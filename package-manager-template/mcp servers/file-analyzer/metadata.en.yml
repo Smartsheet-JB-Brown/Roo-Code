@@ -1,6 +1,6 @@
 name: "File Analyzer MCP Server"
 description: "An MCP server that analyzes files for code quality, security issues, and performance optimizations"
-type: "mcp-server"
+type: "mcp server"
 version: "1.0.0"
 tags: ["file-analyzer", "code-quality", "security", "performance"]
 sourceUrl: "https://github.com/roo-team/file-analyzer-server"

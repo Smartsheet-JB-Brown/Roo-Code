@@ -1,13 +1,13 @@
 import { mentionRegex } from "../../../src/shared/context-mentions"
 import { Fzf } from "fzf"
 import { ModeConfig } from "../../../src/shared/modes"
-import * as path from "path"
 
 export interface SearchResult {
 	path: string
 	type: "file" | "folder"
 	label?: string
 }
+
 export function insertMention(
 	text: string,
 	position: number,
@@ -231,11 +231,13 @@ export function getContextMenuOptions(
 	// Convert search results to queryItems format
 	const searchResultItems = dynamicSearchResults.map((result) => {
 		const formattedPath = result.path.startsWith("/") ? result.path : `/${result.path}`
+		const pathParts = formattedPath.split("/")
+		const fileName = pathParts[pathParts.length - 1]
 
 		return {
 			type: result.type === "folder" ? ContextMenuOptionType.Folder : ContextMenuOptionType.File,
 			value: formattedPath,
-			label: result.label || path.basename(result.path),
+			label: result.label || fileName,
 			description: formattedPath,
 		}
 	})

@@ -1,6 +1,0 @@
-name: "Full-Stack Developer Role"
-description: "A role for a full-stack developer with expertise in web development, databases, and APIs"
-type: "role"
-version: "1.0.0"
-tags: ["developer", "full-stack", "web", "database", "api"]
-sourceUrl: "https://github.com/roo-team/developer-resources"

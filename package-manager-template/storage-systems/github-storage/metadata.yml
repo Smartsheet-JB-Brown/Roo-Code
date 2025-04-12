@@ -1,6 +1,0 @@
-name: "GitHub Storage System"
-description: "A storage system that uses GitHub repositories to store and retrieve data"
-type: "storage"
-version: "1.0.0"
-tags: ["storage", "github", "git", "repository"]
-sourceUrl: "https://github.com/roo-team/github-storage-system"

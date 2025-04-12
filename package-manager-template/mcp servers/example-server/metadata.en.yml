@@ -1,0 +1,4 @@
+name: "Example MCP Server"
+description: "An example MCP server for testing package manager functionality"
+type: "mcp server"
+version: "1.0.0"

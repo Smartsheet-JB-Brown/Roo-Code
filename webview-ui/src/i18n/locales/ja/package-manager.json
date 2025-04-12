@@ -1,0 +1,83 @@
+{
+	"title": "パッケージマネージャー",
+	"tabs": {
+		"browse": "ブラウズ",
+		"sources": "ソース"
+	},
+	"filters": {
+		"search": {
+			"placeholder": "パッケージマネージャーのアイテムを検索..."
+		},
+		"type": {
+			"label": "タイプで絞り込み：",
+			"all": "すべてのタイプ",
+			"mode": "モード",
+			"mcp server": "MCPサーバー",
+			"prompt": "プロンプト",
+			"package": "パッケージ"
+		},
+		"sort": {
+			"label": "並び替え：",
+			"name": "名前",
+			"author": "作成者",
+			"lastUpdated": "最終更新"
+		},
+		"tags": {
+			"label": "タグで絞り込み：",
+			"available": "{{count}}個利用可能",
+			"clear": "タグをクリア（{{count}}個）",
+			"placeholder": "タグを検索して選択...",
+			"noResults": "一致するタグが見つかりません",
+			"selected": "選択したタグのいずれかを含むアイテムを表示中（{{count}}個選択）",
+			"clickToFilter": "タグをクリックしてアイテムを絞り込む"
+		}
+	},
+	"items": {
+		"empty": {
+			"noItems": "パッケージマネージャーのアイテムが見つかりません",
+			"withFilters": "フィルターを調整してみてください",
+			"noSources": "ソースタブでソースを追加してみてください"
+		},
+		"count": "{{count}}個のアイテムが見つかりました",
+		"refresh": {
+			"button": "更新",
+			"refreshing": "更新中..."
+		},
+		"card": {
+			"by": "作成者：{{author}}",
+			"from": "ソース：{{source}}",
+			"externalComponents": "外部コンポーネント{{count}}個を含む",
+			"viewSource": "表示",
+			"viewOnSource": "{{source}}で表示"
+		}
+	},
+	"sources": {
+		"title": "パッケージマネージャーのソース設定",
+		"description": "パッケージマネージャーのアイテムを含むGitリポジトリを追加します。これらのリポジトリはパッケージマネージャーの閲覧時に取得されます。",
+		"add": {
+			"title": "新規ソースの追加",
+			"urlPlaceholder": "GitリポジトリのURL（例：https://github.com/username/repo）",
+			"urlFormats": "対応フォーマット：HTTPS（https://github.com/username/repo）、SSH（git@github.com:username/repo.git）、またはGitプロトコル（git://github.com/username/repo.git）",
+			"namePlaceholder": "表示名（オプション、最大20文字）",
+			"button": "ソースを追加"
+		},
+		"current": {
+			"title": "現在のソース",
+			"count": "{{current}}/{{max}}個（最大）",
+			"empty": "ソースが設定されていません。ソースを追加して始めてください。",
+			"refresh": "このソースを更新",
+			"remove": "ソースを削除"
+		},
+		"errors": {
+			"emptyUrl": "URLを入力してください",
+			"invalidUrl": "URLの形式が無効です",
+			"nonVisibleChars": "URLに空白以外の不可視文字が含まれています",
+			"invalidGitUrl": "有効なGitリポジトリのURLを入力してください（例：https://github.com/username/repo）",
+			"duplicateUrl": "このURLは既にリストに存在します（大文字小文字と空白を区別しない一致）",
+			"nameTooLong": "名前は20文字以内にしてください",
+			"nonVisibleCharsName": "名前に空白以外の不可視文字が含まれています",
+			"duplicateName": "この名前は既に使用されています（大文字小文字と空白を区別しない一致）",
+			"maxSources": "ソースは最大{{max}}個まで追加できます"
+		}
+	}
+}

@@ -750,7 +750,8 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	 * @param webview A reference to the extension webview
 	 */
 	private setWebviewMessageListener(webview: vscode.Webview) {
-		const onReceiveMessage = async (message: WebviewMessage) => webviewMessageHandler(this, message, this.packageManagerManager)
+		const onReceiveMessage = async (message: WebviewMessage) =>
+			webviewMessageHandler(this, message, this.packageManagerManager)
 
 		webview.onDidReceiveMessage(onReceiveMessage, null, this.disposables)
 	}
@@ -1211,8 +1212,12 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const allowedCommands = vscode.workspace.getConfiguration("roo-cline").get<string[]>("allowedCommands") || []
 		const cwd = this.cwd
 
+		// Get package manager items from the manager
+		const packageManagerItems = this.packageManagerManager?.getCurrentItems() || []
+
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
+			packageManagerItems,
 			apiConfiguration,
 			customInstructions,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,

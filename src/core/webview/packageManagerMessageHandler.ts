@@ -29,12 +29,19 @@ export async function handlePackageManagerMessages(
 			return true
 		}
 		case "fetchPackageManagerItems": {
+			// Prevent multiple simultaneous fetches
+			if (packageManagerManager.isFetching) {
+				console.log("Package Manager: Fetch already in progress, skipping")
+				return true
+			}
+
 			// Check if we need to force refresh using type assertion
 			const forceRefresh = (message as any).forceRefresh === true
 			console.log(`Package Manager: Fetch requested with forceRefresh=${forceRefresh}`)
 			try {
 				console.log("Package Manager: Received request to fetch package manager items")
 				console.log("DEBUG: Processing package manager request")
+				packageManagerManager.isFetching = true
 
 				// Wrap the entire initialization in a try-catch block
 				try {
@@ -58,78 +65,56 @@ export async function handlePackageManagerMessages(
 					// Add timing information
 					const startTime = Date.now()
 
-					// Simplify the initialization by limiting the number of items and adding more error handling
-					let items: PackageManagerItem[] = []
+					// Fetch items from all enabled sources
+					console.log("DEBUG: Starting to fetch items from sources")
+					const enabledSources = sources.filter((s) => s.enabled)
 
-					try {
-						console.log("DEBUG: Starting to fetch items from sources")
-						// Only fetch from the first enabled source to reduce complexity
-						const enabledSources = sources.filter((s) => s.enabled)
-						if (enabledSources.length > 0) {
-							const firstSource = enabledSources[0]
-							console.log(`Package Manager: Fetching items from first source: ${firstSource.url}`)
-
-							// Get items from the first source only
-							const sourceItems = await packageManagerManager.getPackageManagerItems([firstSource])
-							items = sourceItems
-							console.log("DEBUG: Successfully fetched items:", items.length)
-						} else {
-							console.log("DEBUG: No enabled sources found")
-						}
-					} catch (fetchError) {
-						console.error("Failed to fetch package manager items:", fetchError)
-						// Continue with empty items array
-						items = []
+					if (enabledSources.length === 0) {
+						console.log("DEBUG: No enabled sources found")
+						vscode.window.showInformationMessage(
+							"No enabled sources configured. Add and enable sources to view items.",
+						)
+						await provider.postStateToWebview()
+						return true
 					}
+
+					console.log(`Package Manager: Fetching items from ${enabledSources.length} sources`)
+					const result = await packageManagerManager.getPackageManagerItems(enabledSources)
+
+					// If there are errors but also items, show warning
+					if (result.errors && result.items.length > 0) {
+						vscode.window.showWarningMessage(
+							`Some package manager sources failed to load:\n${result.errors.join("\n")}`,
+						)
+					}
+					// If there are errors and no items, show error
+					else if (result.errors && result.items.length === 0) {
+						vscode.window.showErrorMessage(
+							`Failed to load package manager sources:\n${result.errors.join("\n")}`,
+						)
+					}
+
+					console.log("DEBUG: Successfully fetched items:", result.items.length)
 
 					console.log("DEBUG: Fetch completed, preparing to send items to webview")
 					const endTime = Date.now()
 
-					console.log(`Package Manager: Found ${items.length} items in ${endTime - startTime}ms`)
-					console.log(`Package Manager: First item:`, items.length > 0 ? items[0] : "No items")
+					console.log(`Package Manager: Found ${result.items.length} items in ${endTime - startTime}ms`)
+					console.log(`Package Manager: First item:`, result.items.length > 0 ? result.items[0] : "No items")
+					// The items are already stored in PackageManagerManager's currentItems
+					// No need to store in global state
 
-					// Send the items to the webview
-					console.log("DEBUG: Creating message to send items to webview")
-
-					// Get the current state to include apiConfiguration to prevent welcome screen from showing
-					const currentState = await provider.getState()
-
-					const message = {
-						type: "state",
-						state: {
-							// Include the current apiConfiguration to prevent welcome screen from showing
-							// This is critical because ExtensionStateContext checks apiConfiguration to determine if welcome screen should be shown
-							apiConfiguration: currentState.apiConfiguration,
-							packageManagerItems: items,
-						},
-					} as ExtensionMessage
-
-					console.log(`Package Manager: Sending message to webview:`, message)
-					console.log(
-						"DEBUG: About to call postMessageToWebview with apiConfiguration:",
-						currentState.apiConfiguration ? "present" : "missing",
-					)
-					provider.postMessageToWebview(message)
-					console.log("DEBUG: Called postMessageToWebview")
-					console.log(`Package Manager: Message sent to webview`)
+					// Send state to webview
+					await provider.postStateToWebview()
+					console.log("Package Manager: State sent to webview")
 				} catch (initError) {
 					console.error("Error in package manager initialization:", initError)
-					// Send an empty items array to the webview to prevent the spinner from spinning forever
-					// Get the current state to include apiConfiguration to prevent welcome screen from showing
-					const currentState = await provider.getState()
-
-					provider.postMessageToWebview({
-						type: "state",
-						state: {
-							// Include the current apiConfiguration to prevent welcome screen from showing
-							// This is critical because ExtensionStateContext checks apiConfiguration to determine if welcome screen should be shown
-							apiConfiguration: currentState.apiConfiguration,
-							packageManagerItems: [],
-						},
-					} as any) // Use type assertion to bypass TypeScript checking
+					console.error("Error in package manager initialization:", initError)
 					vscode.window.showErrorMessage(
 						`Package manager initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`,
 					)
+					// The state will already be updated with empty items by PackageManagerManager
+					await provider.postStateToWebview()
 				}
 			} catch (error) {
 				console.error("Failed to fetch package manager items:", error)
@@ -237,22 +222,20 @@ export async function handlePackageManagerMessages(
 					if (source) {
 						try {
 							// Refresh the repository with the source name
-							await packageManagerManager.refreshRepository(message.url, source.name)
-							vscode.window.showInformationMessage(
-								`Successfully refreshed package manager source: ${source.name || message.url}`,
+							const refreshResult = await packageManagerManager.refreshRepository(
+								message.url,
+								source.name,
 							)
-
-							// Trigger a fetch to update the UI with the refreshed data
-							const currentState = await provider.getState()
-							provider.postMessageToWebview({
-								type: "state",
-								state: {
-									apiConfiguration: currentState.apiConfiguration,
-									packageManagerItems: await packageManagerManager.getPackageManagerItems(
-										sources.filter((s) => s.enabled),
-									),
-								},
-							} as ExtensionMessage)
+							if (refreshResult.error) {
+								vscode.window.showErrorMessage(
+									`Failed to refresh source: ${source.name || message.url} - ${refreshResult.error}`,
+								)
+							} else {
+								vscode.window.showInformationMessage(
+									`Successfully refreshed package manager source: ${source.name || message.url}`,
+								)
+							}
+							await provider.postStateToWebview()
 						} finally {
 							// Always notify the webview that the refresh is complete, even if it failed
 							console.log(`Package Manager: Sending repositoryRefreshComplete message for ${message.url}`)

@@ -8,6 +8,8 @@ import { PackageManagerItem, PackageManagerRepository, PackageManagerSource } fr
  * Service for managing package manager data
  */
 export class PackageManagerManager {
+	private currentItems: PackageManagerItem[] = []
+	public isFetching = false
 	// Cache expiry time in milliseconds (set to a low value for testing)
 	private static readonly CACHE_EXPIRY_MS = 10 * 1000 // 10 seconds (normally 3600000 = 1 hour)
 
@@ -23,10 +25,12 @@ export class PackageManagerManager {
 	 * @param sources The package manager sources
 	 * @returns An array of PackageManagerItem objects
 	 */
-	async getPackageManagerItems(sources: PackageManagerSource[]): Promise<PackageManagerItem[]> {
+	async getPackageManagerItems(
+		sources: PackageManagerSource[],
+	): Promise<{ items: PackageManagerItem[]; errors?: string[] }> {
 		console.log(`PackageManagerManager: Getting items from ${sources.length} sources`)
 		const items: PackageManagerItem[] = []
-		const errors: Error[] = []
+		const errors: string[] = []
 
 		// Filter enabled sources
 		const enabledSources = sources.filter((s) => s.enabled)
@@ -48,19 +52,21 @@ export class PackageManagerManager {
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				console.error(`PackageManagerManager: Failed to fetch data from ${source.url}:`, error)
-				errors.push(new Error(`Source ${source.url}: ${errorMessage}`))
+				errors.push(`Source ${source.url}: ${errorMessage}`)
 			}
 		}
 
-		// Show a single error message with all failures
-		if (errors.length > 0) {
-			const errorMessage = `Failed to fetch from ${errors.length} sources: ${errors.map((e) => e.message).join("; ")}`
-			console.error(`PackageManagerManager: ${errorMessage}`)
-			vscode.window.showErrorMessage(errorMessage)
+		// Store the current items
+		this.currentItems = items
+
+		// Return both items and errors
+		const result = {
+			items,
+			...(errors.length > 0 && { errors }),
 		}
 
 		console.log(`PackageManagerManager: Returning ${items.length} total items`)
-		return items
+		return result
 	}
 
 	/**
@@ -95,7 +101,7 @@ export class PackageManagerManager {
 			console.log(`PackageManagerManager: Cache miss or expired for ${url}, fetching fresh data`)
 
 			// Fetch fresh data with timeout protection
-			const fetchPromise = this.gitFetcher.fetchRepository(url, sourceName)
+			const fetchPromise = this.gitFetcher.fetchRepository(url, forceRefresh, sourceName)
 
 			// Create a timeout promise
 			const timeoutPromise = new Promise<PackageManagerRepository>((_, reject) => {
@@ -117,7 +123,11 @@ export class PackageManagerManager {
 
 			// Return empty repository data instead of throwing
 			return {
-				metadata: {},
+				metadata: {
+					name: "Unknown Repository",
+					description: "Failed to load repository",
+					version: "0.0.0",
+				},
 				items: [],
 				url,
 			}
@@ -140,7 +150,16 @@ export class PackageManagerManager {
 			return data
 		} catch (error) {
 			console.error(`PackageManagerManager: Failed to refresh repository ${url}:`, error)
-			throw error
+			return {
+				metadata: {
+					name: "Unknown Repository",
+					description: "Failed to load repository",
+					version: "0.0.0",
+				},
+				items: [],
+				url,
+				error: error instanceof Error ? error.message : String(error),
+			}
 		}
 	}
 
@@ -283,5 +302,22 @@ export class PackageManagerManager {
 
 			return sortOrder === "asc" ? comparison : -comparison
 		})
+	}
+	/**
+	 * Gets the current package manager items
+	 * @returns The current items
+	 */
+	getCurrentItems(): PackageManagerItem[] {
+		return this.currentItems
+	}
+
+	/**
+	 * Cleans up resources used by the package manager
+	 */
+	async cleanup(): Promise<void> {
+		// Clean up cache directories for all sources
+		const sources = Array.from(this.cache.keys()).map((url) => ({ url, enabled: true }))
+		await this.cleanupCacheDirectories(sources)
+		this.clearCache()
 	}
 }

@@ -1,0 +1,5 @@
+name: "Data Platform Package"
+description: "A complete data platform solution including roles, servers, and storage systems"
+type: "package"
+version: "1.0.0"
+tags: ["data-platform", "enterprise", "data-engineering", "complete-solution"]

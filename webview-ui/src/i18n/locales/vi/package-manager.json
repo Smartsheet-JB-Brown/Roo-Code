@@ -1,0 +1,83 @@
+{
+	"title": "Trình Quản Lý Gói",
+	"tabs": {
+		"browse": "Duyệt",
+		"sources": "Nguồn"
+	},
+	"filters": {
+		"search": {
+			"placeholder": "Tìm kiếm các mục trong trình quản lý gói..."
+		},
+		"type": {
+			"label": "Lọc theo loại:",
+			"all": "Tất cả các loại",
+			"mode": "Chế độ",
+			"mcp server": "Máy chủ MCP",
+			"prompt": "Lời nhắc",
+			"package": "Gói"
+		},
+		"sort": {
+			"label": "Sắp xếp theo:",
+			"name": "Tên",
+			"author": "Tác giả",
+			"lastUpdated": "Cập nhật lần cuối"
+		},
+		"tags": {
+			"label": "Lọc theo thẻ:",
+			"available": "{{count}} thẻ có sẵn",
+			"clear": "Xóa thẻ ({{count}})",
+			"placeholder": "Gõ để tìm kiếm và chọn thẻ...",
+			"noResults": "Không tìm thấy thẻ phù hợp",
+			"selected": "Hiển thị các mục có bất kỳ thẻ đã chọn nào (đã chọn {{count}} thẻ)",
+			"clickToFilter": "Nhấp vào thẻ để lọc các mục"
+		}
+	},
+	"items": {
+		"empty": {
+			"noItems": "Không tìm thấy mục nào trong trình quản lý gói",
+			"withFilters": "Thử điều chỉnh bộ lọc",
+			"noSources": "Thử thêm một nguồn trong tab Nguồn"
+		},
+		"count": "Tìm thấy {{count}} mục",
+		"refresh": {
+			"button": "Làm mới",
+			"refreshing": "Đang làm mới..."
+		},
+		"card": {
+			"by": "bởi {{author}}",
+			"from": "từ {{source}}",
+			"externalComponents": "Chứa {{count}} thành phần bên ngoài",
+			"viewSource": "Xem",
+			"viewOnSource": "Xem trên {{source}}"
+		}
+	},
+	"sources": {
+		"title": "Cấu Hình Nguồn Trình Quản Lý Gói",
+		"description": "Thêm kho lưu trữ Git chứa các mục của trình quản lý gói. Các kho lưu trữ này sẽ được tải khi duyệt trình quản lý gói.",
+		"add": {
+			"title": "Thêm Nguồn Mới",
+			"urlPlaceholder": "URL kho lưu trữ Git (ví dụ: https://github.com/username/repo)",
+			"urlFormats": "Định dạng được hỗ trợ: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) hoặc giao thức Git (git://github.com/username/repo.git)",
+			"namePlaceholder": "Tên hiển thị (tùy chọn, tối đa 20 ký tự)",
+			"button": "Thêm Nguồn"
+		},
+		"current": {
+			"title": "Nguồn Hiện Tại",
+			"count": "{{current}}/{{max}} tối đa",
+			"empty": "Chưa có nguồn nào được cấu hình. Thêm một nguồn để bắt đầu.",
+			"refresh": "Làm mới nguồn này",
+			"remove": "Xóa nguồn"
+		},
+		"errors": {
+			"emptyUrl": "URL không được để trống",
+			"invalidUrl": "Định dạng URL không hợp lệ",
+			"nonVisibleChars": "URL chứa ký tự không nhìn thấy ngoài khoảng trắng",
+			"invalidGitUrl": "URL phải là URL kho lưu trữ Git hợp lệ (ví dụ: https://github.com/username/repo)",
+			"duplicateUrl": "URL này đã có trong danh sách (khớp không phân biệt chữ hoa/thường và khoảng trắng)",
+			"nameTooLong": "Tên không được vượt quá 20 ký tự",
+			"nonVisibleCharsName": "Tên chứa ký tự không nhìn thấy ngoài khoảng trắng",
+			"duplicateName": "Tên này đã được sử dụng (khớp không phân biệt chữ hoa/thường và khoảng trắng)",
+			"maxSources": "Chỉ cho phép tối đa {{max}} nguồn"
+		}
+	}
+}

@@ -1,0 +1,91 @@
+{
+	"title": "Menedżer Pakietów",
+	"tabs": {
+		"browse": "Przeglądaj",
+		"sources": "Źródła"
+	},
+	"filters": {
+		"search": {
+			"placeholder": "Szukaj elementów menedżera pakietów..."
+		},
+		"type": {
+			"label": "Filtruj według typu:",
+			"all": "Wszystkie typy",
+			"mode": "Tryb",
+			"mcp server": "Serwer MCP",
+			"prompt": "Prompt",
+			"package": "Pakiet"
+		},
+		"sort": {
+			"label": "Sortuj według:",
+			"name": "Nazwa",
+			"author": "Autor",
+			"lastUpdated": "Ostatnia aktualizacja"
+		},
+		"tags": {
+			"label": "Filtruj według tagów:",
+			"available": "{{count}} dostępny",
+			"available_2-4": "{{count}} dostępne",
+			"available_5": "{{count}} dostępnych",
+			"clear": "Wyczyść tagi ({{count}})",
+			"placeholder": "Wpisz, aby wyszukać i wybrać tagi...",
+			"noResults": "Nie znaleziono pasujących tagów",
+			"selected": "Wyświetlanie elementów z dowolnym z wybranych tagów ({{count}} wybrany)",
+			"selected_2-4": "Wyświetlanie elementów z dowolnym z wybranych tagów ({{count}} wybrane)",
+			"selected_5": "Wyświetlanie elementów z dowolnym z wybranych tagów ({{count}} wybranych)",
+			"clickToFilter": "Kliknij tagi, aby filtrować elementy"
+		}
+	},
+	"items": {
+		"empty": {
+			"noItems": "Nie znaleziono elementów menedżera pakietów",
+			"withFilters": "Spróbuj dostosować filtry",
+			"noSources": "Spróbuj dodać źródło w zakładce Źródła"
+		},
+		"count": "Znaleziono {{count}} element",
+		"count_2-4": "Znaleziono {{count}} elementy",
+		"count_5": "Znaleziono {{count}} elementów",
+		"refresh": {
+			"button": "Odśwież",
+			"refreshing": "Odświeżanie..."
+		},
+		"card": {
+			"by": "autor: {{author}}",
+			"from": "z {{source}}",
+			"externalComponents": "Zawiera {{count}} komponent zewnętrzny",
+			"externalComponents_2-4": "Zawiera {{count}} komponenty zewnętrzne",
+			"externalComponents_5": "Zawiera {{count}} komponentów zewnętrznych",
+			"viewSource": "Zobacz",
+			"viewOnSource": "Zobacz na {{source}}"
+		}
+	},
+	"sources": {
+		"title": "Konfiguruj Źródła Menedżera Pakietów",
+		"description": "Dodaj repozytoria Git zawierające elementy menedżera pakietów. Te repozytoria będą pobierane podczas przeglądania menedżera pakietów.",
+		"add": {
+			"title": "Dodaj Nowe Źródło",
+			"urlPlaceholder": "URL repozytorium Git (np. https://github.com/username/repo)",
+			"urlFormats": "Obsługiwane formaty: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) lub protokół Git (git://github.com/username/repo.git)",
+			"namePlaceholder": "Nazwa wyświetlana (opcjonalnie, maks. 20 znaków)",
+			"button": "Dodaj Źródło"
+		},
+		"current": {
+			"title": "Aktualne Źródła",
+			"count": "{{current}}/{{max}} maksymalnie",
+			"empty": "Brak skonfigurowanych źródeł. Dodaj źródło, aby rozpocząć.",
+			"refresh": "Odśwież to źródło",
+			"remove": "Usuń źródło"
+		},
+		"errors": {
+			"emptyUrl": "URL nie może być pusty",
+			"invalidUrl": "Nieprawidłowy format URL",
+			"nonVisibleChars": "URL zawiera znaki niewidoczne inne niż spacje",
+			"invalidGitUrl": "URL musi być prawidłowym URL-em repozytorium Git (np. https://github.com/username/repo)",
+			"duplicateUrl": "Ten URL już znajduje się na liście (dopasowanie bez rozróżniania wielkości liter i spacji)",
+			"nameTooLong": "Nazwa nie może przekraczać 20 znaków",
+			"nonVisibleCharsName": "Nazwa zawiera znaki niewidoczne inne niż spacje",
+			"duplicateName": "Ta nazwa jest już używana (dopasowanie bez rozróżniania wielkości liter i spacji)",
+			"maxSources": "Maksymalna liczba źródeł to {{max}}"
+		}
+	}
+}

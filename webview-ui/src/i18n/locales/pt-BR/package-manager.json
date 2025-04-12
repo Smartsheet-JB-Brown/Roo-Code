@@ -1,0 +1,87 @@
+{
+	"title": "Gerenciador de Pacotes",
+	"tabs": {
+		"browse": "Navegar",
+		"sources": "Fontes"
+	},
+	"filters": {
+		"search": {
+			"placeholder": "Pesquisar itens do gerenciador de pacotes..."
+		},
+		"type": {
+			"label": "Filtrar por tipo:",
+			"all": "Todos os tipos",
+			"mode": "Modo",
+			"mcp server": "Servidor MCP",
+			"prompt": "Prompt",
+			"package": "Pacote"
+		},
+		"sort": {
+			"label": "Ordenar por:",
+			"name": "Nome",
+			"author": "Autor",
+			"lastUpdated": "Última atualização"
+		},
+		"tags": {
+			"label": "Filtrar por tags:",
+			"available": "{{count}} disponível",
+			"available_plural": "{{count}} disponíveis",
+			"clear": "Limpar tags ({{count}})",
+			"placeholder": "Digite para pesquisar e selecionar tags...",
+			"noResults": "Nenhuma tag correspondente encontrada",
+			"selected": "Exibindo itens com qualquer uma das tags selecionadas ({{count}} selecionada)",
+			"selected_plural": "Exibindo itens com qualquer uma das tags selecionadas ({{count}} selecionadas)",
+			"clickToFilter": "Clique nas tags para filtrar os itens"
+		}
+	},
+	"items": {
+		"empty": {
+			"noItems": "Nenhum item do gerenciador de pacotes encontrado",
+			"withFilters": "Tente ajustar os filtros",
+			"noSources": "Tente adicionar uma fonte na aba Fontes"
+		},
+		"count": "{{count}} item encontrado",
+		"count_plural": "{{count}} itens encontrados",
+		"refresh": {
+			"button": "Atualizar",
+			"refreshing": "Atualizando..."
+		},
+		"card": {
+			"by": "por {{author}}",
+			"from": "de {{source}}",
+			"externalComponents": "Contém {{count}} componente externo",
+			"externalComponents_plural": "Contém {{count}} componentes externos",
+			"viewSource": "Visualizar",
+			"viewOnSource": "Visualizar no {{source}}"
+		}
+	},
+	"sources": {
+		"title": "Configurar Fontes do Gerenciador de Pacotes",
+		"description": "Adicione repositórios Git que contenham itens do gerenciador de pacotes. Estes repositórios serão obtidos ao navegar pelo gerenciador de pacotes.",
+		"add": {
+			"title": "Adicionar Nova Fonte",
+			"urlPlaceholder": "URL do repositório Git (ex: https://github.com/username/repo)",
+			"urlFormats": "Formatos suportados: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) ou protocolo Git (git://github.com/username/repo.git)",
+			"namePlaceholder": "Nome de exibição (opcional, máx. 20 caracteres)",
+			"button": "Adicionar Fonte"
+		},
+		"current": {
+			"title": "Fontes Atuais",
+			"count": "{{current}}/{{max}} máximo",
+			"empty": "Nenhuma fonte configurada. Adicione uma fonte para começar.",
+			"refresh": "Atualizar esta fonte",
+			"remove": "Remover fonte"
+		},
+		"errors": {
+			"emptyUrl": "A URL não pode estar vazia",
+			"invalidUrl": "Formato de URL inválido",
+			"nonVisibleChars": "A URL contém caracteres não visíveis além de espaços",
+			"invalidGitUrl": "A URL deve ser uma URL de repositório Git válida (ex: https://github.com/username/repo)",
+			"duplicateUrl": "Esta URL já está na lista (correspondência sem distinção entre maiúsculas/minúsculas e espaços)",
+			"nameTooLong": "O nome deve ter no máximo 20 caracteres",
+			"nonVisibleCharsName": "O nome contém caracteres não visíveis além de espaços",
+			"duplicateName": "Este nome já está em uso (correspondência sem distinção entre maiúsculas/minúsculas e espaços)",
+			"maxSources": "Máximo de {{max}} fontes permitidas"
+		}
+	}
+}

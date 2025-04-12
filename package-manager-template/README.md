@@ -1,63 +1,46 @@
-# Roo-Code Package Manager Template
+# Package Manager Template
 
-This repository serves as a template for creating package manager items for Roo-Code. It contains examples of different types of package manager items and the required structure for each.
+This template provides a basic structure for creating a package manager source repository. The structure follows the required format for Roo Code's package manager.
 
-## Repository Structure
+## Structure
 
 ```
-package manager-template/
-├── README.md
-├── metadata.yml
-├── roles/
-│   ├── developer-role/
-│   │   ├── metadata.yml
-│   │   └── role.md
-│   └── architect-role/
-│       ├── metadata.yml
-│       └── role.md
-├── mcp-servers/
-│   ├── file-analyzer/
-│   │   ├── metadata.yml
-│   │   └── server.js
-│   └── code-generator/
-│       ├── metadata.yml
-│       └── server.js
-└── storage-systems/
-    └── github-storage/
-        ├── metadata.yml
-        └── storage.js
+/
+├── metadata.en.yml         # Required: Repository metadata
+└── mcp servers/           # Required: At least one of: mcp servers, roles, storage systems, or items
+    └── example-server/
+        └── metadata.en.yml
 ```
 
-## Root Metadata
+## Required Files
 
-The `metadata.yml` file at the root of the repository contains information about the repository itself:
+### Root metadata.en.yml
 
 ```yaml
-name: "Example Package Manager Repository"
-description: "A collection of example package manager items for Roo-Code"
+name: "Your Repository Name"
+description: "Your repository description"
 version: "1.0.0"
 ```
 
-## Item Metadata
-
-Each item in the package manager has its own `metadata.yml` file that contains information about the item:
+### MCP Server metadata.en.yml
 
 ```yaml
-name: "Item Name"
-description: "Item description"
-type: "role|mcp-server|storage|other"
+name: "Your MCP Server Name"
+description: "Your MCP server description"
+type: "mcp server"
 version: "1.0.0"
-tags: ["tag1", "tag2"]
-sourceUrl: "https://github.com/username/repo" # Optional URL for the "view source" button
 ```
 
-## Testing
+## Usage
 
-To test this repository with the Roo-Code Package Manager:
+1. Copy this template to create your own package manager repository
+2. Update the metadata.en.yml with your repository information
+3. Add your MCP servers, roles, or other components
+4. Each component must have its own metadata.en.yml file with the required fields
 
-1. Create a new GitHub repository
-2. Upload this template to the repository
-3. In Roo-Code, go to the Package Manager tab
-4. Click on the "Sources" tab
-5. Add your repository URL
-6. Go back to the "Browse" tab to see your package manager items
+## Validation Requirements
+
+- The root metadata.en.yml must have name, description, and version fields
+- Version must be in semver format (e.g., 1.0.0)
+- The repository must have at least one of: mcp servers, roles, storage systems, or items directories
+- Each component must have a metadata.en.yml with the required fields including the correct type

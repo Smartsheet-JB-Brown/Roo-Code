@@ -1,0 +1,87 @@
+{
+	"title": "Gestore Pacchetti",
+	"tabs": {
+		"browse": "Sfoglia",
+		"sources": "Sorgenti"
+	},
+	"filters": {
+		"search": {
+			"placeholder": "Cerca elementi del gestore pacchetti..."
+		},
+		"type": {
+			"label": "Filtra per tipo:",
+			"all": "Tutti i tipi",
+			"mode": "Modalità",
+			"mcp server": "Server MCP",
+			"prompt": "Prompt",
+			"package": "Pacchetto"
+		},
+		"sort": {
+			"label": "Ordina per:",
+			"name": "Nome",
+			"author": "Autore",
+			"lastUpdated": "Ultimo aggiornamento"
+		},
+		"tags": {
+			"label": "Filtra per tag:",
+			"available": "{{count}} disponibile",
+			"available_plural": "{{count}} disponibili",
+			"clear": "Cancella tag ({{count}})",
+			"placeholder": "Digita per cercare e selezionare i tag...",
+			"noResults": "Nessun tag corrispondente trovato",
+			"selected": "Visualizzazione elementi con uno dei tag selezionati ({{count}} selezionato)",
+			"selected_plural": "Visualizzazione elementi con uno dei tag selezionati ({{count}} selezionati)",
+			"clickToFilter": "Clicca sui tag per filtrare gli elementi"
+		}
+	},
+	"items": {
+		"empty": {
+			"noItems": "Nessun elemento del gestore pacchetti trovato",
+			"withFilters": "Prova a modificare i filtri",
+			"noSources": "Prova ad aggiungere una sorgente nella scheda Sorgenti"
+		},
+		"count": "{{count}} elemento trovato",
+		"count_plural": "{{count}} elementi trovati",
+		"refresh": {
+			"button": "Aggiorna",
+			"refreshing": "Aggiornamento in corso..."
+		},
+		"card": {
+			"by": "di {{author}}",
+			"from": "da {{source}}",
+			"externalComponents": "Contiene {{count}} componente esterno",
+			"externalComponents_plural": "Contiene {{count}} componenti esterni",
+			"viewSource": "Visualizza",
+			"viewOnSource": "Visualizza su {{source}}"
+		}
+	},
+	"sources": {
+		"title": "Configura Sorgenti del Gestore Pacchetti",
+		"description": "Aggiungi repository Git che contengono elementi del gestore pacchetti. Questi repository verranno recuperati durante la navigazione del gestore pacchetti.",
+		"add": {
+			"title": "Aggiungi Nuova Sorgente",
+			"urlPlaceholder": "URL del repository Git (es. https://github.com/username/repo)",
+			"urlFormats": "Formati supportati: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) o protocollo Git (git://github.com/username/repo.git)",
+			"namePlaceholder": "Nome visualizzato (opzionale, max 20 caratteri)",
+			"button": "Aggiungi Sorgente"
+		},
+		"current": {
+			"title": "Sorgenti Attuali",
+			"count": "{{current}}/{{max}} massimo",
+			"empty": "Nessuna sorgente configurata. Aggiungi una sorgente per iniziare.",
+			"refresh": "Aggiorna questa sorgente",
+			"remove": "Rimuovi sorgente"
+		},
+		"errors": {
+			"emptyUrl": "L'URL non può essere vuoto",
+			"invalidUrl": "Formato URL non valido",
+			"nonVisibleChars": "L'URL contiene caratteri non visibili oltre agli spazi",
+			"invalidGitUrl": "L'URL deve essere un URL di repository Git valido (es. https://github.com/username/repo)",
+			"duplicateUrl": "Questo URL è già presente nell'elenco (corrispondenza senza distinzione tra maiuscole/minuscole e spazi)",
+			"nameTooLong": "Il nome deve essere di massimo 20 caratteri",
+			"nonVisibleCharsName": "Il nome contiene caratteri non visibili oltre agli spazi",
+			"duplicateName": "Questo nome è già in uso (corrispondenza senza distinzione tra maiuscole/minuscole e spazi)",
+			"maxSources": "Massimo {{max}} sorgenti consentite"
+		}
+	}
+}
