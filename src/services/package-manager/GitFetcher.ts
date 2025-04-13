@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 import * as yaml from "js-yaml"
-import simpleGit from "simple-git"
+import simpleGit, { SimpleGit } from "simple-git"
 import { MetadataScanner } from "./MetadataScanner"
 import { validateAnyMetadata } from "./schemas"
 import { PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from "./types"
@@ -12,11 +12,22 @@ import { PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from
  */
 export class GitFetcher {
 	private readonly cacheDir: string
-	private readonly metadataScanner: MetadataScanner
+	private metadataScanner: MetadataScanner
+	private git?: SimpleGit
 
 	constructor(context: vscode.ExtensionContext) {
 		this.cacheDir = path.join(context.globalStorageUri.fsPath, "package-manager-cache")
 		this.metadataScanner = new MetadataScanner()
+	}
+
+	/**
+	 * Initialize git instance for a repository
+	 * @param repoDir Repository directory
+	 */
+	private initGit(repoDir: string): void {
+		this.git = simpleGit(repoDir)
+		// Update MetadataScanner with new git instance
+		this.metadataScanner = new MetadataScanner(this.git)
 	}
 
 	/**
@@ -40,6 +51,9 @@ export class GitFetcher {
 
 		// Clone or pull repository
 		await this.cloneOrPullRepository(repoUrl, repoDir, forceRefresh)
+
+		// Initialize git for this repository
+		this.initGit(repoDir)
 
 		// Validate repository structure
 		await this.validateRepositoryStructure(repoDir)

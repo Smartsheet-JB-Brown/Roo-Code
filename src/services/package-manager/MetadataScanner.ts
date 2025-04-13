@@ -2,6 +2,7 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 import * as yaml from "js-yaml"
+import { SimpleGit } from "simple-git"
 import { validateAnyMetadata } from "./schemas"
 import { ComponentMetadata, ComponentType, LocalizedMetadata, PackageManagerItem, PackageMetadata } from "./types"
 
@@ -9,6 +10,12 @@ import { ComponentMetadata, ComponentType, LocalizedMetadata, PackageManagerItem
  * Handles component discovery and metadata loading
  */
 export class MetadataScanner {
+	private readonly git?: SimpleGit
+
+	constructor(git?: SimpleGit) {
+		this.git = git
+	}
+
 	/**
 	 * Scans a directory for components
 	 * @param rootDir The root directory to scan
@@ -138,11 +145,31 @@ export class MetadataScanner {
 	}
 
 	/**
-	 * Gets the last modified date for a component
+	 * Gets the last modified date for a component using git history
 	 * @param componentDir The component directory
 	 * @returns ISO date string
 	 */
 	private async getLastModifiedDate(componentDir: string): Promise<string> {
+		if (this.git) {
+			try {
+				// Get the latest commit date for the directory and its contents
+				const result = await this.git.raw([
+					"log",
+					"-1",
+					"--format=%aI", // ISO 8601 format
+					"--",
+					componentDir,
+				])
+				if (result) {
+					return result.trim()
+				}
+			} catch (error) {
+				console.error(`Error getting git history for ${componentDir}:`, error)
+				// Fall through to fs.stat fallback
+			}
+		}
+
+		// Fallback to fs.stat if git is not available or fails
 		try {
 			const stats = await fs.stat(componentDir)
 			return stats.mtime.toISOString()
