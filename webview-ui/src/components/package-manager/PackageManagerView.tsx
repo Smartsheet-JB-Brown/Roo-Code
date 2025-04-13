@@ -175,8 +175,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 			clearTimeout(fetchTimeoutRef.current)
 		}
 
-		// Clear items immediately when fetching starts
-		setItems([])
+		// Only set fetching state, don't clear items
 		setIsFetching(true)
 
 		try {
@@ -189,13 +188,10 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 			fetchTimeoutRef.current = setTimeout(() => {
 				console.log("Fetch timeout reached, resetting state")
 				setIsFetching(false)
-				setItems([]) // Clear items on timeout
-				vscode.window.showErrorMessage("Package manager items fetch timed out. Please try again.")
 			}, 30000) // 30 second timeout to match server timeout
 		} catch (error) {
 			console.error("Failed to fetch package manager items:", error)
 			setIsFetching(false)
-			setItems([]) // Clear items on error
 		}
 	}, [])
 
@@ -222,7 +218,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						clearTimeout(fetchTimeoutRef.current)
 					}
 					setIsFetching(false)
-					setItems([]) // Clear items on error
 				} else {
 					// This is a refresh request
 					fetchPackageManagerItems()
@@ -231,8 +226,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 
 			if (message.type === "repositoryRefreshComplete" && message.url) {
 				setRefreshingUrls((prev) => prev.filter((url) => url !== message.url))
-				// Trigger a fetch to update items after refresh
-				fetchPackageManagerItems()
 			}
 
 			if (message.type === "state" && message.state?.packageManagerItems !== undefined) {
@@ -243,6 +236,8 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 
 				const receivedItems = message.state.packageManagerItems || []
 				console.log("Received package manager items:", receivedItems.length)
+
+				// Always update items, even if empty
 				setItems([...receivedItems])
 				setIsFetching(false)
 			}

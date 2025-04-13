@@ -1,0 +1,21 @@
+{
+	"name": "roo-prepare",
+	"version": "1.0.0",
+	"description": "Prepare for commit task management system",
+	"private": true,
+	"bin": {
+		"prepare": "./dist/prepare-cli.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"prepare": "npm run build",
+		"start": "node ./dist/prepare-cli.js"
+	},
+	"dependencies": {
+		"commander": "^11.1.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"typescript": "^5.3.3"
+	}
+}
