@@ -1,15 +1,15 @@
 {
-	"name": "roo-prepare",
+	"name": "roo-iterate",
 	"version": "1.0.0",
-	"description": "Prepare for commit task management system",
+	"description": "Iteration task management system",
 	"private": true,
 	"bin": {
-		"prepare": "./dist/prepare-cli.js"
+		"iterate": "./dist/iterate-cli.js"
 	},
 	"scripts": {
 		"build": "tsc",
 		"prepare": "npm run build",
-		"start": "node ./dist/prepare-cli.js"
+		"start": "node ./dist/iterate-cli.js"
 	},
 	"dependencies": {
 		"commander": "^11.1.0"
