@@ -33,7 +33,7 @@ export async function handlePackageManagerMessages(
 			if (packageManagerManager.isFetching) {
 				console.log("Package Manager: Fetch already in progress, skipping")
 				provider.postMessageToWebview({
-					type: "packageManagerButtonClicked",
+					type: "state",
 					text: "Fetch already in progress",
 				})
 				packageManagerManager.isFetching = false
@@ -97,7 +97,7 @@ export async function handlePackageManagerMessages(
 						const errorMessage = `Failed to load package manager sources:\n${result.errors.join("\n")}`
 						vscode.window.showErrorMessage(errorMessage)
 						provider.postMessageToWebview({
-							type: "packageManagerButtonClicked",
+							type: "state",
 							text: errorMessage,
 						})
 						packageManagerManager.isFetching = false
@@ -121,7 +121,7 @@ export async function handlePackageManagerMessages(
 					console.error("Error in package manager initialization:", initError)
 					vscode.window.showErrorMessage(errorMessage)
 					provider.postMessageToWebview({
-						type: "packageManagerButtonClicked",
+						type: "state",
 						text: errorMessage,
 					})
 					// The state will already be updated with empty items by PackageManagerManager
@@ -133,7 +133,7 @@ export async function handlePackageManagerMessages(
 				console.error("Failed to fetch package manager items:", error)
 				vscode.window.showErrorMessage(errorMessage)
 				provider.postMessageToWebview({
-					type: "packageManagerButtonClicked",
+					type: "state",
 					text: errorMessage,
 				})
 				packageManagerManager.isFetching = false
