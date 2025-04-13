@@ -193,7 +193,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 			console.error("Failed to fetch package manager items:", error)
 			setIsFetching(false)
 		}
-	}, [])
+	}, []) // No dependencies needed since we're using state setters
 
 	// Fetch items on mount
 	useEffect(() => {
@@ -209,6 +209,21 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const message = event.data
+
+			// Always clear timeout and reset fetching state for any state update
+			if (message.type === "state") {
+				if (fetchTimeoutRef.current) {
+					clearTimeout(fetchTimeoutRef.current)
+				}
+				setIsFetching(false)
+
+				// Only update items if they're present in the state
+				if (message.state?.packageManagerItems !== undefined) {
+					const receivedItems = message.state.packageManagerItems || []
+					console.log("Received package manager items:", receivedItems.length)
+					setItems([...receivedItems])
+				}
+			}
 
 			if (message.type === "packageManagerButtonClicked") {
 				if (message.text) {
@@ -227,20 +242,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 			if (message.type === "repositoryRefreshComplete" && message.url) {
 				setRefreshingUrls((prev) => prev.filter((url) => url !== message.url))
 			}
-
-			if (message.type === "state" && message.state?.packageManagerItems !== undefined) {
-				// Clear fetch timeout
-				if (fetchTimeoutRef.current) {
-					clearTimeout(fetchTimeoutRef.current)
-				}
-
-				const receivedItems = message.state.packageManagerItems || []
-				console.log("Received package manager items:", receivedItems.length)
-
-				// Always update items, even if empty
-				setItems([...receivedItems])
-				setIsFetching(false)
-			}
 		}
 
 		window.addEventListener("message", handleMessage)
@@ -251,7 +252,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 				clearTimeout(fetchTimeoutRef.current)
 			}
 		}
-	}, [fetchPackageManagerItems])
+	}, [fetchPackageManagerItems]) // Include fetchPackageManagerItems in dependencies
 
 	const filteredItems = items.filter((item) => {
 		if (filters.type && item.type !== filters.type) {

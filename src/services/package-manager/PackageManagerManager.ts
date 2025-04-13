@@ -11,7 +11,7 @@ export class PackageManagerManager {
 	private currentItems: PackageManagerItem[] = []
 	public isFetching = false
 	// Cache expiry time in milliseconds (set to a low value for testing)
-	private static readonly CACHE_EXPIRY_MS = 10 * 1000 // 10 seconds (normally 3600000 = 1 hour)
+	private static readonly CACHE_EXPIRY_MS = 3600000 // 1 hour
 
 	private gitFetcher: GitFetcher
 	private cache: Map<string, { data: PackageManagerRepository; timestamp: number }> = new Map()
