@@ -38,6 +38,31 @@ export class MetadataScanner {
 				if (metadata?.["en"]) {
 					const item = await this.createPackageManagerItem(metadata["en"], componentDir, repoUrl, sourceName)
 					if (item) {
+						// If this is a package, scan for subcomponents
+						if (this.isPackageMetadata(metadata["en"])) {
+							// Load metadata for items listed in package metadata
+							if (metadata["en"].items) {
+								const subcomponents = await Promise.all(
+									metadata["en"].items.map(async (subItem) => {
+										const subPath = path.join(componentDir, subItem.path)
+										const subMetadata = await this.loadComponentMetadata(subPath)
+										if (subMetadata?.["en"]) {
+											return {
+												type: subItem.type,
+												path: subItem.path,
+												metadata: subMetadata["en"],
+												lastUpdated: await this.getLastModifiedDate(subPath),
+											}
+										}
+										return null
+									}),
+								)
+								item.items = subcomponents.filter((sub): sub is NonNullable<typeof sub> => sub !== null)
+							}
+
+							// Also scan directory for unlisted subcomponents
+							await this.scanPackageSubcomponents(componentDir, item)
+						}
 						items.push(item)
 						// Skip recursion if this is a package directory
 						if (this.isPackageMetadata(metadata["en"])) {
@@ -141,6 +166,7 @@ export class MetadataScanner {
 			repoUrl,
 			sourceName,
 			lastUpdated: await this.getLastModifiedDate(componentDir),
+			items: [], // Initialize empty items array for all components
 		}
 	}
 
@@ -175,6 +201,52 @@ export class MetadataScanner {
 			return stats.mtime.toISOString()
 		} catch {
 			return new Date().toISOString()
+		}
+	}
+
+	/**
+	 * Recursively scans a package directory for subcomponents
+	 * @param packageDir The package directory to scan
+	 * @param packageItem The package item to add subcomponents to
+	 */
+	private async scanPackageSubcomponents(
+		packageDir: string,
+		packageItem: PackageManagerItem,
+		parentPath: string = "",
+	): Promise<void> {
+		console.log(`Scanning directory: ${packageDir}`)
+		const entries = await fs.readdir(packageDir, { withFileTypes: true })
+
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue
+
+			const subPath = path.join(packageDir, entry.name)
+			const relativePath = parentPath ? path.join(parentPath, entry.name) : entry.name
+			console.log(`Found directory: ${entry.name}, relative path: ${relativePath}`)
+
+			// Try to load metadata directly
+			const subMetadata = await this.loadComponentMetadata(subPath)
+			console.log(`Metadata for ${entry.name}:`, subMetadata?.["en"])
+
+			if (subMetadata?.["en"]) {
+				const isListed = packageItem.items?.some((i) => i.path === relativePath)
+				console.log(`${entry.name} is ${isListed ? "already listed" : "not listed"}`)
+
+				if (!isListed) {
+					const subItem = {
+						type: subMetadata["en"].type,
+						path: relativePath,
+						metadata: subMetadata["en"],
+						lastUpdated: await this.getLastModifiedDate(subPath),
+					}
+					packageItem.items = packageItem.items || []
+					packageItem.items.push(subItem)
+					console.log(`Added ${entry.name} to items`)
+				}
+			}
+
+			// Recursively scan this directory
+			await this.scanPackageSubcomponents(subPath, packageItem, relativePath)
 		}
 	}
 
