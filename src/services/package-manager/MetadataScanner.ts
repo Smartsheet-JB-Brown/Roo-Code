@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as vscode from "vscode"
 import * as yaml from "js-yaml"
 import { validateAnyMetadata } from "./schemas"
-import { ComponentMetadata, ComponentType, LocalizedMetadata, PackageManagerItem } from "./types"
+import { ComponentMetadata, ComponentType, LocalizedMetadata, PackageManagerItem, PackageMetadata } from "./types"
 
 /**
  * Handles component discovery and metadata loading
@@ -30,12 +30,20 @@ export class MetadataScanner {
 
 				if (metadata?.["en"]) {
 					const item = await this.createPackageManagerItem(metadata["en"], componentDir, repoUrl, sourceName)
-					if (item) items.push(item)
+					if (item) {
+						items.push(item)
+						// Skip recursion if this is a package directory
+						if (this.isPackageMetadata(metadata["en"])) {
+							continue
+						}
+					}
 				}
 
-				// Recursively scan subdirectories
-				const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName)
-				items.push(...subItems)
+				// Recursively scan subdirectories only if not in a package
+				if (!metadata?.["en"] || !this.isPackageMetadata(metadata["en"])) {
+					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName)
+					items.push(...subItems)
+				}
 			}
 		} catch (error) {
 			console.error(`Error scanning directory ${rootDir}:`, error)
@@ -150,5 +158,14 @@ export class MetadataScanner {
 	 */
 	private isValidComponentType(type: string): type is ComponentType {
 		return ["role", "mcp server", "storage", "mode", "prompt", "package"].includes(type)
+	}
+
+	/**
+	 * Type guard for package metadata
+	 * @param metadata The metadata to check
+	 * @returns Whether the metadata is for a package
+	 */
+	private isPackageMetadata(metadata: ComponentMetadata): metadata is PackageMetadata {
+		return metadata.type === "package"
 	}
 }
