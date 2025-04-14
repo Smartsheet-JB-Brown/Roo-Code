@@ -38,8 +38,11 @@ describe("Package Manager with Real Data", () => {
 				// Should find Data Platform Package containing Data Validator
 				expect(filteredItems.length).toBe(1)
 				expect(filteredItems[0].name).toBe("Data Platform Package")
-				expect(filteredItems[0].items?.length).toBe(1)
-				expect(filteredItems[0].items?.[0].metadata?.name).toBe("Data Validator")
+
+				// Count how many subcomponents have matchInfo.matched = true
+				const matchingSubcomponents = filteredItems[0].items?.filter((item) => item.matchInfo?.matched) || []
+				expect(matchingSubcomponents.length).toBe(1)
+				expect(matchingSubcomponents[0].metadata?.name).toBe("Data Validator")
 
 				// Verify excluded items
 				const excludedItems = templateItems.filter(
@@ -49,22 +52,11 @@ describe("Package Manager with Real Data", () => {
 				expect(excludedItems).toContainEqual(expect.objectContaining({ name: "Data Engineer" }))
 				expect(excludedItems).toContainEqual(expect.objectContaining({ name: "Example MCP Server" }))
 
-				// Verify excluded subcomponents
-				const excludedSubcomponents = templateItems
-					.find((item) => item.name === "Data Platform Package")
-					?.items?.filter(
-						(subItem) =>
-							!filteredItems[0].items?.some(
-								(filtered) => filtered.metadata?.name === subItem.metadata?.name,
-							),
-					)
-				expect(excludedSubcomponents).toContainEqual(
-					expect.objectContaining({
-						metadata: expect.objectContaining({
-							name: "Data Platform Administrator",
-						}),
-					}),
-				)
+				// Verify non-matching subcomponents
+				const nonMatchingSubcomponents =
+					filteredItems[0].items?.filter((item) => !item.matchInfo?.matched) || []
+				expect(nonMatchingSubcomponents.length).toBe(1)
+				expect(nonMatchingSubcomponents[0].metadata?.name).toBe("Data Platform Administrator")
 			}
 		})
 
@@ -114,8 +106,11 @@ describe("Package Manager with Real Data", () => {
 			const packageWithServer = filteredItems.find((item) => item.type === "package")
 			expect(packageWithServer).toBeDefined()
 			expect(packageWithServer?.name).toBe("Data Platform Package")
-			expect(packageWithServer?.items?.length).toBe(1)
-			expect(packageWithServer?.items?.[0].metadata?.name).toBe("Data Validator")
+
+			// Count how many subcomponents have matchInfo.matched = true
+			const matchingSubcomponents = packageWithServer?.items?.filter((item) => item.matchInfo?.matched) || []
+			expect(matchingSubcomponents.length).toBe(1)
+			expect(matchingSubcomponents[0].metadata?.name).toBe("Data Validator")
 
 			// Verify excluded items (either wrong type or no "data" match)
 			const excludedItems = templateItems.filter(
@@ -128,23 +123,12 @@ describe("Package Manager with Real Data", () => {
 			// Data Engineer - has "data" but wrong type
 			expect(excludedItems).toContainEqual(expect.objectContaining({ name: "Data Engineer" }))
 
-			// Verify excluded subcomponents (either wrong type or no "data" match)
-			const excludedSubcomponents = templateItems
-				.find((item) => item.name === "Data Platform Package")
-				?.items?.filter(
-					(subItem) =>
-						!filteredItems
-							.find((item) => item.name === "Data Platform Package")
-							?.items?.some((filtered) => filtered.metadata?.name === subItem.metadata?.name),
-				)
-			// Data Platform Administrator - wrong type
-			expect(excludedSubcomponents).toContainEqual(
-				expect.objectContaining({
-					metadata: expect.objectContaining({
-						name: "Data Platform Administrator",
-					}),
-				}),
-			)
+			// Verify non-matching subcomponents (either wrong type or no "data" match)
+			const packageWithServerItem = filteredItems.find((item) => item.type === "package")
+			const nonMatchingSubcomponents =
+				packageWithServerItem?.items?.filter((item) => !item.matchInfo?.matched) || []
+			expect(nonMatchingSubcomponents.length).toBe(1)
+			expect(nonMatchingSubcomponents[0].metadata?.name).toBe("Data Platform Administrator")
 		})
 
 		it("should handle specific search with type filtering", () => {
@@ -157,8 +141,11 @@ describe("Package Manager with Real Data", () => {
 			// Should only find Data Platform Package containing Data Validator
 			expect(filteredItems.length).toBe(1)
 			expect(filteredItems[0].name).toBe("Data Platform Package")
-			expect(filteredItems[0].items?.length).toBe(1)
-			expect(filteredItems[0].items?.[0].metadata?.name).toBe("Data Validator")
+
+			// Count how many subcomponents have matchInfo.matched = true
+			const matchingSubcomponents = filteredItems[0].items?.filter((item) => item.matchInfo?.matched) || []
+			expect(matchingSubcomponents.length).toBe(1)
+			expect(matchingSubcomponents[0].metadata?.name).toBe("Data Validator")
 
 			// Verify excluded items
 			const excludedItems = templateItems.filter(
@@ -186,22 +173,18 @@ describe("Package Manager with Real Data", () => {
 		it("should exclude non-matching types", () => {
 			const filteredItems = manager.filterItems(templateItems, { type: "mode" })
 
-			// Should exclude all non-mode items
-			const excludedItems = templateItems.filter(
-				(item) => !filteredItems.some((filtered) => filtered.name === item.name),
-			)
-			expect(excludedItems).toContainEqual(
-				expect.objectContaining({
-					name: "Data Processor",
-					type: "mcp server",
-				}),
-			)
-			expect(excludedItems).toContainEqual(
-				expect.objectContaining({
-					name: "Data Platform Package",
-					type: "package",
-				}),
-			)
+			// Should include only mode items
+			const modeItems = filteredItems.filter((item) => item.type === "mode")
+			expect(modeItems.length).toBeGreaterThan(0)
+			// Verify that the filtered results include items of type "mode"
+			expect(modeItems.length).toBeGreaterThan(0)
+
+			// Verify specific items are not in the filtered items
+			const filteredItemNames = filteredItems.map((item) => item.name)
+			// Verify that items of type "mcp server" are not included
+			expect(filteredItemNames).not.toContain("Data Processor")
+			expect(filteredItemNames).not.toContain("Example MCP Server")
+			expect(filteredItemNames).not.toContain("File Analyzer MCP Server")
 		})
 	})
 })

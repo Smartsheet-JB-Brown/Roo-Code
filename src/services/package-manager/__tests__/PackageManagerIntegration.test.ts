@@ -101,9 +101,10 @@ describe("Package Manager Integration", () => {
 			expect(dataValidator).toBeDefined()
 			expect(dataValidator?.metadata?.description).toContain("validating data quality")
 
-			// Verify only matching subcomponents are included
-			expect(filteredItems[0].items?.length).toBe(1)
-			expect(filteredItems[0].items?.[0].metadata?.name).toBe("Data Validator")
+			// Verify only matching subcomponents have matchInfo.matched = true
+			const matchingSubcomponents = filteredItems[0].items?.filter((item) => item.matchInfo?.matched) || []
+			expect(matchingSubcomponents.length).toBe(1)
+			expect(matchingSubcomponents[0].metadata?.name).toBe("Data Validator")
 		})
 
 		it("should handle partial matches", async () => {
@@ -161,8 +162,11 @@ describe("Package Manager Integration", () => {
 			const packageWithServer = filteredItems.find((item) => item.type === "package")
 			expect(packageWithServer).toBeDefined()
 			expect(packageWithServer?.name).toBe("Data Platform Package")
-			expect(packageWithServer?.items?.length).toBe(1)
-			expect(packageWithServer?.items?.[0].metadata?.name).toBe("Data Validator")
+
+			// Count how many subcomponents have matchInfo.matched = true
+			const matchingSubcomponents = packageWithServer?.items?.filter((item) => item.matchInfo?.matched) || []
+			expect(matchingSubcomponents.length).toBe(1)
+			expect(matchingSubcomponents[0].metadata?.name).toBe("Data Validator")
 
 			// Verify excluded items
 			const allItems = [...templateItems]

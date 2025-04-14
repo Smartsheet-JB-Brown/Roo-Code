@@ -29,12 +29,23 @@ export const filterItems = (items: PackageManagerItem[], filters: Filters): Pack
 		// Search filter
 		if (filters.search) {
 			const searchTerm = filters.search.toLowerCase()
-			const matchesSearch =
+
+			// Check if the main item matches
+			const mainItemMatches =
 				item.name.toLowerCase().includes(searchTerm) ||
 				(item.description || "").toLowerCase().includes(searchTerm) ||
 				(item.author || "").toLowerCase().includes(searchTerm)
 
-			if (!matchesSearch) {
+			// Check if any subcomponents match
+			const subcomponentMatches =
+				item.items?.some(
+					(subItem) =>
+						(subItem.metadata?.name || "").toLowerCase().includes(searchTerm) ||
+						(subItem.metadata?.description || "").toLowerCase().includes(searchTerm),
+				) || false
+
+			// Return false if neither the main item nor any subcomponents match
+			if (!mainItemMatches && !subcomponentMatches) {
 				return false
 			}
 		}

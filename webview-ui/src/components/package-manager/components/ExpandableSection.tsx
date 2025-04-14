@@ -6,6 +6,7 @@ interface ExpandableSectionProps {
 	children: React.ReactNode
 	className?: string
 	defaultExpanded?: boolean
+	badge?: string
 }
 
 export const ExpandableSection: React.FC<ExpandableSectionProps> = ({
@@ -13,6 +14,7 @@ export const ExpandableSection: React.FC<ExpandableSectionProps> = ({
 	children,
 	className,
 	defaultExpanded = false,
+	badge,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
@@ -23,14 +25,24 @@ export const ExpandableSection: React.FC<ExpandableSectionProps> = ({
 				onClick={() => setIsExpanded(!isExpanded)}
 				aria-expanded={isExpanded}
 				aria-controls="details-content">
-				<span className="font-medium">{title}</span>
-				<span
-					className={cn(
-						"codicon",
-						isExpanded ? "codicon-chevron-down" : "codicon-chevron-right",
-						"transition-transform duration-200",
+				<span className="font-medium flex items-center">
+					<span className="codicon codicon-list-unordered mr-1"></span>
+					{title}
+				</span>
+				<div className="flex items-center">
+					{badge && (
+						<span className="mr-2 text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded">
+							{badge}
+						</span>
 					)}
-				/>
+					<span
+						className={cn(
+							"codicon",
+							isExpanded ? "codicon-chevron-down" : "codicon-chevron-right",
+							"transition-transform duration-200",
+						)}
+					/>
+				</div>
 			</button>
 			<div
 				id="details-content"
@@ -40,7 +52,7 @@ export const ExpandableSection: React.FC<ExpandableSectionProps> = ({
 				)}
 				role="region"
 				aria-labelledby="details-button">
-				<div className="py-2">{children}</div>
+				<div className="py-2 px-1 bg-vscode-panel-background rounded-sm">{children}</div>
 			</div>
 		</div>
 	)

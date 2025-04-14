@@ -54,7 +54,15 @@ export function formatItemText(item: { name: string; description?: string }): st
 	if (!item.description) {
 		return item.name
 	}
-	return `${item.name} - ${item.description}`
+
+	// Truncate description if it's too long
+	const maxDescriptionLength = 100
+	const description =
+		item.description.length > maxDescriptionLength
+			? `${item.description.substring(0, maxDescriptionLength)}...`
+			: item.description
+
+	return `${item.name} - ${description}`
 }
 
 /**
