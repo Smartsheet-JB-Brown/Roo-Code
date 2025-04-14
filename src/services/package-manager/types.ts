@@ -1,4 +1,17 @@
 /**
+ * Information about why an item matched search/filter criteria
+ */
+export interface MatchInfo {
+	matched: boolean
+	matchReason?: {
+		nameMatch?: boolean
+		descriptionMatch?: boolean
+		tagMatch?: boolean
+		hasMatchingSubcomponents?: boolean
+	}
+}
+
+/**
  * Supported component types
  */
 export type ComponentType = "mode" | "prompt" | "package" | "mcp server"
@@ -26,14 +39,25 @@ export interface ComponentMetadata extends BaseMetadata {
 }
 
 /**
- * Package metadata with optional external items
+ * Package metadata with optional subcomponents
  */
 export interface PackageMetadata extends ComponentMetadata {
 	type: "package"
 	items?: {
 		type: ComponentType
 		path: string
+		metadata?: ComponentMetadata
 	}[]
+}
+
+/**
+ * Subcomponent metadata with parent reference
+ */
+export interface SubcomponentMetadata extends ComponentMetadata {
+	parentPackage: {
+		name: string
+		path: string
+	}
 }
 
 /**
@@ -51,7 +75,14 @@ export interface PackageManagerItem {
 	version?: string
 	lastUpdated?: string
 	sourceUrl?: string
-	items?: { type: ComponentType; path: string }[]
+	items?: {
+		type: ComponentType
+		path: string
+		metadata?: ComponentMetadata
+		lastUpdated?: string
+		matchInfo?: MatchInfo // Add match information for subcomponents
+	}[]
+	matchInfo?: MatchInfo // Add match information for the package itself
 }
 
 /**

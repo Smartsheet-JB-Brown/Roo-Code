@@ -6,168 +6,71 @@ import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
 import { PackageManagerItem, PackageManagerSource } from "../../../../src/services/package-manager/types"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
+import { isFilterActive as checkFilterActive, getDisplayedItems as filterAndSortItems } from "./selectors"
+import { PackageManagerItemCard } from "./components/PackageManagerItemCard"
 
 interface PackageManagerViewProps {
 	onDone?: () => void
 }
 
-interface PackageManagerItemCardProps {
-	item: PackageManagerItem
-	filters: { type: string; search: string; tags: string[] }
-	setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>
-	activeTab: "browse" | "sources"
-	setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>
-}
-
-const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
-	item,
-	filters,
-	setFilters,
-	activeTab,
-	setActiveTab,
-}) => {
-	const isValidUrl = (urlString: string): boolean => {
-		try {
-			new URL(urlString)
-			return true
-		} catch (e) {
-			return false
-		}
-	}
-
-	const getTypeLabel = (type: string) => {
-		switch (type) {
-			case "mode":
-				return "Mode"
-			case "mcp server":
-				return "MCP Server"
-			case "prompt":
-				return "Prompt"
-			case "package":
-				return "Package"
-			default:
-				return "Other"
-		}
-	}
-
-	const getTypeColor = (type: string) => {
-		switch (type) {
-			case "mode":
-				return "bg-blue-600"
-			case "mcp server":
-				return "bg-green-600"
-			case "prompt":
-				return "bg-purple-600"
-			case "package":
-				return "bg-orange-600"
-			default:
-				return "bg-gray-600"
-		}
-	}
-
-	const handleOpenUrl = () => {
-		const urlToOpen = item.sourceUrl && isValidUrl(item.sourceUrl) ? item.sourceUrl : item.repoUrl
-		vscode.postMessage({
-			type: "openExternal",
-			url: urlToOpen,
-		})
-	}
-
-	return (
-		<div className="border border-vscode-panel-border rounded-md p-4 bg-vscode-panel-background">
-			<div className="flex justify-between items-start">
-				<div>
-					<h3 className="text-lg font-semibold text-vscode-foreground">{item.name}</h3>
-					{item.author && <p className="text-sm text-vscode-descriptionForeground">{`by ${item.author}`}</p>}
-				</div>
-				<span className={`px-2 py-1 text-xs text-white rounded-full ${getTypeColor(item.type)}`}>
-					{getTypeLabel(item.type)}
-				</span>
-			</div>
-
-			<p className="my-2 text-vscode-foreground">{item.description}</p>
-
-			{item.tags && item.tags.length > 0 && (
-				<div className="flex flex-wrap gap-1 my-2">
-					{item.tags.map((tag) => (
-						<button
-							key={tag}
-							className={`px-2 py-1 text-xs rounded-full hover:bg-vscode-button-secondaryBackground ${
-								filters.tags.includes(tag)
-									? "bg-vscode-button-background text-vscode-button-foreground"
-									: "bg-vscode-badge-background text-vscode-badge-foreground"
-							}`}
-							onClick={() => {
-								if (filters.tags.includes(tag)) {
-									setFilters({
-										...filters,
-										tags: filters.tags.filter((t) => t !== tag),
-									})
-								} else {
-									setFilters({
-										...filters,
-										tags: [...filters.tags, tag],
-									})
-									if (activeTab !== "browse") {
-										setActiveTab("browse")
-									}
-								}
-							}}
-							title={filters.tags.includes(tag) ? `Remove tag filter: ${tag}` : `Filter by tag: ${tag}`}>
-							{tag}
-						</button>
-					))}
-				</div>
-			)}
-
-			<div className="flex justify-between items-center mt-4">
-				<div className="flex items-center gap-4 text-sm text-vscode-descriptionForeground">
-					{item.version && (
-						<span className="flex items-center">
-							<span className="codicon codicon-tag mr-1"></span>
-							{item.version}
-						</span>
-					)}
-					{item.lastUpdated && (
-						<span className="flex items-center">
-							<span className="codicon codicon-calendar mr-1"></span>
-							{new Date(item.lastUpdated).toLocaleDateString(undefined, {
-								year: "numeric",
-								month: "short",
-								day: "numeric",
-							})}
-						</span>
-					)}
-				</div>
-
-				<Button onClick={handleOpenUrl}>
-					<span className="codicon codicon-link-external mr-2"></span>
-					{item.sourceUrl ? "View" : item.sourceName || "Source"}
-				</Button>
-			</div>
-		</div>
-	)
-}
-
 const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 	const { packageManagerSources, setPackageManagerSources } = useExtensionState()
-	const [items, setItems] = useState<PackageManagerItem[]>([])
+
+	// Core state
+	const [allItems, setAllItems] = useState<PackageManagerItem[]>([])
 	const [activeTab, setActiveTab] = useState<"browse" | "sources">("browse")
 	const [refreshingUrls, setRefreshingUrls] = useState<string[]>([])
 
-	// Clear items when switching to sources tab
-	useEffect(() => {
-		if (activeTab === "sources") {
-			setItems([])
-		}
-	}, [activeTab])
+	// Filter and sort state
 	const [filters, setFilters] = useState({ type: "", search: "", tags: [] as string[] })
+	const [sortConfig, setSortConfig] = useState({ by: "name", order: "asc" as "asc" | "desc" })
 	const [tagSearch, setTagSearch] = useState("")
 	const [isTagInputActive, setIsTagInputActive] = useState(false)
-	const [sortBy, setSortBy] = useState("name")
-	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+
+	// Loading state
 	const [isFetching, setIsFetching] = useState(false)
 	const fetchTimeoutRef = useRef<NodeJS.Timeout>()
+
+	// Compute displayed items
+	const displayedItems = useMemo(
+		() => filterAndSortItems(allItems, filters, sortConfig),
+		[allItems, filters, sortConfig],
+	)
+
+	// Sort items
+	const sortedItems = useMemo(
+		() =>
+			[...displayedItems].sort((a, b) => {
+				let comparison = 0
+
+				switch (sortConfig.by) {
+					case "name":
+						comparison = a.name.localeCompare(b.name)
+						break
+					case "author":
+						comparison = (a.author || "").localeCompare(b.author || "")
+						break
+					case "lastUpdated":
+						comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "")
+						break
+					default:
+						comparison = a.name.localeCompare(b.name)
+				}
+
+				return sortConfig.order === "asc" ? comparison : -comparison
+			}),
+		[displayedItems, sortConfig],
+	)
+
+	const allTags = useMemo(() => {
+		const tagSet = new Set<string>()
+		allItems.forEach((item) => {
+			if (item.tags) {
+				item.tags.forEach((tag) => tagSet.add(tag))
+			}
+		})
+		return Array.from(tagSet).sort()
+	}, [allItems])
 
 	const fetchPackageManagerItems = useCallback(() => {
 		// Clear any pending fetch timeout
@@ -206,6 +109,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 			fetchPackageManagerItems()
 		}
 	}, [packageManagerSources, fetchPackageManagerItems, activeTab])
+
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const message = event.data
@@ -217,11 +121,11 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 				}
 				setIsFetching(false)
 
-				// Only update items if they're present in the state
+				// Update items when we receive filtered items from the backend
 				if (message.state?.packageManagerItems !== undefined) {
 					const receivedItems = message.state.packageManagerItems || []
 					console.log("Received package manager items:", receivedItems.length)
-					setItems([...receivedItems])
+					setAllItems(receivedItems)
 				}
 			}
 
@@ -252,62 +156,27 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 				clearTimeout(fetchTimeoutRef.current)
 			}
 		}
-	}, [fetchPackageManagerItems]) // Include fetchPackageManagerItems in dependencies
+	}, [fetchPackageManagerItems])
 
-	const filteredItems = items.filter((item) => {
-		if (filters.type && item.type !== filters.type) {
-			return false
+	// Debounce filter requests
+	useEffect(() => {
+		if (!checkFilterActive(filters)) {
+			return
 		}
 
-		if (filters.search) {
-			const searchTerm = filters.search.toLowerCase()
-			const nameMatch = item.name.toLowerCase().includes(searchTerm)
-			const descMatch = item.description.toLowerCase().includes(searchTerm)
-			const authorMatch = item.author?.toLowerCase().includes(searchTerm)
+		const debounceTimeout = setTimeout(() => {
+			vscode.postMessage({
+				type: "filterPackageManagerItems",
+				filters: {
+					type: filters.type || undefined,
+					search: filters.search || undefined,
+					tags: filters.tags.length > 0 ? filters.tags : undefined,
+				},
+			})
+		}, 300) // 300ms debounce delay
 
-			if (!nameMatch && !descMatch && !authorMatch) {
-				return false
-			}
-		}
-
-		if (filters.tags.length > 0) {
-			if (!item.tags || !item.tags.some((tag) => filters.tags.includes(tag))) {
-				return false
-			}
-		}
-
-		return true
-	})
-
-	const sortedItems = [...filteredItems].sort((a, b) => {
-		let comparison = 0
-
-		switch (sortBy) {
-			case "name":
-				comparison = a.name.localeCompare(b.name)
-				break
-			case "author":
-				comparison = (a.author || "").localeCompare(b.author || "")
-				break
-			case "lastUpdated":
-				comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "")
-				break
-			default:
-				comparison = a.name.localeCompare(b.name)
-		}
-
-		return sortOrder === "asc" ? comparison : -comparison
-	})
-
-	const allTags = useMemo(() => {
-		const tagSet = new Set<string>()
-		items.forEach((item) => {
-			if (item.tags) {
-				item.tags.forEach((tag) => tagSet.add(tag))
-			}
-		})
-		return Array.from(tagSet).sort()
-	}, [items])
+		return () => clearTimeout(debounceTimeout)
+	}, [filters])
 
 	return (
 		<Tab>
@@ -367,17 +236,22 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 									<div className="whitespace-nowrap">
 										<label className="mr-2">Sort by:</label>
 										<select
-											value={sortBy}
-											onChange={(e) => setSortBy(e.target.value)}
+											value={sortConfig.by}
+											onChange={(e) => setSortConfig({ ...sortConfig, by: e.target.value })}
 											className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded mr-2">
 											<option value="name">Name</option>
 											<option value="author">Author</option>
 											<option value="lastUpdated">Last Updated</option>
 										</select>
 										<button
-											onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+											onClick={() =>
+												setSortConfig({
+													...sortConfig,
+													order: sortConfig.order === "asc" ? "desc" : "asc",
+												})
+											}
 											className="p-1 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground rounded">
-											{sortOrder === "asc" ? "↑" : "↓"}
+											{sortConfig.order === "asc" ? "↑" : "↓"}
 										</button>
 									</div>
 								</div>
@@ -482,7 +356,9 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							<div>
 								<div className="flex justify-between mb-4">
 									<p className="text-vscode-descriptionForeground">
-										{`${sortedItems.length} items found`}
+										{checkFilterActive(filters)
+											? `${sortedItems.length} items found (filtered)`
+											: `${sortedItems.length} items total`}
 									</p>
 									<Button onClick={fetchPackageManagerItems} size="sm" disabled={isFetching}>
 										<span
@@ -512,7 +388,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						setRefreshingUrls={setRefreshingUrls}
 						onSourcesChange={(sources) => {
 							setPackageManagerSources(sources)
-							setItems([]) // Clear items when sources change
 							vscode.postMessage({ type: "packageManagerSources", sources })
 						}}
 					/>

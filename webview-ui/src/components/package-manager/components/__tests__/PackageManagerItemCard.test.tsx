@@ -1,0 +1,142 @@
+import React from "react"
+import { render, screen, fireEvent } from "@testing-library/react"
+import { PackageManagerItemCard } from "../PackageManagerItemCard"
+import { PackageManagerItem } from "../../../../../../src/services/package-manager/types"
+
+// Mock vscode API
+const mockPostMessage = jest.fn()
+jest.mock("@/utils/vscode", () => ({
+	vscode: {
+		postMessage: (msg: any) => mockPostMessage(msg),
+	},
+}))
+
+describe("PackageManagerItemCard", () => {
+	const mockItem: PackageManagerItem = {
+		name: "Test Package",
+		description: "A test package",
+		type: "package",
+		repoUrl: "test-url",
+		url: "test-url",
+		tags: ["test", "mock"],
+		items: [
+			{
+				type: "mcp server",
+				path: "test/path",
+				metadata: {
+					name: "Test Server",
+					description: "A test server",
+					version: "1.0.0",
+					type: "mcp server",
+				},
+			},
+			{
+				type: "mode",
+				path: "test/path2",
+				metadata: {
+					name: "Test Mode",
+					description: "A test mode",
+					version: "2.0.0",
+					type: "mode",
+				},
+			},
+		],
+		version: "1.0.0",
+		author: "Test Author",
+		lastUpdated: "2025-04-13",
+	}
+
+	const defaultProps = {
+		item: mockItem,
+		filters: { type: "", search: "", tags: [] },
+		setFilters: jest.fn(),
+		activeTab: "browse" as const,
+		setActiveTab: jest.fn(),
+	}
+
+	beforeEach(() => {
+		mockPostMessage.mockClear()
+	})
+
+	it("should render basic item information", () => {
+		render(<PackageManagerItemCard {...defaultProps} />)
+
+		expect(screen.getByText("Test Package")).toBeInTheDocument()
+		expect(screen.getByText("A test package")).toBeInTheDocument()
+		expect(screen.getByText("by Test Author")).toBeInTheDocument()
+		expect(screen.getByText("Package")).toBeInTheDocument()
+	})
+
+	it("should render tags", () => {
+		render(<PackageManagerItemCard {...defaultProps} />)
+
+		expect(screen.getByText("test")).toBeInTheDocument()
+		expect(screen.getByText("mock")).toBeInTheDocument()
+	})
+
+	it("should handle tag clicks", () => {
+		const setFilters = jest.fn()
+		render(<PackageManagerItemCard {...defaultProps} setFilters={setFilters} />)
+
+		fireEvent.click(screen.getByText("test"))
+		expect(setFilters).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: ["test"],
+			}),
+		)
+	})
+
+	it("should render version and date information", () => {
+		render(<PackageManagerItemCard {...defaultProps} />)
+
+		expect(screen.getByText("1.0.0")).toBeInTheDocument()
+		// Use a regex to match the date since it depends on the timezone
+		expect(screen.getByText(/Apr \d{1,2}, 2025/)).toBeInTheDocument()
+	})
+
+	it("should handle source URL click", () => {
+		render(<PackageManagerItemCard {...defaultProps} />)
+
+		fireEvent.click(screen.getByText("Source"))
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "openExternal",
+			url: "test-url",
+		})
+	})
+
+	describe("Details section", () => {
+		it("should render expandable details section when item has subcomponents", () => {
+			render(<PackageManagerItemCard {...defaultProps} />)
+
+			expect(screen.getByText("Details")).toBeInTheDocument()
+		})
+
+		it("should not render details section when item has no subcomponents", () => {
+			const itemWithoutItems = { ...mockItem, items: [] }
+			render(<PackageManagerItemCard {...defaultProps} item={itemWithoutItems} />)
+
+			expect(screen.queryByText("Details")).not.toBeInTheDocument()
+		})
+
+		it("should show grouped items when expanded", () => {
+			render(<PackageManagerItemCard {...defaultProps} />)
+
+			fireEvent.click(screen.getByText("Details"))
+
+			expect(screen.getByText("MCP Servers")).toBeInTheDocument()
+			expect(screen.getByText("Modes")).toBeInTheDocument()
+			expect(screen.getByText("Test Server - A test server")).toBeInTheDocument()
+			expect(screen.getByText("Test Mode - A test mode")).toBeInTheDocument()
+		})
+
+		it("should maintain proper order of items within groups", () => {
+			render(<PackageManagerItemCard {...defaultProps} />)
+
+			fireEvent.click(screen.getByText("Details"))
+
+			const items = screen.getAllByRole("listitem")
+			expect(items[0]).toHaveTextContent("Test Server")
+			expect(items[1]).toHaveTextContent("Test Mode")
+		})
+	})
+})

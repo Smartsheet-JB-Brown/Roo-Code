@@ -3,7 +3,7 @@ import { ClineProvider } from "./ClineProvider"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { ExtensionMessage } from "../../shared/ExtensionMessage"
 import { PackageManagerManager } from "../../services/package-manager"
-import { PackageManagerItem, PackageManagerSource } from "../../services/package-manager/types"
+import { ComponentType, PackageManagerItem, PackageManagerSource } from "../../services/package-manager/types"
 import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
 import { validateSources } from "../../services/package-manager/validation"
 import { GlobalState } from "../../schemas"
@@ -218,6 +218,33 @@ export async function handlePackageManagerMessages(
 				}
 			} else {
 				console.error("Package Manager: openExternal called without a URL")
+			}
+			return true
+		}
+
+		case "filterPackageManagerItems": {
+			if (message.filters) {
+				try {
+					// Get current items from the manager
+					const items = packageManagerManager.getCurrentItems()
+
+					// Apply filters using the manager's filtering logic
+					const filteredItems = packageManagerManager.filterItems(items, {
+						type: message.filters.type as ComponentType | undefined,
+						search: message.filters.search,
+						tags: message.filters.tags,
+					})
+
+					// Get current state and merge with filtered items
+					const currentState = await provider.getStateToPostToWebview()
+					await provider.postMessageToWebview({
+						type: "state",
+						state: { ...currentState, packageManagerItems: filteredItems },
+					})
+				} catch (error) {
+					console.error("Package Manager: Error filtering items:", error)
+					vscode.window.showErrorMessage("Failed to filter package manager items")
+				}
 			}
 			return true
 		}

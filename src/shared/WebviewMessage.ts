@@ -124,6 +124,7 @@ export interface WebviewMessage {
 		| "toggleApiConfigPin"
 		| "packageManagerSources"
 		| "fetchPackageManagerItems"
+		| "filterPackageManagerItems"
 		| "packageManagerButtonClicked"
 		| "refreshPackageManagerSource"
 		| "repositoryRefreshComplete"
@@ -154,6 +155,7 @@ export interface WebviewMessage {
 	requestId?: string
 	ids?: string[]
 	sources?: PackageManagerSource[]
+	filters?: { type?: string; search?: string; tags?: string[] }
 	url?: string // For openExternal
 }
 
