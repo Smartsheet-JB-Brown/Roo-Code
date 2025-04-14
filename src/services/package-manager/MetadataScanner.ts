@@ -4,16 +4,29 @@ import * as vscode from "vscode"
 import * as yaml from "js-yaml"
 import { SimpleGit } from "simple-git"
 import { validateAnyMetadata } from "./schemas"
-import { ComponentMetadata, ComponentType, LocalizedMetadata, PackageManagerItem, PackageMetadata } from "./types"
+import {
+	ComponentMetadata,
+	ComponentType,
+	LocalizationOptions,
+	LocalizedMetadata,
+	PackageManagerItem,
+	PackageMetadata,
+} from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Handles component discovery and metadata loading
  */
 export class MetadataScanner {
 	private readonly git?: SimpleGit
+	private localizationOptions: LocalizationOptions
 
-	constructor(git?: SimpleGit) {
+	constructor(git?: SimpleGit, localizationOptions?: LocalizationOptions) {
 		this.git = git
+		this.localizationOptions = localizationOptions || {
+			userLocale: getUserLocale(),
+			fallbackLocale: "en",
+		}
 	}
 
 	/**
@@ -35,44 +48,54 @@ export class MetadataScanner {
 				const componentDir = path.join(rootDir, entry.name)
 				const metadata = await this.loadComponentMetadata(componentDir)
 
-				if (metadata?.["en"]) {
-					const item = await this.createPackageManagerItem(metadata["en"], componentDir, repoUrl, sourceName)
-					if (item) {
-						// If this is a package, scan for subcomponents
-						if (this.isPackageMetadata(metadata["en"])) {
-							// Load metadata for items listed in package metadata
-							if (metadata["en"].items) {
-								const subcomponents = await Promise.all(
-									metadata["en"].items.map(async (subItem) => {
-										const subPath = path.join(componentDir, subItem.path)
-										const subMetadata = await this.loadComponentMetadata(subPath)
-										if (subMetadata?.["en"]) {
-											return {
-												type: subItem.type,
-												path: subItem.path,
-												metadata: subMetadata["en"],
-												lastUpdated: await this.getLastModifiedDate(subPath),
-											}
-										}
-										return null
-									}),
-								)
-								item.items = subcomponents.filter((sub): sub is NonNullable<typeof sub> => sub !== null)
-							}
+				// Skip if no metadata found at all
+				if (!metadata) continue
 
-							// Also scan directory for unlisted subcomponents
-							await this.scanPackageSubcomponents(componentDir, item)
+				// Get localized metadata with fallback
+				const localizedMetadata = this.getLocalizedMetadata(metadata)
+				if (!localizedMetadata) continue
+
+				const item = await this.createPackageManagerItem(localizedMetadata, componentDir, repoUrl, sourceName)
+				if (item) {
+					// If this is a package, scan for subcomponents
+					if (this.isPackageMetadata(localizedMetadata)) {
+						// Load metadata for items listed in package metadata
+						if (localizedMetadata.items) {
+							const subcomponents = await Promise.all(
+								localizedMetadata.items.map(async (subItem) => {
+									const subPath = path.join(componentDir, subItem.path)
+									const subMetadata = await this.loadComponentMetadata(subPath)
+
+									// Skip if no metadata found
+									if (!subMetadata) return null
+
+									// Get localized metadata with fallback
+									const localizedSubMetadata = this.getLocalizedMetadata(subMetadata)
+									if (!localizedSubMetadata) return null
+
+									return {
+										type: subItem.type,
+										path: subItem.path,
+										metadata: localizedSubMetadata,
+										lastUpdated: await this.getLastModifiedDate(subPath),
+									}
+								}),
+							)
+							item.items = subcomponents.filter((sub): sub is NonNullable<typeof sub> => sub !== null)
 						}
-						items.push(item)
-						// Skip recursion if this is a package directory
-						if (this.isPackageMetadata(metadata["en"])) {
-							continue
-						}
+
+						// Also scan directory for unlisted subcomponents
+						await this.scanPackageSubcomponents(componentDir, item)
+					}
+					items.push(item)
+					// Skip recursion if this is a package directory
+					if (this.isPackageMetadata(localizedMetadata)) {
+						continue
 					}
 				}
 
 				// Recursively scan subdirectories only if not in a package
-				if (!metadata?.["en"] || !this.isPackageMetadata(metadata["en"])) {
+				if (!metadata || !this.isPackageMetadata(localizedMetadata)) {
 					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName)
 					items.push(...subItems)
 				}
@@ -82,6 +105,28 @@ export class MetadataScanner {
 		}
 
 		return items
+	}
+
+	/**
+	 * Gets localized metadata with fallback
+	 * @param metadata The localized metadata object
+	 * @returns The metadata in the user's locale or fallback locale, or null if neither is available
+	 */
+	private getLocalizedMetadata(metadata: LocalizedMetadata<ComponentMetadata>): ComponentMetadata | null {
+		const { userLocale, fallbackLocale } = this.localizationOptions
+
+		// First try user's locale
+		if (metadata[userLocale]) {
+			return metadata[userLocale]
+		}
+
+		// Fall back to fallbackLocale (typically English)
+		if (metadata[fallbackLocale]) {
+			return metadata[fallbackLocale]
+		}
+
+		// No suitable metadata found
+		return null
 	}
 
 	/**
@@ -226,22 +271,27 @@ export class MetadataScanner {
 
 			// Try to load metadata directly
 			const subMetadata = await this.loadComponentMetadata(subPath)
-			console.log(`Metadata for ${entry.name}:`, subMetadata?.["en"])
 
-			if (subMetadata?.["en"]) {
-				const isListed = packageItem.items?.some((i) => i.path === relativePath)
-				console.log(`${entry.name} is ${isListed ? "already listed" : "not listed"}`)
+			if (subMetadata) {
+				// Get localized metadata with fallback
+				const localizedSubMetadata = this.getLocalizedMetadata(subMetadata)
+				if (localizedSubMetadata) {
+					console.log(`Metadata for ${entry.name}:`, localizedSubMetadata)
 
-				if (!isListed) {
-					const subItem = {
-						type: subMetadata["en"].type,
-						path: relativePath,
-						metadata: subMetadata["en"],
-						lastUpdated: await this.getLastModifiedDate(subPath),
+					const isListed = packageItem.items?.some((i) => i.path === relativePath)
+					console.log(`${entry.name} is ${isListed ? "already listed" : "not listed"}`)
+
+					if (!isListed) {
+						const subItem = {
+							type: localizedSubMetadata.type,
+							path: relativePath,
+							metadata: localizedSubMetadata,
+							lastUpdated: await this.getLastModifiedDate(subPath),
+						}
+						packageItem.items = packageItem.items || []
+						packageItem.items.push(subItem)
+						console.log(`Added ${entry.name} to items`)
 					}
-					packageItem.items = packageItem.items || []
-					packageItem.items.push(subItem)
-					console.log(`Added ${entry.name} to items`)
 				}
 			}
 

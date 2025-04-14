@@ -24,150 +24,155 @@ Backend unit tests verify the functionality of core services and utilities:
 
 ```typescript
 describe("MetadataScanner", () => {
-  let scanner: MetadataScanner;
+	let scanner: MetadataScanner
 
-  beforeEach(() => {
-    scanner = new MetadataScanner();
-  });
+	beforeEach(() => {
+		scanner = new MetadataScanner()
+	})
 
-  describe("parseMetadataFile", () => {
-    it("should parse valid YAML metadata", async () => {
-      // Mock file system
-      jest.spyOn(fs, "readFile").mockImplementation((path, options, callback) => {
-        callback(null, Buffer.from(`
+	describe("parseMetadataFile", () => {
+		it("should parse valid YAML metadata", async () => {
+			// Mock file system
+			jest.spyOn(fs, "readFile").mockImplementation((path, options, callback) => {
+				callback(
+					null,
+					Buffer.from(`
           name: "Test Package"
           description: "A test package"
           version: "1.0.0"
           type: "package"
-        `));
-      });
+        `),
+				)
+			})
 
-      const result = await scanner["parseMetadataFile"]("test/path/metadata.en.yml");
+			const result = await scanner["parseMetadataFile"]("test/path/metadata.en.yml")
 
-      expect(result).toEqual({
-        name: "Test Package",
-        description: "A test package",
-        version: "1.0.0",
-        type: "package"
-      });
-    });
+			expect(result).toEqual({
+				name: "Test Package",
+				description: "A test package",
+				version: "1.0.0",
+				type: "package",
+			})
+		})
 
-    it("should handle invalid YAML", async () => {
-      // Mock file system with invalid YAML
-      jest.spyOn(fs, "readFile").mockImplementation((path, options, callback) => {
-        callback(null, Buffer.from(`
+		it("should handle invalid YAML", async () => {
+			// Mock file system with invalid YAML
+			jest.spyOn(fs, "readFile").mockImplementation((path, options, callback) => {
+				callback(
+					null,
+					Buffer.from(`
           name: "Invalid YAML
           description: Missing quote
-        `));
-      });
+        `),
+				)
+			})
 
-      await expect(scanner["parseMetadataFile"]("test/path/metadata.en.yml"))
-        .rejects.toThrow();
-    });
-  });
+			await expect(scanner["parseMetadataFile"]("test/path/metadata.en.yml")).rejects.toThrow()
+		})
+	})
 
-  describe("scanDirectory", () => {
-    // Tests for directory scanning
-  });
-});
+	describe("scanDirectory", () => {
+		// Tests for directory scanning
+	})
+})
 ```
 
 #### PackageManagerManager Tests
 
 ```typescript
 describe("PackageManagerManager", () => {
-  let manager: PackageManagerManager;
-  let mockContext: vscode.ExtensionContext;
+	let manager: PackageManagerManager
+	let mockContext: vscode.ExtensionContext
 
-  beforeEach(() => {
-    // Create mock context
-    mockContext = {
-      extensionPath: "/test/path",
-      globalStorageUri: { fsPath: "/test/storage" },
-      globalState: {
-        get: jest.fn().mockImplementation((key, defaultValue) => defaultValue),
-        update: jest.fn().mockResolvedValue(undefined)
-      }
-    } as unknown as vscode.ExtensionContext;
+	beforeEach(() => {
+		// Create mock context
+		mockContext = {
+			extensionPath: "/test/path",
+			globalStorageUri: { fsPath: "/test/storage" },
+			globalState: {
+				get: jest.fn().mockImplementation((key, defaultValue) => defaultValue),
+				update: jest.fn().mockResolvedValue(undefined),
+			},
+		} as unknown as vscode.ExtensionContext
 
-    manager = new PackageManagerManager(mockContext);
-  });
+		manager = new PackageManagerManager(mockContext)
+	})
 
-  describe("filterItems", () => {
-    it("should filter by type", () => {
-      // Set up test data
-      manager["currentItems"] = [
-        { name: "Item 1", type: "mode", description: "Test item 1" },
-        { name: "Item 2", type: "package", description: "Test item 2" }
-      ] as PackageManagerItem[];
+	describe("filterItems", () => {
+		it("should filter by type", () => {
+			// Set up test data
+			manager["currentItems"] = [
+				{ name: "Item 1", type: "mode", description: "Test item 1" },
+				{ name: "Item 2", type: "package", description: "Test item 2" },
+			] as PackageManagerItem[]
 
-      const result = manager.filterItems({ type: "mode" });
+			const result = manager.filterItems({ type: "mode" })
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Item 1");
-    });
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Item 1")
+		})
 
-    it("should filter by search term", () => {
-      // Set up test data
-      manager["currentItems"] = [
-        { name: "Alpha Item", type: "mode", description: "Test item" },
-        { name: "Beta Item", type: "package", description: "Another test" }
-      ] as PackageManagerItem[];
+		it("should filter by search term", () => {
+			// Set up test data
+			manager["currentItems"] = [
+				{ name: "Alpha Item", type: "mode", description: "Test item" },
+				{ name: "Beta Item", type: "package", description: "Another test" },
+			] as PackageManagerItem[]
 
-      const result = manager.filterItems({ search: "alpha" });
+			const result = manager.filterItems({ search: "alpha" })
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Alpha Item");
-    });
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Alpha Item")
+		})
 
-    // More filter tests...
-  });
+		// More filter tests...
+	})
 
-  describe("addSource", () => {
-    // Tests for adding sources
-  });
-});
+	describe("addSource", () => {
+		// Tests for adding sources
+	})
+})
 ```
 
 #### Search Utilities Tests
 
 ```typescript
 describe("searchUtils", () => {
-  describe("containsSearchTerm", () => {
-    it("should return true for exact matches", () => {
-      expect(containsSearchTerm("hello world", "hello")).toBe(true);
-    });
+	describe("containsSearchTerm", () => {
+		it("should return true for exact matches", () => {
+			expect(containsSearchTerm("hello world", "hello")).toBe(true)
+		})
 
-    it("should be case insensitive", () => {
-      expect(containsSearchTerm("Hello World", "hello")).toBe(true);
-      expect(containsSearchTerm("hello world", "WORLD")).toBe(true);
-    });
+		it("should be case insensitive", () => {
+			expect(containsSearchTerm("Hello World", "hello")).toBe(true)
+			expect(containsSearchTerm("hello world", "WORLD")).toBe(true)
+		})
 
-    it("should handle undefined inputs", () => {
-      expect(containsSearchTerm(undefined, "test")).toBe(false);
-      expect(containsSearchTerm("test", "")).toBe(false);
-    });
-  });
+		it("should handle undefined inputs", () => {
+			expect(containsSearchTerm(undefined, "test")).toBe(false)
+			expect(containsSearchTerm("test", "")).toBe(false)
+		})
+	})
 
-  describe("itemMatchesSearch", () => {
-    it("should match on name", () => {
-      const item = {
-        name: "Test Item",
-        description: "Description"
-      };
+	describe("itemMatchesSearch", () => {
+		it("should match on name", () => {
+			const item = {
+				name: "Test Item",
+				description: "Description",
+			}
 
-      expect(itemMatchesSearch(item, "test")).toEqual({
-        matched: true,
-        matchReason: {
-          nameMatch: true,
-          descriptionMatch: false
-        }
-      });
-    });
+			expect(itemMatchesSearch(item, "test")).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: true,
+					descriptionMatch: false,
+				},
+			})
+		})
 
-    // More search matching tests...
-  });
-});
+		// More search matching tests...
+	})
+})
 ```
 
 ### Frontend Unit Tests
@@ -318,87 +323,87 @@ Integration tests verify that different components work together correctly.
 
 ```typescript
 describe("Package Manager Integration", () => {
-  let manager: PackageManagerManager;
-  let metadataScanner: MetadataScanner;
-  let templateItems: PackageManagerItem[];
+	let manager: PackageManagerManager
+	let metadataScanner: MetadataScanner
+	let templateItems: PackageManagerItem[]
 
-  beforeAll(async () => {
-    // Load real data from template
-    metadataScanner = new MetadataScanner();
-    const templatePath = path.resolve(__dirname, "../../../../package-manager-template");
-    templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com");
-  });
+	beforeAll(async () => {
+		// Load real data from template
+		metadataScanner = new MetadataScanner()
+		const templatePath = path.resolve(__dirname, "../../../../package-manager-template")
+		templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com")
+	})
 
-  beforeEach(() => {
-    // Create a real context-like object
-    const context = {
-      extensionPath: path.resolve(__dirname, "../../../../"),
-      globalStorageUri: { fsPath: path.resolve(__dirname, "../../../../mock/settings/path") },
-    } as vscode.ExtensionContext;
+	beforeEach(() => {
+		// Create a real context-like object
+		const context = {
+			extensionPath: path.resolve(__dirname, "../../../../"),
+			globalStorageUri: { fsPath: path.resolve(__dirname, "../../../../mock/settings/path") },
+		} as vscode.ExtensionContext
 
-    // Create real instances
-    manager = new PackageManagerManager(context);
+		// Create real instances
+		manager = new PackageManagerManager(context)
 
-    // Set up manager with template data
-    manager["currentItems"] = [...templateItems];
-  });
+		// Set up manager with template data
+		manager["currentItems"] = [...templateItems]
+	})
 
-  describe("Message Handler Integration", () => {
-    it("should handle search messages", async () => {
-      const message = {
-        type: "search",
-        search: "data platform",
-        typeFilter: "",
-        tagFilters: []
-      };
+	describe("Message Handler Integration", () => {
+		it("should handle search messages", async () => {
+			const message = {
+				type: "search",
+				search: "data platform",
+				typeFilter: "",
+				tagFilters: [],
+			}
 
-      const result = await handlePackageManagerMessages(message, manager);
+			const result = await handlePackageManagerMessages(message, manager)
 
-      expect(result.type).toBe("searchResults");
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].name).toContain("Data Platform");
-    });
+			expect(result.type).toBe("searchResults")
+			expect(result.data).toHaveLength(1)
+			expect(result.data[0].name).toContain("Data Platform")
+		})
 
-    it("should handle type filter messages", async () => {
-      const message = {
-        type: "search",
-        search: "",
-        typeFilter: "mode",
-        tagFilters: []
-      };
+		it("should handle type filter messages", async () => {
+			const message = {
+				type: "search",
+				search: "",
+				typeFilter: "mode",
+				tagFilters: [],
+			}
 
-      const result = await handlePackageManagerMessages(message, manager);
+			const result = await handlePackageManagerMessages(message, manager)
 
-      expect(result.type).toBe("searchResults");
-      expect(result.data.every(item => item.type === "mode")).toBe(true);
-    });
+			expect(result.type).toBe("searchResults")
+			expect(result.data.every((item) => item.type === "mode")).toBe(true)
+		})
 
-    // More message handler tests...
-  });
+		// More message handler tests...
+	})
 
-  describe("End-to-End Flow", () => {
-    it("should find items with matching subcomponents", async () => {
-      const message = {
-        type: "search",
-        search: "validator",
-        typeFilter: "",
-        tagFilters: []
-      };
+	describe("End-to-End Flow", () => {
+		it("should find items with matching subcomponents", async () => {
+			const message = {
+				type: "search",
+				search: "validator",
+				typeFilter: "",
+				tagFilters: [],
+			}
 
-      const result = await handlePackageManagerMessages(message, manager);
+			const result = await handlePackageManagerMessages(message, manager)
 
-      expect(result.data.length).toBeGreaterThan(0);
+			expect(result.data.length).toBeGreaterThan(0)
 
-      // Check that subcomponents are marked as matches
-      const hasMatchingSubcomponent = result.data.some(item =>
-        item.items?.some(subItem => subItem.matchInfo?.matched)
-      );
-      expect(hasMatchingSubcomponent).toBe(true);
-    });
+			// Check that subcomponents are marked as matches
+			const hasMatchingSubcomponent = result.data.some((item) =>
+				item.items?.some((subItem) => subItem.matchInfo?.matched),
+			)
+			expect(hasMatchingSubcomponent).toBe(true)
+		})
 
-    // More end-to-end flow tests...
-  });
-});
+		// More end-to-end flow tests...
+	})
+})
 ```
 
 ### Frontend Integration Tests
@@ -490,17 +495,17 @@ Mock data is used for simple unit tests:
 
 ```typescript
 const mockItems: PackageManagerItem[] = [
-  {
-    name: "Test Package",
-    description: "A test package",
-    type: "package",
-    url: "https://example.com",
-    repoUrl: "https://github.com/example/repo",
-    tags: ["test", "example"],
-    version: "1.0.0"
-  },
-  // More mock items...
-];
+	{
+		name: "Test Package",
+		description: "A test package",
+		type: "package",
+		url: "https://example.com",
+		repoUrl: "https://github.com/example/repo",
+		tags: ["test", "example"],
+		version: "1.0.0",
+	},
+	// More mock items...
+]
 ```
 
 ### Test Fixtures
@@ -510,48 +515,48 @@ Test fixtures provide more complex data structures:
 ```typescript
 // fixtures/metadata.ts
 export const metadataFixtures = {
-  basic: {
-    name: "Basic Package",
-    description: "A basic package for testing",
-    version: "1.0.0",
-    type: "package"
-  },
+	basic: {
+		name: "Basic Package",
+		description: "A basic package for testing",
+		version: "1.0.0",
+		type: "package",
+	},
 
-  withTags: {
-    name: "Tagged Package",
-    description: "A package with tags",
-    version: "1.0.0",
-    type: "package",
-    tags: ["test", "fixture", "example"]
-  },
+	withTags: {
+		name: "Tagged Package",
+		description: "A package with tags",
+		version: "1.0.0",
+		type: "package",
+		tags: ["test", "fixture", "example"],
+	},
 
-  withSubcomponents: {
-    name: "Complex Package",
-    description: "A package with subcomponents",
-    version: "1.0.0",
-    type: "package",
-    items: [
-      {
-        type: "mode",
-        path: "/test/path/mode",
-        metadata: {
-          name: "Test Mode",
-          description: "A test mode",
-          type: "mode"
-        }
-      },
-      {
-        type: "mcp server",
-        path: "/test/path/server",
-        metadata: {
-          name: "Test Server",
-          description: "A test server",
-          type: "mcp server"
-        }
-      }
-    ]
-  }
-};
+	withSubcomponents: {
+		name: "Complex Package",
+		description: "A package with subcomponents",
+		version: "1.0.0",
+		type: "package",
+		items: [
+			{
+				type: "mode",
+				path: "/test/path/mode",
+				metadata: {
+					name: "Test Mode",
+					description: "A test mode",
+					type: "mode",
+				},
+			},
+			{
+				type: "mcp server",
+				path: "/test/path/server",
+				metadata: {
+					name: "Test Server",
+					description: "A test server",
+					type: "mcp server",
+				},
+			},
+		],
+	},
+}
 ```
 
 ### Template Data
@@ -560,11 +565,11 @@ Real template data is used for integration tests:
 
 ```typescript
 beforeAll(async () => {
-  // Load real data from template
-  metadataScanner = new MetadataScanner();
-  const templatePath = path.resolve(__dirname, "../../../../package-manager-template");
-  templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com");
-});
+	// Load real data from template
+	metadataScanner = new MetadataScanner()
+	const templatePath = path.resolve(__dirname, "../../../../package-manager-template")
+	templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com")
+})
 ```
 
 ### Test Data Generators
@@ -574,45 +579,43 @@ Generators create varied test data:
 ```typescript
 // Test data generator
 function generatePackageItems(count: number): PackageManagerItem[] {
-  const types: ComponentType[] = ["mode", "mcp server", "package", "prompt"];
-  const tags = ["test", "example", "data", "ui", "server", "client"];
+	const types: ComponentType[] = ["mode", "mcp server", "package", "prompt"]
+	const tags = ["test", "example", "data", "ui", "server", "client"]
 
-  return Array.from({ length: count }, (_, i) => {
-    const type = types[i % types.length];
-    const randomTags = tags
-      .filter(() => Math.random() > 0.5)
-      .slice(0, Math.floor(Math.random() * 4));
+	return Array.from({ length: count }, (_, i) => {
+		const type = types[i % types.length]
+		const randomTags = tags.filter(() => Math.random() > 0.5).slice(0, Math.floor(Math.random() * 4))
 
-    return {
-      name: `Test ${type} ${i + 1}`,
-      description: `This is a test ${type} for testing purposes`,
-      type,
-      url: `https://example.com/${type}/${i + 1}`,
-      repoUrl: "https://github.com/example/repo",
-      tags: randomTags.length ? randomTags : undefined,
-      version: "1.0.0",
-      lastUpdated: new Date().toISOString(),
-      items: type === "package" ? generateSubcomponents(Math.floor(Math.random() * 5) + 1) : undefined
-    };
-  });
+		return {
+			name: `Test ${type} ${i + 1}`,
+			description: `This is a test ${type} for testing purposes`,
+			type,
+			url: `https://example.com/${type}/${i + 1}`,
+			repoUrl: "https://github.com/example/repo",
+			tags: randomTags.length ? randomTags : undefined,
+			version: "1.0.0",
+			lastUpdated: new Date().toISOString(),
+			items: type === "package" ? generateSubcomponents(Math.floor(Math.random() * 5) + 1) : undefined,
+		}
+	})
 }
 
 function generateSubcomponents(count: number): PackageManagerItem["items"] {
-  const types: ComponentType[] = ["mode", "mcp server", "prompt"];
+	const types: ComponentType[] = ["mode", "mcp server", "prompt"]
 
-  return Array.from({ length: count }, (_, i) => {
-    const type = types[i % types.length];
+	return Array.from({ length: count }, (_, i) => {
+		const type = types[i % types.length]
 
-    return {
-      type,
-      path: `/test/path/${type}/${i + 1}`,
-      metadata: {
-        name: `Test ${type} ${i + 1}`,
-        description: `This is a test ${type} subcomponent`,
-        type
-      }
-    };
-  });
+		return {
+			type,
+			path: `/test/path/${type}/${i + 1}`,
+			metadata: {
+				name: `Test ${type} ${i + 1}`,
+				description: `This is a test ${type} subcomponent`,
+				type,
+			},
+		}
+	})
 }
 ```
 
@@ -635,20 +638,20 @@ Tests are organized into logical groups:
 
 ```typescript
 describe("Package Manager", () => {
-  // Shared setup
+	// Shared setup
 
-  describe("Direct Filtering", () => {
-    // Tests for filtering functionality
-  });
+	describe("Direct Filtering", () => {
+		// Tests for filtering functionality
+	})
 
-  describe("Message Handler Integration", () => {
-    // Tests for message handling
-  });
+	describe("Message Handler Integration", () => {
+		// Tests for message handling
+	})
 
-  describe("Sorting", () => {
-    // Tests for sorting functionality
-  });
-});
+	describe("Sorting", () => {
+		// Tests for sorting functionality
+	})
+})
 ```
 
 ## Test Coverage
@@ -666,24 +669,24 @@ The Package Manager maintains high test coverage:
 ```typescript
 // jest.config.js
 module.exports = {
-  // ...other config
-  collectCoverage: true,
-  coverageReporters: ["text", "lcov", "html"],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 85,
-      lines: 85,
-      statements: 85
-    },
-    "src/services/package-manager/*.ts": {
-      branches: 90,
-      functions: 90,
-      lines: 90,
-      statements: 90
-    }
-  }
-};
+	// ...other config
+	collectCoverage: true,
+	coverageReporters: ["text", "lcov", "html"],
+	coverageThreshold: {
+		global: {
+			branches: 80,
+			functions: 85,
+			lines: 85,
+			statements: 85,
+		},
+		"src/services/package-manager/*.ts": {
+			branches: 90,
+			functions: 90,
+			lines: 90,
+			statements: 90,
+		},
+	},
+}
 ```
 
 ### Critical Path Testing
@@ -703,12 +706,12 @@ The Package Manager tests are optimized for performance:
 ```typescript
 // Fast unit tests with minimal dependencies
 describe("containsSearchTerm", () => {
-  it("should return true for exact matches", () => {
-    expect(containsSearchTerm("hello world", "hello")).toBe(true);
-  });
+	it("should return true for exact matches", () => {
+		expect(containsSearchTerm("hello world", "hello")).toBe(true)
+	})
 
-  // More tests...
-});
+	// More tests...
+})
 ```
 
 ### Optimized Integration Tests
@@ -716,19 +719,19 @@ describe("containsSearchTerm", () => {
 ```typescript
 // Optimized integration tests
 describe("Package Manager Integration", () => {
-  // Load template data once for all tests
-  beforeAll(async () => {
-    templateItems = await metadataScanner.scanDirectory(templatePath);
-  });
+	// Load template data once for all tests
+	beforeAll(async () => {
+		templateItems = await metadataScanner.scanDirectory(templatePath)
+	})
 
-  // Create fresh manager for each test
-  beforeEach(() => {
-    manager = new PackageManagerManager(mockContext);
-    manager["currentItems"] = [...templateItems];
-  });
+	// Create fresh manager for each test
+	beforeEach(() => {
+		manager = new PackageManagerManager(mockContext)
+		manager["currentItems"] = [...templateItems]
+	})
 
-  // Tests...
-});
+	// Tests...
+})
 ```
 
 ### Parallel Test Execution
@@ -736,10 +739,10 @@ describe("Package Manager Integration", () => {
 ```typescript
 // jest.config.js
 module.exports = {
-  // ...other config
-  maxWorkers: "50%", // Use 50% of available cores
-  maxConcurrency: 5  // Run up to 5 tests concurrently
-};
+	// ...other config
+	maxWorkers: "50%", // Use 50% of available cores
+	maxConcurrency: 5, // Run up to 5 tests concurrently
+}
 ```
 
 ## Continuous Integration
@@ -753,33 +756,33 @@ The Package Manager tests are integrated into the CI/CD pipeline:
 name: Tests
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+    test:
+        runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
+        steps:
+            - uses: actions/checkout@v2
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
+            - name: Setup Node.js
+              uses: actions/setup-node@v2
+              with:
+                  node-version: "16"
 
-    - name: Install dependencies
-      run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-    - name: Run tests
-      run: npm test
+            - name: Run tests
+              run: npm test
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v2
-      with:
-        file: ./coverage/lcov.info
+            - name: Upload coverage
+              uses: codecov/codecov-action@v2
+              with:
+                  file: ./coverage/lcov.info
 ```
 
 ### Pre-commit Hooks
@@ -787,17 +790,14 @@ jobs:
 ```json
 // package.json
 {
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "jest --findRelatedTests"
-    ]
-  }
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"*.{ts,tsx}": ["eslint --fix", "jest --findRelatedTests"]
+	}
 }
 ```
 
@@ -810,17 +810,17 @@ The Package Manager includes tools for debugging tests:
 ```typescript
 // Debug logging in tests
 describe("Complex integration test", () => {
-  it("should handle complex search", async () => {
-    // Enable debug logging for this test
-    const originalDebug = process.env.DEBUG;
-    process.env.DEBUG = "package-manager:*";
+	it("should handle complex search", async () => {
+		// Enable debug logging for this test
+		const originalDebug = process.env.DEBUG
+		process.env.DEBUG = "package-manager:*"
 
-    // Test logic...
+		// Test logic...
 
-    // Restore debug setting
-    process.env.DEBUG = originalDebug;
-  });
-});
+		// Restore debug setting
+		process.env.DEBUG = originalDebug
+	})
+})
 ```
 
 ### Visual Debugging
@@ -860,24 +860,24 @@ The Package Manager tests include comprehensive documentation:
  * - Matching in subcomponents
  */
 describe("Search functionality", () => {
-  // Tests...
-});
+	// Tests...
+})
 ```
 
 ### Test Scenarios
 
 ```typescript
 describe("Package filtering", () => {
-  /**
-   * Scenario: User filters by type and search term
-   * Given: A list of packages of different types
-   * When: The user selects a type filter and enters a search term
-   * Then: Only packages of the selected type containing the search term should be shown
-   */
-  it("should combine type and search filters", () => {
-    // Test implementation...
-  });
-});
+	/**
+	 * Scenario: User filters by type and search term
+	 * Given: A list of packages of different types
+	 * When: The user selects a type filter and enters a search term
+	 * Then: Only packages of the selected type containing the search term should be shown
+	 */
+	it("should combine type and search filters", () => {
+		// Test implementation...
+	})
+})
 ```
 
 ---

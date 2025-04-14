@@ -18,15 +18,16 @@ The core of the search functionality is the `containsSearchTerm` function, which
  * @returns True if the text contains the search term
  */
 export function containsSearchTerm(text: string | undefined, searchTerm: string): boolean {
-  if (!text || !searchTerm) {
-    return false;
-  }
+	if (!text || !searchTerm) {
+		return false
+	}
 
-  return text.toLowerCase().includes(searchTerm.toLowerCase());
+	return text.toLowerCase().includes(searchTerm.toLowerCase())
 }
 ```
 
 This function:
+
 - Handles undefined inputs gracefully
 - Performs case-insensitive matching
 - Uses JavaScript's native `includes` method for performance
@@ -43,56 +44,63 @@ The main search function applies the search term to multiple fields:
  * @returns Match information
  */
 function itemMatchesSearch(item: PackageManagerItem, searchTerm: string): MatchInfo {
-  if (!searchTerm) {
-    return { matched: true };
-  }
+	if (!searchTerm) {
+		return { matched: true }
+	}
 
-  const term = searchTerm.toLowerCase();
+	const term = searchTerm.toLowerCase()
 
-  // Check main item fields
-  const nameMatch = containsSearchTerm(item.name, term);
-  const descriptionMatch = containsSearchTerm(item.description, term);
-  const authorMatch = containsSearchTerm(item.author, term);
+	// Check main item fields
+	const nameMatch = containsSearchTerm(item.name, term)
+	const descriptionMatch = containsSearchTerm(item.description, term)
+	const authorMatch = containsSearchTerm(item.author, term)
 
-  // Check subcomponents
-  let hasMatchingSubcomponents = false;
+	// Check subcomponents
+	let hasMatchingSubcomponents = false
 
-  if (item.items?.length) {
-    hasMatchingSubcomponents = item.items.some(subItem =>
-      containsSearchTerm(subItem.metadata?.name, term) ||
-      containsSearchTerm(subItem.metadata?.description, term)
-    );
+	if (item.items?.length) {
+		hasMatchingSubcomponents = item.items.some(
+			(subItem) =>
+				containsSearchTerm(subItem.metadata?.name, term) ||
+				containsSearchTerm(subItem.metadata?.description, term),
+		)
 
-    // Add match info to subcomponents
-    item.items.forEach(subItem => {
-      const subNameMatch = containsSearchTerm(subItem.metadata?.name, term);
-      const subDescMatch = containsSearchTerm(subItem.metadata?.description, term);
+		// Add match info to subcomponents
+		item.items.forEach((subItem) => {
+			const subNameMatch = containsSearchTerm(subItem.metadata?.name, term)
+			const subDescMatch = containsSearchTerm(subItem.metadata?.description, term)
 
-      subItem.matchInfo = {
-        matched: subNameMatch || subDescMatch,
-        matchReason: subNameMatch || subDescMatch ? {
-          nameMatch: subNameMatch,
-          descriptionMatch: subDescMatch
-        } : undefined
-      };
-    });
-  }
+			subItem.matchInfo = {
+				matched: subNameMatch || subDescMatch,
+				matchReason:
+					subNameMatch || subDescMatch
+						? {
+								nameMatch: subNameMatch,
+								descriptionMatch: subDescMatch,
+							}
+						: undefined,
+			}
+		})
+	}
 
-  const matched = nameMatch || descriptionMatch || authorMatch || hasMatchingSubcomponents;
+	const matched = nameMatch || descriptionMatch || authorMatch || hasMatchingSubcomponents
 
-  return {
-    matched,
-    matchReason: matched ? {
-      nameMatch,
-      descriptionMatch,
-      authorMatch,
-      hasMatchingSubcomponents
-    } : undefined
-  };
+	return {
+		matched,
+		matchReason: matched
+			? {
+					nameMatch,
+					descriptionMatch,
+					authorMatch,
+					hasMatchingSubcomponents,
+				}
+			: undefined,
+	}
 }
 ```
 
 This function:
+
 - Checks the item's name, description, and author
 - Recursively checks subcomponents
 - Adds match information to both the item and its subcomponents
@@ -103,22 +111,25 @@ This function:
 The search implementation includes several optimizations:
 
 1. **Early Termination**:
-   - Returns as soon as any field matches
-   - Avoids unnecessary checks after a match is found
+
+    - Returns as soon as any field matches
+    - Avoids unnecessary checks after a match is found
 
 2. **Efficient String Operations**:
-   - Uses native string methods for performance
-   - Converts to lowercase once per string
-   - Avoids regular expressions for simple matching
+
+    - Uses native string methods for performance
+    - Converts to lowercase once per string
+    - Avoids regular expressions for simple matching
 
 3. **Match Caching**:
-   - Stores match information on items
-   - Avoids recalculating matches for the same search term
-   - Clears cache when the search term changes
+
+    - Stores match information on items
+    - Avoids recalculating matches for the same search term
+    - Clears cache when the search term changes
 
 4. **Lazy Evaluation**:
-   - Only checks subcomponents if main fields don't match
-   - Processes subcomponents only when necessary
+    - Only checks subcomponents if main fields don't match
+    - Processes subcomponents only when necessary
 
 ## Filter Logic
 
@@ -136,11 +147,11 @@ Type filtering restricts results to components of a specific type:
  * @returns Filtered items
  */
 function filterByType(items: PackageManagerItem[], type: string): PackageManagerItem[] {
-  if (!type) {
-    return items;
-  }
+	if (!type) {
+		return items
+	}
 
-  return items.filter(item => item.type === type);
+	return items.filter((item) => item.type === type)
 }
 ```
 
@@ -156,18 +167,18 @@ Tag filtering shows only items with specific tags:
  * @returns Filtered items
  */
 function filterByTags(items: PackageManagerItem[], tags: string[]): PackageManagerItem[] {
-  if (!tags.length) {
-    return items;
-  }
+	if (!tags.length) {
+		return items
+	}
 
-  return items.filter(item => {
-    if (!item.tags?.length) {
-      return false;
-    }
+	return items.filter((item) => {
+		if (!item.tags?.length) {
+			return false
+		}
 
-    // Item must have at least one of the specified tags
-    return item.tags.some(tag => tags.includes(tag));
-  });
+		// Item must have at least one of the specified tags
+		return item.tags.some((tag) => tags.includes(tag))
+	})
 }
 ```
 
@@ -183,39 +194,40 @@ The main filter function combines all filter types:
  * @returns Filtered items
  */
 export function filterItems(
-  items: PackageManagerItem[],
-  filters: { type?: string; search?: string; tags?: string[] }
+	items: PackageManagerItem[],
+	filters: { type?: string; search?: string; tags?: string[] },
 ): PackageManagerItem[] {
-  if (!isFilterActive(filters)) {
-    return items;
-  }
+	if (!isFilterActive(filters)) {
+		return items
+	}
 
-  let result = items;
+	let result = items
 
-  // Apply type filter
-  if (filters.type) {
-    result = filterByType(result, filters.type);
-  }
+	// Apply type filter
+	if (filters.type) {
+		result = filterByType(result, filters.type)
+	}
 
-  // Apply search filter
-  if (filters.search) {
-    result = result.filter(item => {
-      const matchInfo = itemMatchesSearch(item, filters.search!);
-      item.matchInfo = matchInfo;
-      return matchInfo.matched;
-    });
-  }
+	// Apply search filter
+	if (filters.search) {
+		result = result.filter((item) => {
+			const matchInfo = itemMatchesSearch(item, filters.search!)
+			item.matchInfo = matchInfo
+			return matchInfo.matched
+		})
+	}
 
-  // Apply tag filter
-  if (filters.tags?.length) {
-    result = filterByTags(result, filters.tags);
-  }
+	// Apply tag filter
+	if (filters.tags?.length) {
+		result = filterByTags(result, filters.tags)
+	}
 
-  return result;
+	return result
 }
 ```
 
 This function:
+
 - Applies filters in a specific order (type, search, tags)
 - Short-circuits if no filters are active
 - Adds match information to items
@@ -226,22 +238,25 @@ This function:
 The filter implementation includes several optimizations:
 
 1. **Filter Order**:
-   - Applies the most restrictive filters first
-   - Reduces the number of items for subsequent filters
-   - Improves performance for large datasets
+
+    - Applies the most restrictive filters first
+    - Reduces the number of items for subsequent filters
+    - Improves performance for large datasets
 
 2. **Short-Circuit Evaluation**:
-   - Skips filtering entirely if no filters are active
-   - Returns early when possible
+
+    - Skips filtering entirely if no filters are active
+    - Returns early when possible
 
 3. **Immutable Operations**:
-   - Creates new arrays rather than modifying existing ones
-   - Ensures predictable behavior
-   - Supports undo/redo functionality
+
+    - Creates new arrays rather than modifying existing ones
+    - Ensures predictable behavior
+    - Supports undo/redo functionality
 
 4. **Selective Processing**:
-   - Only processes necessary fields for each filter
-   - Avoids redundant calculations
+    - Only processes necessary fields for each filter
+    - Avoids redundant calculations
 
 ## Selector Functions
 
@@ -256,8 +271,8 @@ The Package Manager uses selector functions to extract and transform data for th
  * @returns True if any filters are active
  */
 export const isFilterActive = (filters: Filters): boolean => {
-  return !!(filters.type || filters.search || filters.tags.length > 0);
-};
+	return !!(filters.type || filters.search || filters.tags.length > 0)
+}
 ```
 
 ### Display Items Selector
@@ -271,13 +286,13 @@ export const isFilterActive = (filters: Filters): boolean => {
  * @returns Filtered and sorted items
  */
 export const getDisplayedItems = (
-  items: PackageManagerItem[],
-  filters: Filters,
-  sortConfig: SortConfig,
+	items: PackageManagerItem[],
+	filters: Filters,
+	sortConfig: SortConfig,
 ): PackageManagerItem[] => {
-  const filteredItems = filterItems(items, filters);
-  return sortItems(filteredItems, sortConfig);
-};
+	const filteredItems = filterItems(items, filters)
+	return sortItems(filteredItems, sortConfig)
+}
 ```
 
 ### Sort Function
@@ -290,26 +305,26 @@ export const getDisplayedItems = (
  * @returns Sorted items
  */
 export const sortItems = (items: PackageManagerItem[], config: SortConfig): PackageManagerItem[] => {
-  return [...items].sort((a, b) => {
-    let comparison = 0;
+	return [...items].sort((a, b) => {
+		let comparison = 0
 
-    switch (config.by) {
-      case "name":
-        comparison = a.name.localeCompare(b.name);
-        break;
-      case "author":
-        comparison = (a.author || "").localeCompare(b.author || "");
-        break;
-      case "lastUpdated":
-        comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "");
-        break;
-      default:
-        comparison = a.name.localeCompare(b.name);
-    }
+		switch (config.by) {
+			case "name":
+				comparison = a.name.localeCompare(b.name)
+				break
+			case "author":
+				comparison = (a.author || "").localeCompare(b.author || "")
+				break
+			case "lastUpdated":
+				comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "")
+				break
+			default:
+				comparison = a.name.localeCompare(b.name)
+		}
 
-    return config.order === "asc" ? comparison : -comparison;
-  });
-};
+		return config.order === "asc" ? comparison : -comparison
+	})
+}
 ```
 
 ## Grouping Implementation
@@ -325,31 +340,31 @@ The Package Manager includes functionality to group items by type:
  * @returns Object with items grouped by type
  */
 export function groupItemsByType(items: PackageManagerItem["items"] = []): GroupedItems {
-  if (!items?.length) {
-    return {};
-  }
+	if (!items?.length) {
+		return {}
+	}
 
-  return items.reduce((groups: GroupedItems, item) => {
-    if (!item.type) {
-      return groups;
-    }
+	return items.reduce((groups: GroupedItems, item) => {
+		if (!item.type) {
+			return groups
+		}
 
-    if (!groups[item.type]) {
-      groups[item.type] = {
-        type: item.type,
-        items: [],
-      };
-    }
+		if (!groups[item.type]) {
+			groups[item.type] = {
+				type: item.type,
+				items: [],
+			}
+		}
 
-    groups[item.type].items.push({
-      name: item.metadata?.name || "Unnamed item",
-      description: item.metadata?.description,
-      metadata: item.metadata,
-      path: item.path,
-    });
+		groups[item.type].items.push({
+			name: item.metadata?.name || "Unnamed item",
+			description: item.metadata?.description,
+			metadata: item.metadata,
+			path: item.path,
+		})
 
-    return groups;
-  }, {});
+		return groups
+	}, {})
 }
 ```
 
@@ -362,7 +377,7 @@ export function groupItemsByType(items: PackageManagerItem["items"] = []): Group
  * @returns Total number of items
  */
 export function getTotalItemCount(groups: GroupedItems): number {
-  return Object.values(groups).reduce((total, group) => total + group.items.length, 0);
+	return Object.values(groups).reduce((total, group) => total + group.items.length, 0)
 }
 
 /**
@@ -371,7 +386,7 @@ export function getTotalItemCount(groups: GroupedItems): number {
  * @returns Array of type strings
  */
 export function getUniqueTypes(groups: GroupedItems): string[] {
-  return Object.keys(groups).sort();
+	return Object.keys(groups).sort()
 }
 ```
 
@@ -383,112 +398,107 @@ The search and filter functionality is integrated with the UI through several co
 
 ```tsx
 const SearchInput: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
+	value: string
+	onChange: (value: string) => void
 }> = ({ value, onChange }) => {
-  // Debounce search input to avoid excessive filtering
-  const debouncedOnChange = useDebounce(onChange, 300);
+	// Debounce search input to avoid excessive filtering
+	const debouncedOnChange = useDebounce(onChange, 300)
 
-  return (
-    <div className="search-container">
-      <span className="codicon codicon-search"></span>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => debouncedOnChange(e.target.value)}
-        placeholder="Search packages..."
-        className="search-input"
-        aria-label="Search packages"
-      />
-      {value && (
-        <button
-          className="clear-button"
-          onClick={() => onChange("")}
-          aria-label="Clear search"
-        >
-          <span className="codicon codicon-close"></span>
-        </button>
-      )}
-    </div>
-  );
-};
+	return (
+		<div className="search-container">
+			<span className="codicon codicon-search"></span>
+			<input
+				type="text"
+				value={value}
+				onChange={(e) => debouncedOnChange(e.target.value)}
+				placeholder="Search packages..."
+				className="search-input"
+				aria-label="Search packages"
+			/>
+			{value && (
+				<button className="clear-button" onClick={() => onChange("")} aria-label="Clear search">
+					<span className="codicon codicon-close"></span>
+				</button>
+			)}
+		</div>
+	)
+}
 ```
 
 ### Type Filter Component
 
 ```tsx
 const TypeFilter: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  types: string[];
+	value: string
+	onChange: (value: string) => void
+	types: string[]
 }> = ({ value, onChange, types }) => {
-  return (
-    <div className="type-filter">
-      <h3>Filter by Type</h3>
-      <div className="filter-options">
-        <label className="filter-option">
-          <input
-            type="radio"
-            name="type-filter"
-            value=""
-            checked={value === ""}
-            onChange={() => onChange("")}
-          />
-          <span>All Types</span>
-        </label>
+	return (
+		<div className="type-filter">
+			<h3>Filter by Type</h3>
+			<div className="filter-options">
+				<label className="filter-option">
+					<input
+						type="radio"
+						name="type-filter"
+						value=""
+						checked={value === ""}
+						onChange={() => onChange("")}
+					/>
+					<span>All Types</span>
+				</label>
 
-        {types.map((type) => (
-          <label key={type} className="filter-option">
-            <input
-              type="radio"
-              name="type-filter"
-              value={type}
-              checked={value === type}
-              onChange={() => onChange(type)}
-            />
-            <span>{getTypeLabel(type)}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-};
+				{types.map((type) => (
+					<label key={type} className="filter-option">
+						<input
+							type="radio"
+							name="type-filter"
+							value={type}
+							checked={value === type}
+							onChange={() => onChange(type)}
+						/>
+						<span>{getTypeLabel(type)}</span>
+					</label>
+				))}
+			</div>
+		</div>
+	)
+}
 ```
 
 ### Tag Filter Component
 
 ```tsx
 const TagFilter: React.FC<{
-  selectedTags: string[];
-  onChange: (tags: string[]) => void;
-  availableTags: string[];
+	selectedTags: string[]
+	onChange: (tags: string[]) => void
+	availableTags: string[]
 }> = ({ selectedTags, onChange, availableTags }) => {
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      onChange(selectedTags.filter(t => t !== tag));
-    } else {
-      onChange([...selectedTags, tag]);
-    }
-  };
+	const toggleTag = (tag: string) => {
+		if (selectedTags.includes(tag)) {
+			onChange(selectedTags.filter((t) => t !== tag))
+		} else {
+			onChange([...selectedTags, tag])
+		}
+	}
 
-  return (
-    <div className="tag-filter">
-      <h3>Filter by Tags</h3>
-      <div className="tag-cloud">
-        {availableTags.map((tag) => (
-          <button
-            key={tag}
-            className={`tag ${selectedTags.includes(tag) ? "selected" : ""}`}
-            onClick={() => toggleTag(tag)}
-            aria-pressed={selectedTags.includes(tag)}
-          >
-            {tag}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
+	return (
+		<div className="tag-filter">
+			<h3>Filter by Tags</h3>
+			<div className="tag-cloud">
+				{availableTags.map((tag) => (
+					<button
+						key={tag}
+						className={`tag ${selectedTags.includes(tag) ? "selected" : ""}`}
+						onClick={() => toggleTag(tag)}
+						aria-pressed={selectedTags.includes(tag)}>
+						{tag}
+					</button>
+				))}
+			</div>
+		</div>
+	)
+}
 ```
 
 ## Performance Considerations
@@ -500,71 +510,77 @@ The search and filter implementation includes several performance optimizations:
 For large datasets, the Package Manager implements:
 
 1. **Pagination**:
-   - Limits the number of items displayed at once
-   - Implements virtual scrolling for smooth performance
-   - Loads additional items as needed
+
+    - Limits the number of items displayed at once
+    - Implements virtual scrolling for smooth performance
+    - Loads additional items as needed
 
 2. **Progressive Loading**:
-   - Shows initial results quickly
-   - Loads additional details asynchronously
-   - Provides visual feedback during loading
+
+    - Shows initial results quickly
+    - Loads additional details asynchronously
+    - Provides visual feedback during loading
 
 3. **Background Processing**:
-   - Performs heavy operations in a web worker
-   - Keeps the UI responsive during filtering
-   - Updates results incrementally
+    - Performs heavy operations in a web worker
+    - Keeps the UI responsive during filtering
+    - Updates results incrementally
 
 ### Search Optimizations
 
 For efficient searching:
 
 1. **Debounced Input**:
-   ```typescript
-   function useDebounce<T>(value: T, delay: number): T {
-     const [debouncedValue, setDebouncedValue] = useState(value);
 
-     useEffect(() => {
-       const timer = setTimeout(() => {
-         setDebouncedValue(value);
-       }, delay);
+    ```typescript
+    function useDebounce<T>(value: T, delay: number): T {
+    	const [debouncedValue, setDebouncedValue] = useState(value)
 
-       return () => {
-         clearTimeout(timer);
-       };
-     }, [value, delay]);
+    	useEffect(() => {
+    		const timer = setTimeout(() => {
+    			setDebouncedValue(value)
+    		}, delay)
 
-     return debouncedValue;
-   }
-   ```
+    		return () => {
+    			clearTimeout(timer)
+    		}
+    	}, [value, delay])
+
+    	return debouncedValue
+    }
+    ```
 
 2. **Incremental Matching**:
-   - Matches characters in sequence
-   - Prioritizes prefix matches
-   - Supports fuzzy matching for better results
+
+    - Matches characters in sequence
+    - Prioritizes prefix matches
+    - Supports fuzzy matching for better results
 
 3. **Result Highlighting**:
-   - Highlights matching text portions
-   - Provides visual feedback on match quality
-   - Improves user understanding of results
+    - Highlights matching text portions
+    - Provides visual feedback on match quality
+    - Improves user understanding of results
 
 ### Filter Combinations
 
 For efficient filter combinations:
 
 1. **Filter Order Optimization**:
-   - Applies most restrictive filters first
-   - Reduces dataset size early in the pipeline
-   - Improves performance for complex filter combinations
+
+    - Applies most restrictive filters first
+    - Reduces dataset size early in the pipeline
+    - Improves performance for complex filter combinations
 
 2. **Filter Caching**:
-   - Caches results for recent filter combinations
-   - Avoids recomputing the same filters
-   - Clears cache when underlying data changes
+
+    - Caches results for recent filter combinations
+    - Avoids recomputing the same filters
+    - Clears cache when underlying data changes
 
 3. **Progressive Filtering**:
-   - Shows initial results based on simple filters
-   - Applies complex filters incrementally
-   - Provides feedback during filtering process
+    - Shows initial results based on simple filters
+    - Applies complex filters incrementally
+    - Provides feedback during filtering process
 
 ## Edge Cases and Error Handling
 
@@ -576,27 +592,27 @@ When no items match the filters:
 
 ```tsx
 const NoResults: React.FC<{
-  filters: Filters;
-  clearFilters: () => void;
+	filters: Filters
+	clearFilters: () => void
 }> = ({ filters, clearFilters }) => {
-  return (
-    <div className="no-results">
-      <span className="codicon codicon-info"></span>
-      <h3>No matching packages found</h3>
-      <p>
-        No packages match your current filters.
-        {isFilterActive(filters) && (
-          <>
-            <br />
-            <button onClick={clearFilters} className="clear-filters-button">
-              Clear all filters
-            </button>
-          </>
-        )}
-      </p>
-    </div>
-  );
-};
+	return (
+		<div className="no-results">
+			<span className="codicon codicon-info"></span>
+			<h3>No matching packages found</h3>
+			<p>
+				No packages match your current filters.
+				{isFilterActive(filters) && (
+					<>
+						<br />
+						<button onClick={clearFilters} className="clear-filters-button">
+							Clear all filters
+						</button>
+					</>
+				)}
+			</p>
+		</div>
+	)
+}
 ```
 
 ### Invalid Search Terms
@@ -625,128 +641,128 @@ The search and filter functionality includes comprehensive tests:
 
 ```typescript
 describe("Search Utils", () => {
-  describe("containsSearchTerm", () => {
-    it("should return true for exact matches", () => {
-      expect(containsSearchTerm("hello world", "hello")).toBe(true);
-    });
+	describe("containsSearchTerm", () => {
+		it("should return true for exact matches", () => {
+			expect(containsSearchTerm("hello world", "hello")).toBe(true)
+		})
 
-    it("should be case insensitive", () => {
-      expect(containsSearchTerm("Hello World", "hello")).toBe(true);
-      expect(containsSearchTerm("hello world", "WORLD")).toBe(true);
-    });
+		it("should be case insensitive", () => {
+			expect(containsSearchTerm("Hello World", "hello")).toBe(true)
+			expect(containsSearchTerm("hello world", "WORLD")).toBe(true)
+		})
 
-    it("should handle undefined inputs", () => {
-      expect(containsSearchTerm(undefined, "test")).toBe(false);
-      expect(containsSearchTerm("test", "")).toBe(false);
-    });
-  });
+		it("should handle undefined inputs", () => {
+			expect(containsSearchTerm(undefined, "test")).toBe(false)
+			expect(containsSearchTerm("test", "")).toBe(false)
+		})
+	})
 
-  describe("filterItems", () => {
-    const items = [
-      {
-        name: "Test Package",
-        description: "A test package",
-        type: "package",
-        tags: ["test", "example"]
-      },
-      {
-        name: "Another Package",
-        description: "Another test package",
-        type: "mode",
-        tags: ["example"]
-      }
-    ];
+	describe("filterItems", () => {
+		const items = [
+			{
+				name: "Test Package",
+				description: "A test package",
+				type: "package",
+				tags: ["test", "example"],
+			},
+			{
+				name: "Another Package",
+				description: "Another test package",
+				type: "mode",
+				tags: ["example"],
+			},
+		]
 
-    it("should filter by type", () => {
-      const result = filterItems(items, { type: "package" });
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Test Package");
-    });
+		it("should filter by type", () => {
+			const result = filterItems(items, { type: "package" })
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Test Package")
+		})
 
-    it("should filter by search term", () => {
-      const result = filterItems(items, { search: "another" });
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Another Package");
-    });
+		it("should filter by search term", () => {
+			const result = filterItems(items, { search: "another" })
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Another Package")
+		})
 
-    it("should filter by tags", () => {
-      const result = filterItems(items, { tags: ["test"] });
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Test Package");
-    });
+		it("should filter by tags", () => {
+			const result = filterItems(items, { tags: ["test"] })
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Test Package")
+		})
 
-    it("should combine filters", () => {
-      const result = filterItems(items, {
-        type: "package",
-        tags: ["example"]
-      });
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Test Package");
-    });
-  });
-});
+		it("should combine filters", () => {
+			const result = filterItems(items, {
+				type: "package",
+				tags: ["example"],
+			})
+			expect(result).toHaveLength(1)
+			expect(result[0].name).toBe("Test Package")
+		})
+	})
+})
 ```
 
 ### Integration Tests
 
 ```typescript
 describe("Package Manager Search Integration", () => {
-  let manager: PackageManagerManager;
-  let metadataScanner: MetadataScanner;
-  let templateItems: PackageManagerItem[];
+	let manager: PackageManagerManager
+	let metadataScanner: MetadataScanner
+	let templateItems: PackageManagerItem[]
 
-  beforeAll(async () => {
-    // Load real data from template
-    metadataScanner = new MetadataScanner();
-    const templatePath = path.resolve(__dirname, "../../../../package-manager-template");
-    templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com");
-  });
+	beforeAll(async () => {
+		// Load real data from template
+		metadataScanner = new MetadataScanner()
+		const templatePath = path.resolve(__dirname, "../../../../package-manager-template")
+		templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com")
+	})
 
-  beforeEach(() => {
-    // Create a real context-like object
-    const context = {
-      extensionPath: path.resolve(__dirname, "../../../../"),
-      globalStorageUri: { fsPath: path.resolve(__dirname, "../../../../mock/settings/path") },
-    } as vscode.ExtensionContext;
+	beforeEach(() => {
+		// Create a real context-like object
+		const context = {
+			extensionPath: path.resolve(__dirname, "../../../../"),
+			globalStorageUri: { fsPath: path.resolve(__dirname, "../../../../mock/settings/path") },
+		} as vscode.ExtensionContext
 
-    // Create real instances
-    manager = new PackageManagerManager(context);
+		// Create real instances
+		manager = new PackageManagerManager(context)
 
-    // Set up manager with template data
-    manager["currentItems"] = [...templateItems];
-  });
+		// Set up manager with template data
+		manager["currentItems"] = [...templateItems]
+	})
 
-  it("should find items by name", () => {
-    const message = {
-      type: "search",
-      search: "data platform",
-      typeFilter: "",
-      tagFilters: []
-    };
+	it("should find items by name", () => {
+		const message = {
+			type: "search",
+			search: "data platform",
+			typeFilter: "",
+			tagFilters: [],
+		}
 
-    const result = handlePackageManagerMessages(message, manager);
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0].name).toContain("Data Platform");
-  });
+		const result = handlePackageManagerMessages(message, manager)
+		expect(result.data).toHaveLength(1)
+		expect(result.data[0].name).toContain("Data Platform")
+	})
 
-  it("should find items with matching subcomponents", () => {
-    const message = {
-      type: "search",
-      search: "validator",
-      typeFilter: "",
-      tagFilters: []
-    };
+	it("should find items with matching subcomponents", () => {
+		const message = {
+			type: "search",
+			search: "validator",
+			typeFilter: "",
+			tagFilters: [],
+		}
 
-    const result = handlePackageManagerMessages(message, manager);
-    expect(result.data.length).toBeGreaterThan(0);
+		const result = handlePackageManagerMessages(message, manager)
+		expect(result.data.length).toBeGreaterThan(0)
 
-    // Check that subcomponents are marked as matches
-    const hasMatchingSubcomponent = result.data.some(item =>
-      item.items?.some(subItem => subItem.matchInfo?.matched)
-    );
-    expect(hasMatchingSubcomponent).toBe(true);
-  });
-});
+		// Check that subcomponents are marked as matches
+		const hasMatchingSubcomponent = result.data.some((item) =>
+			item.items?.some((subItem) => subItem.matchInfo?.matched),
+		)
+		expect(hasMatchingSubcomponent).toBe(true)
+	})
+})
 ```
 
 ---

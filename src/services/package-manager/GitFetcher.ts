@@ -5,7 +5,8 @@ import * as yaml from "js-yaml"
 import simpleGit, { SimpleGit } from "simple-git"
 import { MetadataScanner } from "./MetadataScanner"
 import { validateAnyMetadata } from "./schemas"
-import { PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from "./types"
+import { LocalizationOptions, PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Handles fetching and caching package manager repositories
@@ -14,10 +15,15 @@ export class GitFetcher {
 	private readonly cacheDir: string
 	private metadataScanner: MetadataScanner
 	private git?: SimpleGit
+	private localizationOptions: LocalizationOptions
 
-	constructor(context: vscode.ExtensionContext) {
+	constructor(context: vscode.ExtensionContext, localizationOptions?: LocalizationOptions) {
 		this.cacheDir = path.join(context.globalStorageUri.fsPath, "package-manager-cache")
-		this.metadataScanner = new MetadataScanner()
+		this.localizationOptions = localizationOptions || {
+			userLocale: getUserLocale(),
+			fallbackLocale: "en",
+		}
+		this.metadataScanner = new MetadataScanner(undefined, this.localizationOptions)
 	}
 
 	/**
@@ -27,7 +33,7 @@ export class GitFetcher {
 	private initGit(repoDir: string): void {
 		this.git = simpleGit(repoDir)
 		// Update MetadataScanner with new git instance
-		this.metadataScanner = new MetadataScanner(this.git)
+		this.metadataScanner = new MetadataScanner(this.git, this.localizationOptions)
 	}
 
 	/**

@@ -110,3 +110,11 @@ export interface PackageManagerRepository {
 export type LocalizedMetadata<T> = {
 	[locale: string]: T
 }
+
+/**
+ * Options for localization handling
+ */
+export interface LocalizationOptions {
+	userLocale: string
+	fallbackLocale: string
+}

@@ -8,7 +8,9 @@ import {
 	PackageManagerSource,
 	ComponentType,
 	ComponentMetadata,
+	LocalizationOptions,
 } from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Service for managing package manager data
@@ -23,7 +25,11 @@ export class PackageManagerManager {
 	private cache: Map<string, { data: PackageManagerRepository; timestamp: number }> = new Map()
 
 	constructor(private readonly context: vscode.ExtensionContext) {
-		this.gitFetcher = new GitFetcher(context)
+		const localizationOptions: LocalizationOptions = {
+			userLocale: getUserLocale(),
+			fallbackLocale: "en",
+		}
+		this.gitFetcher = new GitFetcher(context, localizationOptions)
 	}
 
 	/**
@@ -429,16 +435,6 @@ export class PackageManagerManager {
 		await this.cleanupCacheDirectories(sources)
 		this.clearCache()
 	}
-
-	/**
-	 * Helper method to check if an item matches the given filters
-	 */
-	/**
-	 * Helper method to check if an item matches the given filters
-	 */
-	/**
-	 * Helper method to check if an item matches the given filters
-	 */
 
 	/**
 	 * Helper method to get the sort value for an item

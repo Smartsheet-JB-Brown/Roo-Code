@@ -12,7 +12,7 @@ The Package Manager uses a type system to categorize different kinds of componen
 /**
  * Supported component types
  */
-export type ComponentType = "mode" | "prompt" | "package" | "mcp server";
+export type ComponentType = "mode" | "prompt" | "package" | "mcp server"
 ```
 
 These types represent the different kinds of components that can be managed by the Package Manager:
@@ -35,10 +35,10 @@ The Package Manager uses a set of interfaces to define the structure of metadata
  * Base metadata interface
  */
 export interface BaseMetadata {
-  name: string;
-  description: string;
-  version: string;
-  tags?: string[];
+	name: string
+	description: string
+	version: string
+	tags?: string[]
 }
 ```
 
@@ -67,7 +67,7 @@ This interface represents the metadata for a package source repository. It curre
  * Component metadata with type
  */
 export interface ComponentMetadata extends BaseMetadata {
-  type: ComponentType;
+	type: ComponentType
 }
 ```
 
@@ -80,12 +80,12 @@ This interface extends BaseMetadata to include a type field, which specifies the
  * Package metadata with optional subcomponents
  */
 export interface PackageMetadata extends ComponentMetadata {
-  type: "package";
-  items?: {
-    type: ComponentType;
-    path: string;
-    metadata?: ComponentMetadata;
-  }[];
+	type: "package"
+	items?: {
+		type: ComponentType
+		path: string
+		metadata?: ComponentMetadata
+	}[]
 }
 ```
 
@@ -93,9 +93,9 @@ This interface represents packages that can contain subcomponents:
 
 - **type**: Always "package" for this interface
 - **items**: Optional array of subcomponents, each with:
-  - **type**: The subcomponent type
-  - **path**: The file system path to the subcomponent
-  - **metadata**: Optional metadata for the subcomponent
+    - **type**: The subcomponent type
+    - **path**: The file system path to the subcomponent
+    - **metadata**: Optional metadata for the subcomponent
 
 ### SubcomponentMetadata
 
@@ -104,10 +104,10 @@ This interface represents packages that can contain subcomponents:
  * Subcomponent metadata with parent reference
  */
 export interface SubcomponentMetadata extends ComponentMetadata {
-  parentPackage: {
-    name: string;
-    path: string;
-  };
+	parentPackage: {
+		name: string
+		path: string
+	}
 }
 ```
 
@@ -115,8 +115,8 @@ This interface represents components that are part of a parent package:
 
 - All fields from ComponentMetadata
 - **parentPackage**: Reference to the parent package
-  - **name**: The name of the parent package
-  - **path**: The file system path to the parent package
+    - **name**: The name of the parent package
+    - **path**: The file system path to the parent package
 
 ## Item Structures
 
@@ -129,13 +129,13 @@ The Package Manager uses several interfaces to represent items in the UI:
  * Information about why an item matched search/filter criteria
  */
 export interface MatchInfo {
-  matched: boolean;
-  matchReason?: {
-    nameMatch?: boolean;
-    descriptionMatch?: boolean;
-    tagMatch?: boolean;
-    hasMatchingSubcomponents?: boolean;
-  };
+	matched: boolean
+	matchReason?: {
+		nameMatch?: boolean
+		descriptionMatch?: boolean
+		tagMatch?: boolean
+		hasMatchingSubcomponents?: boolean
+	}
 }
 ```
 
@@ -143,10 +143,10 @@ This interface provides information about why an item matched search or filter c
 
 - **matched**: Boolean indicating if the item matched
 - **matchReason**: Optional object with specific match reasons
-  - **nameMatch**: True if the name matched
-  - **descriptionMatch**: True if the description matched
-  - **tagMatch**: True if a tag matched
-  - **hasMatchingSubcomponents**: True if a subcomponent matched
+    - **nameMatch**: True if the name matched
+    - **descriptionMatch**: True if the description matched
+    - **tagMatch**: True if a tag matched
+    - **hasMatchingSubcomponents**: True if a subcomponent matched
 
 ### PackageManagerItem
 
@@ -155,25 +155,25 @@ This interface provides information about why an item matched search or filter c
  * Represents an individual package manager item
  */
 export interface PackageManagerItem {
-  name: string;
-  description: string;
-  type: ComponentType;
-  url: string;
-  repoUrl: string;
-  sourceName?: string;
-  author?: string;
-  tags?: string[];
-  version?: string;
-  lastUpdated?: string;
-  sourceUrl?: string;
-  items?: {
-    type: ComponentType;
-    path: string;
-    metadata?: ComponentMetadata;
-    lastUpdated?: string;
-    matchInfo?: MatchInfo;
-  }[];
-  matchInfo?: MatchInfo;
+	name: string
+	description: string
+	type: ComponentType
+	url: string
+	repoUrl: string
+	sourceName?: string
+	author?: string
+	tags?: string[]
+	version?: string
+	lastUpdated?: string
+	sourceUrl?: string
+	items?: {
+		type: ComponentType
+		path: string
+		metadata?: ComponentMetadata
+		lastUpdated?: string
+		matchInfo?: MatchInfo
+	}[]
+	matchInfo?: MatchInfo
 }
 ```
 
@@ -200,9 +200,9 @@ This interface represents a complete package manager item as displayed in the UI
  * Represents a Git repository source for package manager items
  */
 export interface PackageManagerSource {
-  url: string;
-  name?: string;
-  enabled: boolean;
+	url: string
+	name?: string
+	enabled: boolean
 }
 ```
 
@@ -219,10 +219,10 @@ This interface represents a package source repository:
  * Represents a repository with its metadata and items
  */
 export interface PackageManagerRepository {
-  metadata: RepositoryMetadata;
-  items: PackageManagerItem[];
-  url: string;
-  error?: string;
+	metadata: RepositoryMetadata
+	items: PackageManagerItem[]
+	url: string
+	error?: string
 }
 ```
 
@@ -240,8 +240,8 @@ This interface represents a complete repository with its metadata and items:
  * Utility type for metadata files with locale
  */
 export type LocalizedMetadata<T> = {
-  [locale: string]: T;
-};
+	[locale: string]: T
+}
 ```
 
 This utility type represents metadata that can be localized to different languages:
@@ -257,11 +257,11 @@ The Package Manager UI components use several prop interfaces:
 
 ```typescript
 interface PackageManagerItemCardProps {
-  item: PackageManagerItem;
-  filters: { type: string; search: string; tags: string[] };
-  setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>;
-  activeTab: "browse" | "sources";
-  setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>;
+	item: PackageManagerItem
+	filters: { type: string; search: string; tags: string[] }
+	setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>
+	activeTab: "browse" | "sources"
+	setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>
 }
 ```
 
@@ -277,11 +277,11 @@ This interface defines the props for the PackageManagerItemCard component:
 
 ```typescript
 interface ExpandableSectionProps {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-  defaultExpanded?: boolean;
-  badge?: string;
+	title: string
+	children: React.ReactNode
+	className?: string
+	defaultExpanded?: boolean
+	badge?: string
 }
 ```
 
@@ -297,15 +297,15 @@ This interface defines the props for the ExpandableSection component:
 
 ```typescript
 interface TypeGroupProps {
-  type: string;
-  items: Array<{
-    name: string;
-    description?: string;
-    metadata?: any;
-    path?: string;
-  }>;
-  className?: string;
-  searchTerm?: string;
+	type: string
+	items: Array<{
+		name: string
+		description?: string
+		metadata?: any
+		path?: string
+	}>
+	className?: string
+	searchTerm?: string
 }
 ```
 
@@ -324,15 +324,15 @@ The Package Manager uses a specialized structure for grouping items by type:
 
 ```typescript
 export interface GroupedItems {
-  [type: string]: {
-    type: string;
-    items: Array<{
-      name: string;
-      description?: string;
-      metadata?: any;
-      path?: string;
-    }>;
-  };
+	[type: string]: {
+		type: string
+		items: Array<{
+			name: string
+			description?: string
+			metadata?: any
+			path?: string
+		}>
+	}
 }
 ```
 
@@ -341,10 +341,10 @@ This interface represents items grouped by their type:
 - **[type: string]**: Keys are component types
 - **type**: The component type (redundant with the key)
 - **items**: Array of items of this type
-  - **name**: The item name
-  - **description**: Optional item description
-  - **metadata**: Optional additional metadata
-  - **path**: Optional file system path
+    - **name**: The item name
+    - **description**: Optional item description
+    - **metadata**: Optional additional metadata
+    - **path**: Optional file system path
 
 ## Filter and Sort Structures
 
@@ -354,9 +354,9 @@ The Package Manager uses several structures for filtering and sorting:
 
 ```typescript
 interface Filters {
-  type: string;
-  search: string;
-  tags: string[];
+	type: string
+	search: string
+	tags: string[]
 }
 ```
 
@@ -370,8 +370,8 @@ This interface represents the filter criteria:
 
 ```typescript
 interface SortConfig {
-  by: string;
-  order: "asc" | "desc";
+	by: string
+	order: "asc" | "desc"
 }
 ```
 
@@ -521,19 +521,19 @@ The Package Manager includes validation at several levels:
 
 ```typescript
 function validateMetadata(metadata: any): boolean {
-  // Required fields
-  if (!metadata.name || !metadata.description || !metadata.version) {
-    return false;
-  }
+	// Required fields
+	if (!metadata.name || !metadata.description || !metadata.version) {
+		return false
+	}
 
-  // Type validation for components
-  if (metadata.type && !["mode", "prompt", "package", "mcp server"].includes(metadata.type)) {
-    return false;
-  }
+	// Type validation for components
+	if (metadata.type && !["mode", "prompt", "package", "mcp server"].includes(metadata.type)) {
+		return false
+	}
 
-  // Additional validation...
+	// Additional validation...
 
-  return true;
+	return true
 }
 ```
 
@@ -541,12 +541,12 @@ function validateMetadata(metadata: any): boolean {
 
 ```typescript
 function isValidUrl(urlString: string): boolean {
-  try {
-    new URL(urlString);
-    return true;
-  } catch (e) {
-    return false;
-  }
+	try {
+		new URL(urlString)
+		return true
+	} catch (e) {
+		return false
+	}
 }
 ```
 
@@ -554,13 +554,11 @@ function isValidUrl(urlString: string): boolean {
 
 ```typescript
 function validateTags(tags: any[]): string[] {
-  if (!Array.isArray(tags)) {
-    return [];
-  }
+	if (!Array.isArray(tags)) {
+		return []
+	}
 
-  return tags
-    .filter(tag => typeof tag === "string" && tag.trim().length > 0)
-    .map(tag => tag.trim());
+	return tags.filter((tag) => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
 }
 ```
 

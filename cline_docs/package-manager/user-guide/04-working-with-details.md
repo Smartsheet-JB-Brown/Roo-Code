@@ -34,20 +34,23 @@ Components within packages are grouped by their type to make them easier to find
 ### Common Component Types
 
 1. **Modes**
-   - AI assistant personalities with specialized capabilities
-   - Examples: Code Mode, Architect Mode, Debug Mode
+
+    - AI assistant personalities with specialized capabilities
+    - Examples: Code Mode, Architect Mode, Debug Mode
 
 2. **MCP Servers**
-   - Model Context Protocol servers that provide additional functionality
-   - Examples: File Analyzer, Data Validator, Image Generator
+
+    - Model Context Protocol servers that provide additional functionality
+    - Examples: File Analyzer, Data Validator, Image Generator
 
 3. **Prompts**
-   - Pre-configured instructions for specific tasks
-   - Examples: Code Review, Documentation Generator, Test Case Creator
+
+    - Pre-configured instructions for specific tasks
+    - Examples: Code Review, Documentation Generator, Test Case Creator
 
 4. **Packages**
-   - Nested collections of related components
-   - Can contain any of the other component types
+    - Nested collections of related components
+    - Can contain any of the other component types
 
 ### Type Presentation
 
