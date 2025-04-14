@@ -141,8 +141,8 @@ describe("PackageManagerManager", () => {
 							type: "mode",
 							path: "modes/task-runner",
 							metadata: {
-								name: "Other Component",
-								description: "A mode for doing work",
+								name: "Task Runner",
+								description: "A mode for running tasks",
 								type: "mode",
 								version: "1.0.0",
 							},
@@ -155,27 +155,78 @@ describe("PackageManagerManager", () => {
 			// Test exact match
 			const filtered = manager.filterItems(testItems, { search: "test component" })
 			expect(filtered.length).toBe(1)
-			expect(filtered[0].items?.length).toBe(1)
-			expect(filtered[0].items![0].metadata!.name).toBe("Test Component")
+			expect(filtered[0].items?.length).toBe(2) // Should keep all subcomponents
+
+			// Verify matching component
+			const matchingLowerCase = filtered[0].items?.find((item) => item.metadata?.name === "Test Component")
+			expect(matchingLowerCase).toBeDefined()
+			expect(matchingLowerCase?.matchInfo).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: true,
+					descriptionMatch: false,
+				},
+			})
+
+			// Verify non-matching component
+			const nonMatchingLowerCase = filtered[0].items?.find((item) => item.metadata?.name === "Task Runner")
+			expect(nonMatchingLowerCase).toBeDefined()
+			expect(nonMatchingLowerCase?.matchInfo).toEqual({
+				matched: false,
+			})
 
 			// Test case insensitive
 			const filteredUpper = manager.filterItems(testItems, { search: "TEST COMPONENT" })
 			expect(filteredUpper.length).toBe(1)
-			expect(filteredUpper[0].items?.length).toBe(1)
-			expect(filteredUpper[0].items![0].metadata!.name).toBe("Test Component")
+			expect(filteredUpper[0].items?.length).toBe(2) // Should keep all subcomponents
+
+			// Verify matching component
+			const matchingUpperCase = filteredUpper[0].items?.find((item) => item.metadata?.name === "Test Component")
+			expect(matchingUpperCase).toBeDefined()
+			expect(matchingUpperCase?.matchInfo).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: true,
+					descriptionMatch: false,
+				},
+			})
+
+			// Verify non-matching component
+			const nonMatchingUpperCase = filteredUpper[0].items?.find((item) => item.metadata?.name === "Task Runner")
+			expect(nonMatchingUpperCase).toBeDefined()
+			expect(nonMatchingUpperCase?.matchInfo).toEqual({
+				matched: false,
+			})
 
 			// Test extra whitespace
 			const filteredSpace = manager.filterItems(testItems, { search: "Test  Component" })
 			expect(filteredSpace.length).toBe(1)
-			expect(filteredSpace[0].items?.length).toBe(1)
-			expect(filteredSpace[0].items![0].metadata!.name).toBe("Test Component")
+			expect(filteredSpace[0].items?.length).toBe(2) // Should keep all subcomponents
+
+			// Verify matching component
+			const matchingSpaceCase = filteredSpace[0].items?.find((item) => item.metadata?.name === "Test Component")
+			expect(matchingSpaceCase).toBeDefined()
+			expect(matchingSpaceCase?.matchInfo).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: true,
+					descriptionMatch: false,
+				},
+			})
+
+			// Verify non-matching component
+			const nonMatchingSpaceCase = filteredSpace[0].items?.find((item) => item.metadata?.name === "Task Runner")
+			expect(nonMatchingSpaceCase).toBeDefined()
+			expect(nonMatchingSpaceCase?.matchInfo).toEqual({
+				matched: false,
+			})
 
 			// Test non-matching terms
 			const nonMatchingTerms = [
-				"xyz", // No match
-				"data", // No match
-				"runner", // No match
-				"platform", // No match
+				"xyz", // No match - should not find anything
+				"nomatch", // No match - should not find anything
+				"zzzz", // No match - should not find anything
+				"qwerty", // No match - should not find anything
 			]
 
 			for (const term of nonMatchingTerms) {
@@ -325,6 +376,79 @@ describe("PackageManagerManager", () => {
 		})
 	})
 	describe("filterItems with real data", () => {
+		it("should return all subcomponents with match info", () => {
+			const testItems: PackageManagerItem[] = [
+				{
+					name: "Data Platform Package",
+					description: "A test platform",
+					type: "package",
+					version: "1.0.0",
+					url: "/test/data-platform",
+					repoUrl: "https://example.com",
+					items: [
+						{
+							type: "mcp server",
+							path: "mcp servers/data-validator",
+							metadata: {
+								name: "Data Validator",
+								description: "An MCP server for validating data quality",
+								type: "mcp server",
+								version: "1.0.0",
+							},
+							lastUpdated: "2025-04-13T10:00:00-07:00",
+						},
+						{
+							type: "mode",
+							path: "modes/task-runner",
+							metadata: {
+								name: "Task Runner",
+								description: "A mode for running tasks",
+								type: "mode",
+								version: "1.0.0",
+							},
+							lastUpdated: "2025-04-13T10:00:00-07:00",
+						},
+					],
+				},
+			]
+
+			// Search for "data validator"
+			const filtered = manager.filterItems(testItems, { search: "data validator" })
+
+			// Verify package is returned
+			expect(filtered.length).toBe(1)
+			const pkg = filtered[0]
+
+			// Verify all subcomponents are returned
+			expect(pkg.items?.length).toBe(2)
+
+			// Verify matching subcomponent has correct matchInfo
+			const validator = pkg.items?.find((item) => item.metadata?.name === "Data Validator")
+			expect(validator?.matchInfo).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: true,
+					descriptionMatch: false,
+				},
+			})
+
+			// Verify non-matching subcomponent has correct matchInfo
+			const runner = pkg.items?.find((item) => item.metadata?.name === "Task Runner")
+			expect(runner?.matchInfo).toEqual({
+				matched: false,
+			})
+
+			// Verify package has matchInfo indicating it contains matches
+			expect(pkg.matchInfo).toEqual({
+				matched: true,
+				matchReason: {
+					nameMatch: false,
+					descriptionMatch: false,
+					hasMatchingSubcomponents: true,
+				},
+			})
+		})
+
 		it("should find data validator in package-manager-template", async () => {
 			// Load real data from the template
 			const templatePath = path.resolve(__dirname, "../../../../package-manager-template")

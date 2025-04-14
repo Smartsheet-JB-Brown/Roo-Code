@@ -2,7 +2,13 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 import { GitFetcher } from "./GitFetcher"
-import { PackageManagerItem, PackageManagerRepository, PackageManagerSource } from "./types"
+import {
+	PackageManagerItem,
+	PackageManagerRepository,
+	PackageManagerSource,
+	ComponentType,
+	ComponentMetadata,
+} from "./types"
 
 /**
  * Service for managing package manager data
@@ -239,38 +245,129 @@ export class PackageManagerManager {
 	 */
 	filterItems(
 		items: PackageManagerItem[],
-		filters: { type?: string; search?: string; tags?: string[] },
+		filters: { type?: ComponentType; search?: string; tags?: string[] },
 	): PackageManagerItem[] {
-		return items.filter((item) => {
-			// Filter by type
+		// Helper function to normalize text for case/whitespace-insensitive comparison
+		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
+
+		// Normalize search term once
+		const searchTerm = filters.search ? normalizeText(filters.search) : ""
+
+		// Helper function to check if text contains the search term
+		const containsSearchTerm = (text: string) => {
+			if (!searchTerm) return true
+			return normalizeText(text).includes(normalizeText(searchTerm))
+		}
+
+		const filteredItems = items.map((originalItem) => {
+			// Create a deep clone of the item to avoid modifying the original
+			return JSON.parse(JSON.stringify(originalItem)) as PackageManagerItem
+		})
+
+		console.log("Initial items:", JSON.stringify(filteredItems))
+		return filteredItems.filter((item) => {
+			// For packages, handle differently based on filters
+			if (item.type === "package") {
+				// If we have a type filter that's not "package"
+				if (filters.type && filters.type !== "package") {
+					// Only keep packages that have at least one matching subcomponent
+					if (!item.items) return false
+
+					// Mark subcomponents with matchInfo based on type
+					item.items.forEach((subItem) => {
+						subItem.matchInfo = {
+							matched: subItem.type === filters.type,
+						}
+					})
+
+					// Keep package if it has any matching subcomponents
+					const hasMatchingType = item.items.some((subItem) => subItem.type === filters.type)
+
+					// Set package matchInfo
+					item.matchInfo = {
+						matched: hasMatchingType,
+						matchReason: {
+							nameMatch: false,
+							descriptionMatch: false,
+							hasMatchingSubcomponents: hasMatchingType,
+						},
+					}
+
+					return hasMatchingType
+				}
+
+				// For search term
+				if (searchTerm) {
+					// Check package and subcomponents
+					const nameMatch = containsSearchTerm(item.name)
+					const descMatch = containsSearchTerm(item.description)
+
+					// Process subcomponents if they exist
+					if (item.items && item.items.length > 0) {
+						// Add matchInfo to each subcomponent
+						item.items.forEach((subItem) => {
+							if (!subItem.metadata) {
+								subItem.matchInfo = { matched: false }
+								return
+							}
+
+							const subNameMatch = containsSearchTerm(subItem.metadata.name)
+							const subDescMatch = containsSearchTerm(subItem.metadata.description)
+
+							console.log(`Checking subcomponent: ${subItem.metadata.name}`)
+							console.log(`Search term: ${searchTerm}`)
+							console.log(`Name match: ${subNameMatch}, Desc match: ${subDescMatch}`)
+
+							if (subNameMatch || subDescMatch) {
+								subItem.matchInfo = {
+									matched: true,
+									matchReason: {
+										nameMatch: subNameMatch,
+										descriptionMatch: subDescMatch,
+									},
+								}
+							} else {
+								subItem.matchInfo = { matched: false }
+							}
+						})
+					}
+
+					// Check if any subcomponents matched
+					const hasMatchingSubcomponents = item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false
+
+					// Set package matchInfo
+					item.matchInfo = {
+						matched: nameMatch || descMatch || hasMatchingSubcomponents,
+						matchReason: {
+							nameMatch,
+							descriptionMatch: descMatch,
+							hasMatchingSubcomponents,
+						},
+					}
+
+					// Only keep package if it or its subcomponents match the exact search term
+					const packageMatches = nameMatch || descMatch
+					const subcomponentMatches = hasMatchingSubcomponents
+					return packageMatches || subcomponentMatches
+				}
+
+				// No search term, everything matches
+				item.matchInfo = { matched: true }
+				if (item.items) {
+					item.items.forEach((subItem) => {
+						subItem.matchInfo = { matched: true }
+					})
+				}
+				return true
+			}
+
+			// For non-packages
 			if (filters.type && item.type !== filters.type) {
 				return false
 			}
-
-			// Filter by search term
-			if (filters.search) {
-				const searchTerm = filters.search.toLowerCase()
-				const nameMatch = item.name.toLowerCase().includes(searchTerm)
-				const descMatch = item.description.toLowerCase().includes(searchTerm)
-				const authorMatch = item.author?.toLowerCase().includes(searchTerm)
-
-				if (!nameMatch && !descMatch && !authorMatch) {
-					return false
-				}
+			if (searchTerm) {
+				return containsSearchTerm(item.name) || containsSearchTerm(item.description)
 			}
-
-			// Filter by tags
-			if (filters.tags && filters.tags.length > 0) {
-				if (!item.tags || item.tags.length === 0) {
-					return false
-				}
-
-				const hasMatchingTag = filters.tags.some((tag) => item.tags!.includes(tag))
-				if (!hasMatchingTag) {
-					return false
-				}
-			}
-
 			return true
 		})
 	}
@@ -282,26 +379,38 @@ export class PackageManagerManager {
 	 * @param sortOrder The sort order
 	 * @returns Sorted items
 	 */
-	sortItems(items: PackageManagerItem[], sortBy: string, sortOrder: "asc" | "desc"): PackageManagerItem[] {
-		return [...items].sort((a, b) => {
-			let comparison = 0
+	sortItems(
+		items: PackageManagerItem[],
+		sortBy: keyof Pick<PackageManagerItem, "name" | "author" | "lastUpdated">,
+		sortOrder: "asc" | "desc",
+		sortSubcomponents: boolean = false,
+	): PackageManagerItem[] {
+		return [...items]
+			.map((item) => {
+				// Deep clone the item
+				const clonedItem = { ...item }
 
-			switch (sortBy) {
-				case "name":
-					comparison = a.name.localeCompare(b.name)
-					break
-				case "author":
-					comparison = (a.author || "").localeCompare(b.author || "")
-					break
-				case "lastUpdated":
-					comparison = (a.lastUpdated || "").localeCompare(b.lastUpdated || "")
-					break
-				default:
-					comparison = a.name.localeCompare(b.name)
-			}
+				// Sort or preserve subcomponents
+				if (clonedItem.items && clonedItem.items.length > 0) {
+					clonedItem.items = [...clonedItem.items]
+					if (sortSubcomponents) {
+						clonedItem.items.sort((a, b) => {
+							const aValue = this.getSortValue(a, sortBy)
+							const bValue = this.getSortValue(b, sortBy)
+							const comparison = aValue.localeCompare(bValue)
+							return sortOrder === "asc" ? comparison : -comparison
+						})
+					}
+				}
 
-			return sortOrder === "asc" ? comparison : -comparison
-		})
+				return clonedItem
+			})
+			.sort((a, b) => {
+				const aValue = this.getSortValue(a, sortBy)
+				const bValue = this.getSortValue(b, sortBy)
+				const comparison = aValue.localeCompare(bValue)
+				return sortOrder === "asc" ? comparison : -comparison
+			})
 	}
 	/**
 	 * Gets the current package manager items
@@ -319,5 +428,52 @@ export class PackageManagerManager {
 		const sources = Array.from(this.cache.keys()).map((url) => ({ url, enabled: true }))
 		await this.cleanupCacheDirectories(sources)
 		this.clearCache()
+	}
+
+	/**
+	 * Helper method to check if an item matches the given filters
+	 */
+	/**
+	 * Helper method to check if an item matches the given filters
+	 */
+	/**
+	 * Helper method to check if an item matches the given filters
+	 */
+
+	/**
+	 * Helper method to get the sort value for an item
+	 */
+	private getSortValue(
+		item:
+			| PackageManagerItem
+			| { type: ComponentType; path: string; metadata?: ComponentMetadata; lastUpdated?: string },
+		sortBy: keyof Pick<PackageManagerItem, "name" | "author" | "lastUpdated">,
+	): string {
+		if ("metadata" in item && item.metadata) {
+			// Handle subcomponent
+			switch (sortBy) {
+				case "name":
+					return item.metadata.name
+				case "author":
+					return ""
+				case "lastUpdated":
+					return item.lastUpdated || ""
+				default:
+					return item.metadata.name
+			}
+		} else {
+			// Handle parent item
+			const parentItem = item as PackageManagerItem
+			switch (sortBy) {
+				case "name":
+					return parentItem.name
+				case "author":
+					return parentItem.author || ""
+				case "lastUpdated":
+					return parentItem.lastUpdated || ""
+				default:
+					return parentItem.name
+			}
+		}
 	}
 }
