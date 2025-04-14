@@ -39,11 +39,11 @@ The search uses a simple string contains match that is case and whitespace insen
 
 ### Example Searches
 
-| Search Term | Will Find |
-|-------------|-----------|
-| "data" | Components with "data" in their name, description, or subcomponents |
-| "validator" | Components that include validation functionality or have validator subcomponents |
-| "machine learning" | Components related to machine learning technology |
+| Search Term        | Will Find                                                                        |
+| ------------------ | -------------------------------------------------------------------------------- |
+| "data"             | Components with "data" in their name, description, or subcomponents              |
+| "validator"        | Components that include validation functionality or have validator subcomponents |
+| "machine learning" | Components related to machine learning technology                                |
 
 ## Filtering by Package Type
 
@@ -62,9 +62,16 @@ The type filter allows you to focus on specific categories of components:
 2. Select multiple types to show components that match any of the selected types
 3. Clear all type filters to show all components again
 
+When filtering by type, packages are handled specially:
+
+- A package will be included if it matches the selected type
+- A package will also be included if it contains any subcomponents matching the selected type
+- When viewing a package that was included due to its subcomponents, the matching subcomponents will be highlighted
+
 ### Type Filter Behavior
 
-- Type filters apply to the primary component type, not subcomponents
+- Type filters apply to both the primary component type and subcomponents
+- Packages are included if they contain subcomponents matching the selected type
 - The type is displayed as a badge on each package card
 - Type filtering can be combined with search terms and tag filters
 
@@ -104,11 +111,12 @@ For the most precise results, you can combine search terms, type filters, and ta
 
 ### Combined Filter Examples
 
-| Search Term | Type Filter | Tag Filter | Will Find |
-|-------------|-------------|------------|-----------|
-| "data" | MCP Server | "analytics" | MCP Servers related to data analytics |
-| "test" | Mode | "automation", "quality" | Test automation or quality-focused modes |
-| "visualization" | Package | "dashboard", "chart" | Packages for creating dashboards or charts |
+| Search Term     | Type Filter | Tag Filter              | Will Find                                            |
+| --------------- | ----------- | ----------------------- | ---------------------------------------------------- |
+| "data"          | MCP Server  | "analytics"             | MCP Servers related to data analytics                |
+| "test"          | Mode        | "automation", "quality" | Test automation or quality-focused modes             |
+| "visualization" | Package     | "dashboard", "chart"    | Packages for creating dashboards or charts           |
+| ""              | Mode        | ""                      | All modes and packages containing mode subcomponents |
 
 ### Clearing Filters
 

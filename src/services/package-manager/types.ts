@@ -7,6 +7,7 @@ export interface MatchInfo {
 		nameMatch?: boolean
 		descriptionMatch?: boolean
 		tagMatch?: boolean
+		typeMatch?: boolean
 		hasMatchingSubcomponents?: boolean
 	}
 }

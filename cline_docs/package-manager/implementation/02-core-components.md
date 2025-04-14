@@ -180,16 +180,12 @@ class PackageManagerManager {
 The filtering algorithm applies multiple criteria to the package items:
 
 1. Start with the complete set of items
-2. If a type filter is specified:
-    - Keep only items matching the specified type
-3. If a search term is specified:
+2. If a search term and/or filter is specified:
     - Check item name, description, and author for matches
     - Check subcomponents for matches
     - Keep items that match or have matching subcomponents
     - Add match information to the items
-4. If tag filters are specified:
-    - Keep only items that have at least one of the specified tags
-5. Return the filtered items with match information
+3. Return the filtered items with match information
 
 #### Source Management
 

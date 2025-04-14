@@ -274,32 +274,40 @@ export class PackageManagerManager {
 		return filteredItems.filter((item) => {
 			// For packages, handle differently based on filters
 			if (item.type === "package") {
-				// If we have a type filter that's not "package"
-				if (filters.type && filters.type !== "package") {
-					// Only keep packages that have at least one matching subcomponent
-					if (!item.items) return false
+				// If we have a type filter
+				if (filters.type) {
+					// Check if the package itself matches the type filter
+					const packageTypeMatch = item.type === filters.type
 
-					// Mark subcomponents with matchInfo based on type
-					item.items.forEach((subItem) => {
-						subItem.matchInfo = {
-							matched: subItem.type === filters.type,
-						}
-					})
+					// Check subcomponents if they exist
+					let hasMatchingSubcomponents = false
+					if (item.items && item.items.length > 0) {
+						// Mark subcomponents with matchInfo based on type
+						item.items.forEach((subItem) => {
+							const subTypeMatch = subItem.type === filters.type
+							subItem.matchInfo = {
+								matched: subTypeMatch,
+								matchReason: {
+									typeMatch: subTypeMatch,
+								},
+							}
+						})
 
-					// Keep package if it has any matching subcomponents
-					const hasMatchingType = item.items.some((subItem) => subItem.type === filters.type)
+						// Check if any subcomponents match
+						hasMatchingSubcomponents = item.items.some((subItem) => subItem.matchInfo?.matched)
+					}
 
 					// Set package matchInfo
 					item.matchInfo = {
-						matched: hasMatchingType,
+						matched: packageTypeMatch || hasMatchingSubcomponents,
 						matchReason: {
-							nameMatch: false,
-							descriptionMatch: false,
-							hasMatchingSubcomponents: hasMatchingType,
+							typeMatch: packageTypeMatch,
+							hasMatchingSubcomponents,
 						},
 					}
 
-					return hasMatchingType
+					// Keep package if it or any of its subcomponents match the type filter
+					return packageTypeMatch || hasMatchingSubcomponents
 				}
 
 				// For search term

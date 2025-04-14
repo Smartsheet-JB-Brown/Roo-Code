@@ -84,8 +84,8 @@ description: "A collection of specialized components for data science workflows"
 version: "1.0.0"
 author: "Your Name or Organization"
 tags:
-  - custom
-  - data-science
+    - custom
+    - data-science
 ```
 
 ### Component Organization
@@ -102,9 +102,9 @@ Once you have a properly structured package source repository, you can add it to
 ### Default Package Source
 
 Roo Code comes with a default package source:
+
 - URL: `https://github.com/RooVetGit/Roo-Code-Packages`
-- Name: "Roo Code Package Manager Template"
-- This source is enabled by default
+- This source is enabled by default, and anytime all sources have been deleted.
 
 ### Adding a New Source
 
@@ -113,18 +113,16 @@ Roo Code comes with a default package source:
 3. Switch to the "Sources" tab
 4. Click the "Add Source" button
 5. Enter the repository URL:
-   - Format: `https://github.com/username/repository.git`
-   - Example: `https://github.com/your-username/your-package-repo.git`
+    - Format: `https://github.com/username/repository.git`
+    - Example: `https://github.com/your-username/your-package-repo.git`
 6. Click "Add" to save the source
 
 ### Managing Sources
 
 The "Sources" tab provides several options for managing your package sources:
 
-1. **Enable/Disable**: Toggle sources on or off without removing them
-2. **Remove**: Delete a source from your configuration
-3. **Refresh**: Update the package list from all enabled sources
-4. **View Details**: See information about each source
+1. **Remove**: Delete a source from your configuration
+2. **Refresh**: Update the package list from a sources - this is forced git clone/pull to override local caching of data
 
 ### Source Caching and Refreshing
 
@@ -132,9 +130,9 @@ Package Manager sources are cached to improve performance:
 
 - **Cache Duration**: Sources are cached for 1 hour (3600000 ms)
 - **Force Refresh**: To force an immediate refresh of a source:
-  1. Go to the "Sources" tab
-  2. Click the "Refresh" button next to the source you want to update
-  3. This will bypass the cache and fetch the latest data from the repository
+    1. Go to the "Sources" tab
+    2. Click the "Refresh" button next to the source you want to update
+    3. This will bypass the cache and fetch the latest data from the repository
 
 ### Troubleshooting Sources
 
@@ -190,8 +188,7 @@ The Package Manager supports multiple package sources simultaneously:
 1. Keep the default source enabled for core components
 2. Add specialized sources for specific needs
 3. Create a personal source for testing and development
-4. Disable sources temporarily when not needed
-5. Regularly update sources to get the latest components
+4. Refresh sources after you've pushed changes to them to get the latest components
 
 ---
 

@@ -118,8 +118,9 @@ When a subcomponent matches your search:
 The search uses a simple string contains match that is case-insensitive:
 
 - "validator" will match "Data Validator", "Validator Tool", etc.
-- "valid" will match "validation", "validator", etc.
-- The search will match any part of the name or description
+- "valid" will match "validation" or "validator"
+- validator will not match "validation"
+- The search will match any part of the name or description that contains the exact search term
 
 ### Example Scenario
 
@@ -127,7 +128,7 @@ If you search for "validator":
 
 1. Packages containing components with "validator" in their name or description remain visible
 2. The details section expands automatically for packages with matching subcomponents
-3. Components like "Data Validator" or those with "validation" in their description are highlighted
+3. Components like "Data Validator" or those with "validator" in their description are highlighted
 4. A badge might show "2 matches" if two subcomponents match your search term
 
 ### Benefits of Subcomponent Matching
