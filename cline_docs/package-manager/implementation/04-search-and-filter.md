@@ -765,6 +765,4 @@ describe("Package Manager Search Integration", () => {
 })
 ```
 
----
-
 **Previous**: [Data Structures](./03-data-structures.md) | **Next**: [UI Component Design](./05-ui-components.md)
