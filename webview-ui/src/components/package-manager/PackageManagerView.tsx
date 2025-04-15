@@ -271,14 +271,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
 										<p>No package manager items found</p>
-										<Button
-											onClick={() => manager.transition({ type: "FETCH_ITEMS" })}
-											className="mt-4"
-											disabled={state.isFetching}>
-											<span
-												className={`codicon ${state.isFetching ? "codicon-sync codicon-modifier-spin" : "codicon-refresh"} mr-2`}></span>
-											{state.isFetching ? "Refreshing..." : "Refresh"}
-										</Button>
 									</div>
 								)
 							}
@@ -287,21 +279,11 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							console.log("Showing items view with items:", items)
 							return (
 								<div>
-									<div className="flex justify-between mb-4">
-										<p className="text-vscode-descriptionForeground">
-											{checkFilterActive(state.filters)
-												? `${items.length} items found (filtered)`
-												: `${items.length} ${items.length === 1 ? "item" : "items"} total`}
-										</p>
-										<Button
-											onClick={() => manager.transition({ type: "FETCH_ITEMS" })}
-											size="sm"
-											disabled={state.isFetching}>
-											<span
-												className={`codicon ${state.isFetching ? "codicon-sync codicon-modifier-spin" : "codicon-refresh"} mr-2`}></span>
-											{state.isFetching ? "Refreshing..." : "Refresh"}
-										</Button>
-									</div>
+									<p className="text-vscode-descriptionForeground mb-4">
+										{checkFilterActive(state.filters)
+											? `${items.length} items found (filtered)`
+											: `${items.length} ${items.length === 1 ? "item" : "items"} total`}
+									</p>
 									<div className="grid grid-cols-1 gap-4 pb-4">
 										{items.map((item) => (
 											<PackageManagerItemCard
