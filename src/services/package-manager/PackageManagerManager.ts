@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
-import { GitFetcher } from "./GitFetcher"
+import { GitFetcher } from "@package-manager/GitFetcher"
 import {
 	PackageManagerItem,
 	PackageManagerRepository,
@@ -9,20 +9,24 @@ import {
 	ComponentType,
 	ComponentMetadata,
 	LocalizationOptions,
-} from "./types"
-import { getUserLocale } from "./utils"
+} from "@package-manager/types"
+import { getUserLocale } from "@package-manager/utils"
 
 /**
  * Service for managing package manager data
  */
 export class PackageManagerManager {
 	private currentItems: PackageManagerItem[] = []
-	public isFetching = false
-	// Cache expiry time in milliseconds (set to a low value for testing)
 	private static readonly CACHE_EXPIRY_MS = 3600000 // 1 hour
 
 	private gitFetcher: GitFetcher
 	private cache: Map<string, { data: PackageManagerRepository; timestamp: number }> = new Map()
+	public isFetching = false
+
+	// Concurrency control
+	private activeSourceOperations = new Set<string>() // Track active git operations per source
+	private isMetadataScanActive = false // Track active metadata scanning
+	private pendingOperations: Array<() => Promise<void>> = [] // Queue for pending operations
 
 	constructor(private readonly context: vscode.ExtensionContext) {
 		const localizationOptions: LocalizationOptions = {
@@ -37,6 +41,33 @@ export class PackageManagerManager {
 	 * @param sources The package manager sources
 	 * @returns An array of PackageManagerItem objects
 	 */
+	/**
+	 * Queue an operation to run when no metadata scan is active
+	 */
+	private async queueOperation(operation: () => Promise<void>): Promise<void> {
+		if (this.isMetadataScanActive) {
+			return new Promise((resolve) => {
+				this.pendingOperations.push(async () => {
+					await operation()
+					resolve()
+				})
+			})
+		}
+
+		try {
+			this.isMetadataScanActive = true
+			await operation()
+		} finally {
+			this.isMetadataScanActive = false
+
+			// Process any pending operations
+			const nextOperation = this.pendingOperations.shift()
+			if (nextOperation) {
+				void this.queueOperation(nextOperation)
+			}
+		}
+	}
+
 	async getPackageManagerItems(
 		sources: PackageManagerSource[],
 	): Promise<{ items: PackageManagerItem[]; errors?: string[] }> {
@@ -48,23 +79,34 @@ export class PackageManagerManager {
 		const enabledSources = sources.filter((s) => s.enabled)
 		console.log(`PackageManagerManager: ${enabledSources.length} enabled sources`)
 
-		// Process sources sequentially to avoid overwhelming the system
+		// Process sources sequentially with locking
 		for (const source of enabledSources) {
-			try {
-				console.log(`PackageManagerManager: Processing source ${source.url}`)
-				// Pass the source name to getRepositoryData
-				const repo = await this.getRepositoryData(source.url, false, source.name)
+			if (this.isSourceLocked(source.url)) {
+				console.log(`PackageManagerManager: Source ${source.url} is locked, skipping`)
+				continue
+			}
 
-				if (repo.items && repo.items.length > 0) {
-					console.log(`PackageManagerManager: Found ${repo.items.length} items in ${source.url}`)
-					items.push(...repo.items)
-				} else {
-					console.log(`PackageManagerManager: No items found in ${source.url}`)
-				}
+			try {
+				this.lockSource(source.url)
+				console.log(`PackageManagerManager: Processing source ${source.url}`)
+
+				// Queue metadata scanning operation
+				await this.queueOperation(async () => {
+					const repo = await this.getRepositoryData(source.url, false, source.name)
+
+					if (repo.items && repo.items.length > 0) {
+						console.log(`PackageManagerManager: Found ${repo.items.length} items in ${source.url}`)
+						items.push(...repo.items)
+					} else {
+						console.log(`PackageManagerManager: No items found in ${source.url}`)
+					}
+				})
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				console.error(`PackageManagerManager: Failed to fetch data from ${source.url}:`, error)
 				errors.push(`Source ${source.url}: ${errorMessage}`)
+			} finally {
+				this.unlockSource(source.url)
 			}
 		}
 
@@ -88,6 +130,27 @@ export class PackageManagerManager {
 	 * @param sourceName The name of the source
 	 * @returns A PackageManagerRepository object
 	 */
+	/**
+	 * Check if a source operation is in progress
+	 */
+	private isSourceLocked(url: string): boolean {
+		return this.activeSourceOperations.has(url)
+	}
+
+	/**
+	 * Lock a source for operations
+	 */
+	private lockSource(url: string): void {
+		this.activeSourceOperations.add(url)
+	}
+
+	/**
+	 * Unlock a source after operations complete
+	 */
+	private unlockSource(url: string): void {
+		this.activeSourceOperations.delete(url)
+	}
+
 	async getRepositoryData(
 		url: string,
 		forceRefresh: boolean = false,

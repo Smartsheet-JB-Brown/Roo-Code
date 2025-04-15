@@ -2,10 +2,15 @@ import * as vscode from "vscode"
 import { ClineProvider } from "./ClineProvider"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { ExtensionMessage } from "../../shared/ExtensionMessage"
-import { PackageManagerManager } from "../../services/package-manager"
-import { ComponentType, PackageManagerItem, PackageManagerSource } from "../../services/package-manager/types"
-import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
-import { validateSources } from "../../services/package-manager/validation"
+import {
+	PackageManagerManager,
+	ComponentType,
+	PackageManagerItem,
+	PackageManagerSource,
+	validateSources,
+	ValidationError,
+} from "@package-manager"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "@package-manager/constants"
 import { GlobalState } from "../../schemas"
 
 /**
@@ -32,7 +37,7 @@ export async function handlePackageManagerMessages(
 			// Prevent multiple simultaneous fetches
 			if (packageManagerManager.isFetching) {
 				console.log("Package Manager: Fetch already in progress, skipping")
-				provider.postMessageToWebview({
+				await provider.postMessageToWebview({
 					type: "state",
 					text: "Fetch already in progress",
 				})
@@ -96,7 +101,7 @@ export async function handlePackageManagerMessages(
 					else if (result.errors && result.items.length === 0) {
 						const errorMessage = `Failed to load package manager sources:\n${result.errors.join("\n")}`
 						vscode.window.showErrorMessage(errorMessage)
-						provider.postMessageToWebview({
+						await provider.postMessageToWebview({
 							type: "state",
 							text: errorMessage,
 						})
@@ -120,7 +125,7 @@ export async function handlePackageManagerMessages(
 					const errorMessage = `Package manager initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`
 					console.error("Error in package manager initialization:", initError)
 					vscode.window.showErrorMessage(errorMessage)
-					provider.postMessageToWebview({
+					await provider.postMessageToWebview({
 						type: "state",
 						text: errorMessage,
 					})
@@ -132,7 +137,7 @@ export async function handlePackageManagerMessages(
 				const errorMessage = `Failed to fetch package manager items: ${error instanceof Error ? error.message : String(error)}`
 				console.error("Failed to fetch package manager items:", error)
 				vscode.window.showErrorMessage(errorMessage)
-				provider.postMessageToWebview({
+				await provider.postMessageToWebview({
 					type: "state",
 					text: errorMessage,
 				})
@@ -165,7 +170,7 @@ export async function handlePackageManagerMessages(
 
 					// Create a map of invalid indices
 					const invalidIndices = new Set<number>()
-					validationErrors.forEach((error) => {
+					validationErrors.forEach((error: ValidationError) => {
 						// Extract index from error message (Source #X: ...)
 						const match = error.message.match(/Source #(\d+):/)
 						if (match && match[1]) {
@@ -180,7 +185,7 @@ export async function handlePackageManagerMessages(
 					updatedSources = updatedSources.filter((_, index) => !invalidIndices.has(index))
 
 					// Show validation errors
-					const errorMessage = `Package manager sources validation failed:\n${validationErrors.map((e) => e.message).join("\n")}`
+					const errorMessage = `Package manager sources validation failed:\n${validationErrors.map((e: ValidationError) => e.message).join("\n")}`
 					console.error(errorMessage)
 					vscode.window.showErrorMessage(errorMessage)
 				}
@@ -282,7 +287,7 @@ export async function handlePackageManagerMessages(
 						} finally {
 							// Always notify the webview that the refresh is complete, even if it failed
 							console.log(`Package Manager: Sending repositoryRefreshComplete message for ${message.url}`)
-							provider.postMessageToWebview({
+							await provider.postMessageToWebview({
 								type: "repositoryRefreshComplete",
 								url: message.url,
 							})

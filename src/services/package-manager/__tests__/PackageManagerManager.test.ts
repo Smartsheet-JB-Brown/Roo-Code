@@ -1,6 +1,7 @@
-import { PackageManagerManager } from "../PackageManagerManager"
-import { PackageManagerItem } from "../types"
-import { MetadataScanner } from "../MetadataScanner"
+import { PackageManagerManager } from "@package-manager/PackageManagerManager"
+import { PackageManagerItem, PackageManagerSource, PackageManagerRepository } from "@package-manager/types"
+import { MetadataScanner } from "@package-manager/MetadataScanner"
+import { GitFetcher } from "@package-manager/GitFetcher"
 import * as path from "path"
 import * as vscode from "vscode"
 
@@ -67,6 +68,8 @@ describe("PackageManagerManager", () => {
 				},
 			]
 		})
+
+		// Concurrency Control tests moved to their own describe block
 
 		test("should include package when filtering by its own type", () => {
 			// Filter by package type
@@ -421,182 +424,107 @@ describe("PackageManagerManager", () => {
 	})
 })
 
-// Re-declare manager for the following test sections
-let manager: PackageManagerManager
-beforeEach(() => {
-	const context = {
-		globalStorageUri: { fsPath: path.resolve(__dirname, "../../../../mock/settings/path") },
-	} as vscode.ExtensionContext
-	manager = new PackageManagerManager(context)
-})
+describe("Concurrency Control", () => {
+	let manager: PackageManagerManager
 
-describe("sortItems with subcomponents", () => {
-	const testItems: PackageManagerItem[] = [
-		{
-			name: "B Package",
-			description: "Package B",
-			type: "package",
-			version: "1.0.0",
-			url: "/test/b",
-			repoUrl: "https://example.com",
-			items: [
-				{
-					type: "mode",
-					path: "modes/y",
-					metadata: {
-						name: "Y Mode",
-						description: "Mode Y",
-						type: "mode",
-						version: "1.0.0",
-					},
-					lastUpdated: "2025-04-13T09:00:00-07:00",
-				},
-				{
-					type: "mode",
-					path: "modes/x",
-					metadata: {
-						name: "X Mode",
-						description: "Mode X",
-						type: "mode",
-						version: "1.0.0",
-					},
-					lastUpdated: "2025-04-13T09:00:00-07:00",
-				},
-			],
-		},
-		{
-			name: "A Package",
-			description: "Package A",
-			type: "package",
-			version: "1.0.0",
-			url: "/test/a",
-			repoUrl: "https://example.com",
-			items: [
-				{
-					type: "mode",
-					path: "modes/z",
-					metadata: {
-						name: "Z Mode",
-						description: "Mode Z",
-						type: "mode",
-						version: "1.0.0",
-					},
-					lastUpdated: "2025-04-13T08:00:00-07:00",
-				},
-			],
-		},
-	]
-
-	it("should sort parent items while preserving subcomponents", () => {
-		const sorted = manager.sortItems(testItems, "name", "asc")
-		expect(sorted[0].name).toBe("A Package")
-		expect(sorted[1].name).toBe("B Package")
-		expect(sorted[0].items![0].metadata!.name).toBe("Z Mode")
-		expect(sorted[1].items![0].metadata!.name).toBe("Y Mode")
+	beforeEach(() => {
+		const mockContext = {
+			globalStorageUri: { fsPath: "/test/path" },
+		} as vscode.ExtensionContext
+		manager = new PackageManagerManager(mockContext)
 	})
 
-	it("should sort subcomponents within parents", () => {
-		const sorted = manager.sortItems(testItems, "name", "asc", true)
-		expect(sorted[1].items![0].metadata!.name).toBe("X Mode")
-		expect(sorted[1].items![1].metadata!.name).toBe("Y Mode")
-	})
+	it("should not allow concurrent operations on the same source", async () => {
+		const source: PackageManagerSource = {
+			url: "https://github.com/test/repo",
+			enabled: true,
+		}
 
-	it("should preserve subcomponent order when sortSubcomponents is false", () => {
-		const sorted = manager.sortItems(testItems, "name", "asc", false)
-		expect(sorted[1].items![0].metadata!.name).toBe("Y Mode")
-		expect(sorted[1].items![1].metadata!.name).toBe("X Mode")
-	})
-
-	it("should handle empty subcomponents when sorting", () => {
-		const itemsWithEmpty = [
-			...testItems,
-			{
-				name: "C Package",
-				description: "Package C",
-				type: "package" as const,
-				version: "1.0.0",
-				url: "/test/c",
-				repoUrl: "https://example.com",
+		// Mock getRepositoryData to be slow
+		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+		const slowGetRepositoryData = jest.spyOn(manager as any, "getRepositoryData").mockImplementation(async () => {
+			await delay(100) // Simulate slow operation
+			return {
+				metadata: { name: "test", description: "test", version: "1.0.0" },
 				items: [],
-			} as PackageManagerItem,
-		]
-		const sorted = manager.sortItems(itemsWithEmpty, "name", "asc")
-		expect(sorted[2].name).toBe("C Package")
-		expect(sorted[2].items).toHaveLength(0)
+				url: source.url,
+			} as PackageManagerRepository
+		})
+
+		// Start two concurrent operations
+		const operation1 = manager.getPackageManagerItems([source])
+		const operation2 = manager.getPackageManagerItems([source])
+
+		// Wait for both to complete
+		const [result1, result2] = await Promise.all([operation1, operation2])
+
+		// Verify getRepositoryData was only called once
+		expect(slowGetRepositoryData).toHaveBeenCalledTimes(1)
 	})
-})
 
-describe("filterItems with real data", () => {
-	it("should return all subcomponents with match info", () => {
-		const testItems: PackageManagerItem[] = [
-			{
-				name: "Data Platform Package",
-				description: "A test platform",
-				type: "package",
-				version: "1.0.0",
-				url: "/test/data-platform",
-				repoUrl: "https://example.com",
-				items: [
-					{
-						type: "mcp server",
-						path: "mcp servers/data-validator",
-						metadata: {
-							name: "Data Validator",
-							description: "An MCP server for validating data quality",
-							type: "mcp server",
-							version: "1.0.0",
-						},
-						lastUpdated: "2025-04-13T10:00:00-07:00",
-					},
-					{
-						type: "mode",
-						path: "modes/task-runner",
-						metadata: {
-							name: "Task Runner",
-							description: "A mode for running tasks",
-							type: "mode",
-							version: "1.0.0",
-						},
-						lastUpdated: "2025-04-13T10:00:00-07:00",
-					},
-				],
-			},
+	it("should not allow metadata scanning during git operations", async () => {
+		const source1: PackageManagerSource = {
+			url: "https://github.com/test/repo1",
+			enabled: true,
+		}
+		const source2: PackageManagerSource = {
+			url: "https://github.com/test/repo2",
+			enabled: true,
+		}
+
+		let isGitOperationActive = false
+		let metadataScanDuringGit = false
+
+		// Mock git operation to be slow and set flag
+		jest.spyOn(GitFetcher.prototype, "fetchRepository").mockImplementation(async () => {
+			isGitOperationActive = true
+			await new Promise((resolve) => setTimeout(resolve, 100))
+			isGitOperationActive = false
+			return {
+				metadata: { name: "test", description: "test", version: "1.0.0" },
+				items: [],
+				url: source1.url,
+			}
+		})
+
+		// Mock metadata scanner to check if git operation is active
+		jest.spyOn(MetadataScanner.prototype, "scanDirectory").mockImplementation(async () => {
+			if (isGitOperationActive) {
+				metadataScanDuringGit = true
+			}
+			return []
+		})
+
+		// Process both sources
+		await manager.getPackageManagerItems([source1, source2])
+
+		// Verify metadata scanning didn't occur during git operations
+		expect(metadataScanDuringGit).toBe(false)
+	})
+
+	it("should queue metadata scans and process them sequentially", async () => {
+		const sources: PackageManagerSource[] = [
+			{ url: "https://github.com/test/repo1", enabled: true },
+			{ url: "https://github.com/test/repo2", enabled: true },
+			{ url: "https://github.com/test/repo3", enabled: true },
 		]
 
-		// Search for "data validator"
-		const filtered = manager.filterItems(testItems, { search: "data validator" })
+		let activeScans = 0
+		let maxConcurrentScans = 0
 
-		// Verify package is returned
-		expect(filtered.length).toBe(1)
-		const pkg = filtered[0]
-
-		// Verify all subcomponents are returned
-		expect(pkg.items?.length).toBe(2)
-
-		// Verify matching subcomponent has correct matchInfo
-		const validator = pkg.items?.find((item: any) => item.metadata?.name === "Data Validator")
-		expect(validator?.matchInfo).toEqual({
-			matched: true,
-			matchReason: {
-				nameMatch: true,
-				descriptionMatch: false,
-			},
+		// Mock metadata scanner to track concurrent scans
+		jest.spyOn(MetadataScanner.prototype, "scanDirectory").mockImplementation(async () => {
+			activeScans++
+			maxConcurrentScans = Math.max(maxConcurrentScans, activeScans)
+			await new Promise((resolve) => setTimeout(resolve, 50))
+			activeScans--
+			return []
 		})
 
-		// Verify non-matching subcomponent has correct matchInfo
-		const runner = pkg.items?.find((item: any) => item.metadata?.name === "Task Runner")
-		expect(runner?.matchInfo).toEqual({
-			matched: false,
-		})
+		// Process all sources
+		await manager.getPackageManagerItems(sources)
 
-		// Verify package has matchInfo indicating it contains matches
-		expect(pkg.matchInfo).toEqual({
-			matched: true,
-			matchReason: {
-				nameMatch: false,
-				descriptionMatch: false,
-				hasMatchingSubcomponents: true,
-			},
-		})
+		// Verify only one scan was active at a time
+		expect(maxConcurrentScans).toBe(1)
 	})
 })

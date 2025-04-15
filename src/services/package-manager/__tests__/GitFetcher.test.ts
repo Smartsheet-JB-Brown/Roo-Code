@@ -1,9 +1,9 @@
 import * as vscode from "vscode"
-import { GitFetcher } from "../GitFetcher"
+import { GitFetcher } from "@package-manager/GitFetcher"
 import * as fs from "fs/promises"
 import { Dirent, Stats } from "fs"
 import simpleGit, { SimpleGit } from "simple-git"
-import { MetadataScanner } from "../MetadataScanner"
+import { MetadataScanner } from "@package-manager/MetadataScanner"
 import { exec, ChildProcess } from "child_process"
 import { promisify } from "util"
 import { EventEmitter } from "events"
@@ -26,6 +26,7 @@ jest.mock("fs/promises", () => ({
 	mkdir: jest.fn(),
 	stat: jest.fn(),
 	rm: jest.fn(),
+	unlink: jest.fn(),
 	readdir: jest.fn().mockResolvedValue([]),
 	readFile: jest.fn().mockResolvedValue(`
 name: Test Repository
@@ -255,6 +256,59 @@ describe("GitFetcher", () => {
 			await expect(gitFetcher.fetchRepository(testRepoUrl)).rejects.toThrow(
 				"Repository is missing README.md file",
 			)
+		})
+	})
+
+	describe("Git Lock File Handling", () => {
+		it("should clean up index.lock file before operations", async () => {
+			// Mock repository exists
+			;(fs.stat as jest.Mock).mockImplementation((path: string) => {
+				if (path.endsWith(".git")) return Promise.resolve(true)
+				if (path.endsWith("metadata.en.yml")) return Promise.resolve(true)
+				if (path.endsWith("README.md")) return Promise.resolve(true)
+				return Promise.reject(new Error("ENOENT"))
+			})
+
+			await gitFetcher.fetchRepository(testRepoUrl)
+
+			// Verify lock file cleanup was attempted
+			expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining("index.lock"))
+		})
+
+		it("should handle missing lock file gracefully", async () => {
+			// Mock unlink to fail as if file doesn't exist
+			;(fs.unlink as jest.Mock).mockRejectedValue(new Error("ENOENT"))
+
+			await gitFetcher.fetchRepository(testRepoUrl)
+
+			// Operation should succeed despite lock file not existing
+			const mockGit = mockSimpleGit()
+			expect(mockGit.clone).toHaveBeenCalled()
+		})
+
+		it("should clean up lock file when pull fails", async () => {
+			// Mock repository exists
+			;(fs.stat as jest.Mock).mockImplementation((path: string) => {
+				if (path.endsWith(".git")) return Promise.resolve(true)
+				if (path.endsWith("metadata.en.yml")) return Promise.resolve(true)
+				if (path.endsWith("README.md")) return Promise.resolve(true)
+				return Promise.reject(new Error("ENOENT"))
+			})
+
+			const mockGit = {
+				clone: jest.fn().mockResolvedValue(undefined),
+				pull: jest.fn().mockRejectedValue(new Error("not a git repository")),
+				revparse: jest.fn().mockResolvedValue("main"),
+				fetch: jest.fn().mockRejectedValue(new Error("not a git repository")),
+				clean: jest.fn(),
+				raw: jest.fn(),
+			} as unknown as SimpleGit
+			mockSimpleGit.mockReturnValue(mockGit)
+
+			await gitFetcher.fetchRepository(testRepoUrl)
+
+			// Verify lock file cleanup was attempted after pull failure
+			expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining("index.lock"))
 		})
 	})
 

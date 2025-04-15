@@ -3,10 +3,15 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as yaml from "js-yaml"
 import simpleGit, { SimpleGit } from "simple-git"
-import { MetadataScanner } from "./MetadataScanner"
-import { validateAnyMetadata } from "./schemas"
-import { LocalizationOptions, PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from "./types"
-import { getUserLocale } from "./utils"
+import { MetadataScanner } from "@package-manager/MetadataScanner"
+import { validateAnyMetadata } from "@package-manager/schemas"
+import {
+	LocalizationOptions,
+	PackageManagerItem,
+	PackageManagerRepository,
+	RepositoryMetadata,
+} from "@package-manager/types"
+import { getUserLocale } from "@package-manager/utils"
 
 /**
  * Handles fetching and caching package manager repositories
@@ -96,8 +101,23 @@ export class GitFetcher {
 	 * @param repoDir Repository directory
 	 * @param forceRefresh Whether to force refresh
 	 */
+	/**
+	 * Clean up any git lock files in the repository
+	 * @param repoDir Repository directory
+	 */
+	private async cleanupGitLocks(repoDir: string): Promise<void> {
+		const indexLockPath = path.join(repoDir, ".git", "index.lock")
+		try {
+			await fs.unlink(indexLockPath)
+		} catch {
+			// Ignore errors if file doesn't exist
+		}
+	}
+
 	private async cloneOrPullRepository(repoUrl: string, repoDir: string, forceRefresh: boolean): Promise<void> {
 		try {
+			// Clean up any existing git lock files first
+			await this.cleanupGitLocks(repoDir)
 			// Check if repository exists
 			const gitDir = path.join(repoDir, ".git")
 			let repoExists = await fs
@@ -114,6 +134,8 @@ export class GitFetcher {
 					await git.raw(["reset", "--hard", "origin/main"])
 					await git.raw(["clean", "-f", "-d"])
 				} catch (error) {
+					// Clean up git locks before retrying
+					await this.cleanupGitLocks(repoDir)
 					// If pull fails with specific errors that indicate repo corruption,
 					// we should remove and re-clone
 					const errorMessage = error instanceof Error ? error.message : String(error)
@@ -132,6 +154,14 @@ export class GitFetcher {
 
 			if (!repoExists || forceRefresh) {
 				try {
+					// Clean up any existing git lock files
+					const indexLockPath = path.join(repoDir, ".git", "index.lock")
+					try {
+						await fs.unlink(indexLockPath)
+					} catch {
+						// Ignore errors if file doesn't exist
+					}
+
 					// Always remove the directory before cloning
 					await fs.rm(repoDir, { recursive: true, force: true })
 

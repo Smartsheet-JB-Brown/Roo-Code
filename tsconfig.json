@@ -18,7 +18,12 @@
 		"strict": true,
 		"target": "es2022",
 		"useDefineForClassFields": true,
-		"useUnknownInCatchVariables": false
+		"useUnknownInCatchVariables": false,
+		"baseUrl": ".",
+		"paths": {
+			"@package-manager": ["src/services/package-manager"],
+			"@package-manager/*": ["src/services/package-manager/*"]
+		}
 	},
 	"include": ["src/**/*", "scripts/**/*", ".changeset/**/*"],
 	"exclude": ["node_modules", ".vscode-test", "webview-ui"]
