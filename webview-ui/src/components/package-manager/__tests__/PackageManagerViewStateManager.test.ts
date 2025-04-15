@@ -445,6 +445,52 @@ describe("PackageManagerViewStateManager", () => {
 				},
 			})
 		})
+
+		it("should maintain filter criteria when search is cleared", async () => {
+			// Reset mock before test
+			;(vscode.postMessage as jest.Mock).mockClear()
+
+			// First set a type filter
+			await manager.transition({
+				type: "UPDATE_FILTERS",
+				payload: {
+					filters: { type: "mode" },
+				},
+			})
+
+			// Then add a search term
+			await manager.transition({
+				type: "UPDATE_FILTERS",
+				payload: {
+					filters: { search: "test" },
+				},
+			})
+
+			// Clear the search term
+			await manager.transition({
+				type: "UPDATE_FILTERS",
+				payload: {
+					filters: { search: "" },
+				},
+			})
+
+			// Should maintain type filter when search is cleared
+			expect(vscode.postMessage).toHaveBeenLastCalledWith({
+				type: "filterPackageManagerItems",
+				filters: {
+					type: "mode",
+					search: "",
+					tags: [],
+				},
+			})
+
+			const state = manager.getState()
+			expect(state.filters).toEqual({
+				type: "mode",
+				search: "",
+				tags: [],
+			})
+		})
 	})
 
 	describe("Message Handling", () => {

@@ -8,6 +8,10 @@ export interface GroupedItems {
 			description?: string
 			metadata?: any
 			path?: string
+			matchInfo?: {
+				matched: boolean
+				matchReason?: Record<string, boolean>
+			}
 		}>
 	}
 }
@@ -39,6 +43,7 @@ export function groupItemsByType(items: PackageManagerItem["items"] = []): Group
 			description: item.metadata?.description,
 			metadata: item.metadata,
 			path: item.path,
+			matchInfo: item.matchInfo,
 		})
 
 		return groups

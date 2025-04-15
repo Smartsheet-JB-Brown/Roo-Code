@@ -260,26 +260,30 @@ export class PackageManagerViewStateManager {
 			}
 
 			case "UPDATE_FILTERS": {
-				const { filters } = transition.payload as TransitionPayloads["UPDATE_FILTERS"]
+				const { filters = {} } = (transition.payload as TransitionPayloads["UPDATE_FILTERS"]) || {}
 				console.log("=== UPDATE_FILTERS Started ===", {
 					currentFilters: this.state.filters,
 					newFilters: filters,
 				})
 
+				// Create new filters object, preserving existing filters unless explicitly changed
+				const updatedFilters = {
+					type: filters.type ?? this.state.filters.type,
+					search: filters.search ?? this.state.filters.search,
+					tags: filters.tags ?? this.state.filters.tags,
+				}
+
 				// Update state with new filters
 				this.state = {
 					...this.state,
-					filters: {
-						...this.state.filters,
-						...filters,
-					},
+					filters: updatedFilters,
 				}
 				this.notifyStateChange()
 
 				// Send filter request immediately
 				vscode.postMessage({
 					type: "filterPackageManagerItems",
-					filters: this.state.filters,
+					filters: updatedFilters,
 				} as WebviewMessage)
 
 				console.log("=== UPDATE_FILTERS Finished ===")

@@ -163,39 +163,14 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 			{groupedItems && (
 				<ExpandableSection
 					title="Component Details"
-					badge={
-						filters.search
-							? (() => {
-									const matchCount =
-										item.items?.filter(
-											(subItem) =>
-												(subItem.metadata?.name || "")
-													.toLowerCase()
-													.includes(filters.search.toLowerCase()) ||
-												(subItem.metadata?.description || "")
-													.toLowerCase()
-													.includes(filters.search.toLowerCase()),
-										).length || 0
-									return matchCount > 0
-										? `${matchCount} match${matchCount !== 1 ? "es" : ""}`
-										: undefined
-								})()
-							: undefined
-					}
-					defaultExpanded={
-						!!filters.search &&
-						(item.items?.some(
-							(subItem) =>
-								(subItem.metadata?.name || "").toLowerCase().includes(filters.search.toLowerCase()) ||
-								(subItem.metadata?.description || "")
-									.toLowerCase()
-									.includes(filters.search.toLowerCase()),
-						) ||
-							false)
-					}>
+					badge={(() => {
+						const matchCount = item.items?.filter((subItem) => subItem.matchInfo?.matched).length ?? 0
+						return matchCount > 0 ? `${matchCount} match${matchCount !== 1 ? "es" : ""}` : undefined
+					})()}
+					defaultExpanded={item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false}>
 					<div className="space-y-4">
 						{Object.entries(groupedItems).map(([type, group]) => (
-							<TypeGroup key={type} type={type} items={group.items} searchTerm={filters.search} />
+							<TypeGroup key={type} type={type} items={group.items} />
 						))}
 					</div>
 				</ExpandableSection>
