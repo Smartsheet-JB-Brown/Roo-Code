@@ -1,0 +1,24 @@
+{
+	"type_group": {
+		"modes": "Tryby",
+		"mcp_servers": "Serwery MCP",
+		"prompts": "Podpowiedzi",
+		"packages": "Pakiety",
+		"generic_type": "{{type}}y",
+		"match": "dopasowanie"
+	},
+	"item_card": {
+		"type_mode": "Tryb",
+		"type_mcp_server": "Serwer MCP",
+		"type_prompt": "Podpowiedź",
+		"type_package": "Pakiet",
+		"type_other": "Inne",
+		"by_author": "autor: {{author}}",
+		"remove_tag_filter": "Usuń filtr tagu: {{tag}}",
+		"filter_by_tag": "Filtruj po tagu: {{tag}}",
+		"component_details": "Szczegóły komponentu",
+		"match_count": "{{count}} dopasowani{{count === 1 ? 'e' : count < 5 ? 'a' : 'ń'}}",
+		"view": "Pokaż",
+		"source": "Źródło"
+	}
+}

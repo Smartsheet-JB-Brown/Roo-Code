@@ -1,5 +1,6 @@
 import React from "react"
 import { cn } from "@/lib/utils"
+import { t } from "../../../../../src/i18n"
 
 interface TypeGroupProps {
 	type: string
@@ -20,15 +21,17 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className }) 
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case "mode":
-				return "Modes"
+				return t("package_manager:type_group.modes")
 			case "mcp server":
-				return "MCP Servers"
+				return t("package_manager:type_group.mcp_servers")
 			case "prompt":
-				return "Prompts"
+				return t("package_manager:type_group.prompts")
 			case "package":
-				return "Packages"
+				return t("package_manager:type_group.packages")
 			default:
-				return `${type.charAt(0).toUpperCase()}${type.slice(1)}s`
+				return t("package_manager:type_group.generic_type", {
+					type: type.charAt(0).toUpperCase() + type.slice(1),
+				})
 		}
 	}
 
@@ -56,7 +59,7 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className }) 
 						)}
 						{item.matchInfo?.matched && (
 							<span className="ml-2 text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded">
-								match
+								{t("package_manager:type_group.match")}
 							</span>
 						)}
 					</li>

@@ -1,0 +1,24 @@
+{
+	"type_group": {
+		"modes": "Modes",
+		"mcp_servers": "Serveurs MCP",
+		"prompts": "Prompts",
+		"packages": "Paquets",
+		"generic_type": "{{type}}s",
+		"match": "correspondance"
+	},
+	"item_card": {
+		"type_mode": "Mode",
+		"type_mcp_server": "Serveur MCP",
+		"type_prompt": "Prompt",
+		"type_package": "Paquet",
+		"type_other": "Autre",
+		"by_author": "par {{author}}",
+		"remove_tag_filter": "Supprimer le filtre de tag : {{tag}}",
+		"filter_by_tag": "Filtrer par tag : {{tag}}",
+		"component_details": "Détails du composant",
+		"match_count": "{{count}} correspondance{{count !== 1 ? 's' : ''}}",
+		"view": "Voir",
+		"source": "Source"
+	}
+}

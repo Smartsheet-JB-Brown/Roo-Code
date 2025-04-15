@@ -6,6 +6,7 @@ import { groupItemsByType, GroupedItems } from "../utils/grouping"
 import { ExpandableSection } from "./ExpandableSection"
 import { TypeGroup } from "./TypeGroup"
 import { ViewState } from "../PackageManagerViewStateManager"
+import { t } from "../../../../../src/i18n"
 
 interface PackageManagerItemCardProps {
 	item: PackageManagerItem
@@ -34,15 +35,15 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case "mode":
-				return "Mode"
+				return t("package_manager:item_card.type_mode")
 			case "mcp server":
-				return "MCP Server"
+				return t("package_manager:item_card.type_mcp_server")
 			case "prompt":
-				return "Prompt"
+				return t("package_manager:item_card.type_prompt")
 			case "package":
-				return "Package"
+				return t("package_manager:item_card.type_package")
 			default:
-				return "Other"
+				return t("package_manager:item_card.type_other")
 		}
 	}
 
@@ -94,7 +95,11 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 			<div className="flex justify-between items-start">
 				<div>
 					<h3 className="text-lg font-semibold text-vscode-foreground">{item.name}</h3>
-					{item.author && <p className="text-sm text-vscode-descriptionForeground">{`by ${item.author}`}</p>}
+					{item.author && (
+						<p className="text-sm text-vscode-descriptionForeground">
+							{t("package_manager:item_card.by_author", { author: item.author })}
+						</p>
+					)}
 				</div>
 				<span className={`px-2 py-1 text-xs text-white rounded-full ${getTypeColor(item.type)}`}>
 					{getTypeLabel(item.type)}
@@ -127,7 +132,11 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 									}
 								}
 							}}
-							title={filters.tags.includes(tag) ? `Remove tag filter: ${tag}` : `Filter by tag: ${tag}`}>
+							title={
+								filters.tags.includes(tag)
+									? t("package_manager:item_card.remove_tag_filter", { tag })
+									: t("package_manager:item_card.filter_by_tag", { tag })
+							}>
 							{tag}
 						</button>
 					))}
@@ -156,16 +165,20 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 
 				<Button onClick={handleOpenUrl}>
 					<span className="codicon codicon-link-external mr-2"></span>
-					{item.sourceUrl ? "View" : item.sourceName || "Source"}
+					{item.sourceUrl
+						? t("package_manager:item_card.view")
+						: item.sourceName || t("package_manager:item_card.source")}
 				</Button>
 			</div>
 
 			{groupedItems && (
 				<ExpandableSection
-					title="Component Details"
+					title={t("package_manager:item_card.component_details")}
 					badge={(() => {
 						const matchCount = item.items?.filter((subItem) => subItem.matchInfo?.matched).length ?? 0
-						return matchCount > 0 ? `${matchCount} match${matchCount !== 1 ? "es" : ""}` : undefined
+						return matchCount > 0
+							? t("package_manager:item_card.match_count", { count: matchCount })
+							: undefined
 					})()}
 					defaultExpanded={item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false}>
 					<div className="space-y-4">
