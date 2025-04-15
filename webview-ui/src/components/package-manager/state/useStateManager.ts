@@ -68,6 +68,7 @@ function reducer(state: State, action: Action): State {
 				...action.payload.filters,
 			}
 			stateManager.setItems(state.allItems)
+			stateManager.setFilters(newFilters)
 			return {
 				...state,
 				filters: newFilters,

@@ -131,6 +131,80 @@ describe("PackageManagerManager", () => {
 	describe("Type Filter Behavior", () => {
 		let typeFilterTestItems: PackageManagerItem[]
 
+		test("should include package with MCP server subcomponent when filtering by type 'mcp server'", () => {
+			const items: PackageManagerItem[] = [
+				{
+					name: "Data Platform Package",
+					description: "A package containing MCP servers",
+					type: "package" as ComponentType,
+					url: "test/package",
+					repoUrl: "https://example.com",
+					items: [
+						{
+							type: "mcp server" as ComponentType,
+							path: "test/server",
+							metadata: {
+								name: "Data Validator",
+								description: "An MCP server",
+								version: "1.0.0",
+								type: "mcp server" as ComponentType,
+							},
+						},
+					],
+				},
+				{
+					name: "Standalone Server",
+					description: "A standalone MCP server",
+					type: "mcp server" as ComponentType,
+					url: "test/server",
+					repoUrl: "https://example.com",
+				},
+			]
+
+			const filtered = manager.filterItems(items, { type: "mcp server" })
+			expect(filtered.length).toBe(2)
+			expect(filtered.map((item) => item.name)).toContain("Data Platform Package")
+			expect(filtered.map((item) => item.name)).toContain("Standalone Server")
+
+			// Verify package is included because of its MCP server subcomponent
+			const pkg = filtered.find((item) => item.name === "Data Platform Package")
+			expect(pkg?.matchInfo?.matched).toBe(true)
+			expect(pkg?.matchInfo?.matchReason?.hasMatchingSubcomponents).toBe(true)
+			expect(pkg?.items?.[0].matchInfo?.matched).toBe(true)
+			expect(pkg?.items?.[0].matchInfo?.matchReason?.typeMatch).toBe(true)
+		})
+
+		test("should include package when filtering by subcomponent type", () => {
+			const items: PackageManagerItem[] = [
+				{
+					name: "Data Platform Package",
+					description: "A package containing MCP servers",
+					type: "package" as ComponentType,
+					url: "test/package",
+					repoUrl: "https://example.com",
+					items: [
+						{
+							type: "mcp server" as ComponentType,
+							path: "test/server",
+							metadata: {
+								name: "Data Validator",
+								description: "An MCP server",
+								version: "1.0.0",
+								type: "mcp server" as ComponentType,
+							},
+						},
+					],
+				},
+			]
+
+			const filtered = manager.filterItems(items, { type: "mcp server" })
+			expect(filtered.length).toBe(1)
+			expect(filtered[0].name).toBe("Data Platform Package")
+			expect(filtered[0].matchInfo?.matched).toBe(true)
+			expect(filtered[0].items?.[0].matchInfo?.matched).toBe(true)
+			expect(filtered[0].items?.[0].matchInfo?.matchReason?.typeMatch).toBe(true)
+		})
+
 		beforeEach(() => {
 			// Create test items
 			typeFilterTestItems = [

@@ -4,7 +4,6 @@ import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { cn } from "@/lib/utils"
 import { PackageManagerSource } from "../../../../src/services/package-manager/types"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
-import { isFilterActive as checkFilterActive } from "./selectors"
 import { PackageManagerItemCard } from "./components/PackageManagerItemCard"
 import { useStateManager } from "./useStateManager"
 
@@ -85,8 +84,11 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							<div className="flex flex-col gap-3 mt-2">
 								<div className="flex flex-wrap justify-between gap-2">
 									<div className="whitespace-nowrap">
-										<label className="mr-2">Filter by type:</label>
+										<label htmlFor="type-filter" className="mr-2">
+											Filter by type:
+										</label>
 										<select
+											id="type-filter"
 											value={state.filters.type}
 											onChange={(e) =>
 												manager.transition({
@@ -239,10 +241,8 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						</div>
 
 						{(() => {
-							// Debug log state
-							const items = checkFilterActive(state.filters)
-								? state.displayItems || []
-								: state.allItems || []
+							// Use items directly from backend
+							const items = state.displayItems || []
 							const isEmpty = items.length === 0
 							const isLoading = state.isFetching
 							console.log("=== Rendering PackageManagerView ===")
@@ -256,7 +256,11 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							})
 
 							// Show loading state if fetching and not filtering
-							if (isLoading && !checkFilterActive(state.filters)) {
+							// Only show loading state if we're fetching and not filtering
+							if (
+								isLoading &&
+								!(state.filters.type || state.filters.search || state.filters.tags.length > 0)
+							) {
 								console.log("Rendering loading state due to isFetching=true")
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
@@ -280,7 +284,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							return (
 								<div>
 									<p className="text-vscode-descriptionForeground mb-4">
-										{checkFilterActive(state.filters)
+										{state.filters.type || state.filters.search || state.filters.tags.length > 0
 											? `${items.length} items found (filtered)`
 											: `${items.length} ${items.length === 1 ? "item" : "items"} total`}
 									</p>

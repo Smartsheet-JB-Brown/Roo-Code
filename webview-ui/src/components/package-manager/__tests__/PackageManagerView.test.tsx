@@ -4,9 +4,11 @@ import { ComponentMetadata, PackageManagerItem } from "../../../../../src/servic
 
 // Mock vscode API for external communication
 const mockPostMessage = jest.fn()
-jest.mock("@/utils/vscode", () => ({
+jest.mock("../../../utils/vscode", () => ({
 	vscode: {
 		postMessage: (msg: any) => mockPostMessage(msg),
+		getState: () => undefined,
+		setState: (state: any) => state,
 	},
 }))
 
@@ -579,6 +581,278 @@ describe("PackageManagerView", () => {
 		expect(screen.queryByText("Another Package")).not.toBeInTheDocument()
 	})
 
+	it("should include packages with matching subcomponents when filtering by type", async () => {
+		render(<PackageManagerView />)
+
+		// Should show loading state initially
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
+
+		// Load initial items including a package with MCP server subcomponent
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [
+								{
+									name: "Standalone MCP Server",
+									description: "A standalone MCP server",
+									type: "mcp server",
+									repoUrl: "test-url-1",
+									url: "test-url-1",
+								},
+								{
+									name: "Package with MCP Server",
+									description: "A package containing an MCP server",
+									type: "package",
+									repoUrl: "test-url-2",
+									url: "test-url-2",
+									items: [
+										{
+											type: "mcp server",
+											path: "servers/test-server",
+											metadata: {
+												name: "Test Server",
+												description: "A test server",
+												type: "mcp server",
+												version: "1.0.0",
+											},
+										},
+									],
+								},
+								{
+									name: "Package without MCP Server",
+									description: "A package without an MCP server",
+									type: "package",
+									repoUrl: "test-url-3",
+									url: "test-url-3",
+									items: [
+										{
+											type: "mode",
+											path: "modes/test-mode",
+											metadata: {
+												name: "Test Mode",
+												description: "A test mode",
+												type: "mode",
+												version: "1.0.0",
+											},
+										},
+									],
+								},
+							],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Verify initial items are shown
+		expect(screen.getByText("3 items total")).toBeInTheDocument()
+		expect(screen.getByText("Standalone MCP Server")).toBeInTheDocument()
+		expect(screen.getByText("Package with MCP Server")).toBeInTheDocument()
+		expect(screen.getByText("Package without MCP Server")).toBeInTheDocument()
+
+		// Select MCP Server from type filter
+		const typeFilter = screen.getByLabelText("Filter by type:")
+		await act(async () => {
+			fireEvent.change(typeFilter, { target: { value: "mcp server" } })
+		})
+
+		// Update state with filtered results
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [
+								{
+									name: "Standalone MCP Server",
+									description: "A standalone MCP server",
+									type: "mcp server",
+									repoUrl: "test-url-1",
+									url: "test-url-1",
+								},
+								{
+									name: "Package with MCP Server",
+									description: "A package containing an MCP server",
+									type: "package",
+									repoUrl: "test-url-2",
+									url: "test-url-2",
+									items: [
+										{
+											type: "mcp server",
+											path: "servers/test-server",
+											metadata: {
+												name: "Test Server",
+												description: "A test server",
+												type: "mcp server",
+												version: "1.0.0",
+											},
+										},
+									],
+								},
+							],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "mcp server", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+							isFiltered: true,
+						},
+					},
+				}),
+			)
+		})
+
+		// Verify filtered results include both standalone MCP server and package with MCP server
+		expect(screen.getByText(/2 items.*found.*filtered/)).toBeInTheDocument()
+		expect(screen.getByText("Standalone MCP Server")).toBeInTheDocument()
+		expect(screen.getByText("Package with MCP Server")).toBeInTheDocument()
+		expect(screen.queryByText("Package without MCP Server")).not.toBeInTheDocument()
+	})
+	it("should update display items when receiving filtered results from backend", async () => {
+		render(<PackageManagerView />)
+
+		// Load initial items
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [
+								{
+									name: "MCP Server 1",
+									type: "mcp server",
+									repoUrl: "test-url-1",
+									url: "test-url-1",
+								},
+								{
+									name: "Mode 1",
+									type: "mode",
+									repoUrl: "test-url-2",
+									url: "test-url-2",
+								},
+								{
+									name: "MCP Server 2",
+									type: "mcp server",
+									repoUrl: "test-url-3",
+									url: "test-url-3",
+								},
+							],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Verify initial items are shown
+		expect(screen.getByText("3 items total")).toBeInTheDocument()
+		expect(screen.getByText("MCP Server 1")).toBeInTheDocument()
+		expect(screen.getByText("Mode 1")).toBeInTheDocument()
+		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()
+
+		// Select MCP Server from type filter
+		const typeFilter = screen.getByLabelText("Filter by type:")
+		await act(async () => {
+			fireEvent.change(typeFilter, { target: { value: "mcp server" } })
+		})
+
+		// Verify initial fetch and filter requests were sent
+		expect(mockPostMessage).toHaveBeenCalledTimes(2)
+		expect(mockPostMessage).toHaveBeenLastCalledWith({
+			type: "filterPackageManagerItems",
+			filters: { type: "mcp server", search: undefined, tags: undefined },
+		})
+
+		// Simulate backend response with filtered items
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [
+								{
+									name: "MCP Server 1",
+									type: "mcp server",
+									repoUrl: "test-url-1",
+									url: "test-url-1",
+								},
+								{
+									name: "MCP Server 2",
+									type: "mcp server",
+									repoUrl: "test-url-3",
+									url: "test-url-3",
+								},
+							],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "mcp server", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Verify filtered results are shown
+		expect(screen.getByText(/2 items.*found.*filtered/)).toBeInTheDocument()
+		expect(screen.getByText("MCP Server 1")).toBeInTheDocument()
+		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()
+		expect(screen.queryByText("Mode 1")).not.toBeInTheDocument()
+
+		// Now test that the display updates when backend sends new filtered results
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [
+								{
+									name: "MCP Server 2",
+									type: "mcp server",
+									repoUrl: "test-url-3",
+									url: "test-url-3",
+								},
+							],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "mcp server", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Verify updated filtered results are shown
+		expect(screen.getByText(/1 item.*found.*filtered/)).toBeInTheDocument()
+		expect(screen.queryByText("MCP Server 1")).not.toBeInTheDocument()
+		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()
+		expect(screen.queryByText("Mode 1")).not.toBeInTheDocument()
+	})
+
 	it("should construct correct source URLs for packages and subcomponents", async () => {
 		render(<PackageManagerView />)
 
@@ -637,6 +911,46 @@ describe("PackageManagerView", () => {
 		expect(lastCallArgs).toEqual({
 			type: "openExternal",
 			url: "https://github.com/org/repo/tree/main",
+		})
+	})
+	it("should send filter request when typing in search box", async () => {
+		render(<PackageManagerView />)
+
+		// Load initial items
+		await act(async () => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: [],
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Clear mock to ignore initial fetch
+		mockPostMessage.mockClear()
+
+		// Find and update search input
+		const searchInput = screen.getByPlaceholderText("Search package manager items...")
+		fireEvent.change(searchInput, { target: { value: "test" } })
+
+		// Verify filter request was sent immediately
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "filterPackageManagerItems",
+			filters: {
+				type: "",
+				search: "test",
+				tags: [],
+			},
 		})
 	})
 })

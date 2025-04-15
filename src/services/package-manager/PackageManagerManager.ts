@@ -344,33 +344,47 @@ export class PackageManagerManager {
 
 		// Apply filters
 		const filteredItems = clonedItems.filter((item) => {
-			// Check if item itself matches type filter
-			const itemTypeMatch = !filters.type || item.type === filters.type
-
-			// Check if any subcomponents match type filter
-			const subcomponentTypeMatch =
-				item.items?.some((subItem) => !filters.type || subItem.type === filters.type) ?? false
-
-			// Type filter - include if item or any subcomponent matches
-			if (filters.type && !itemTypeMatch && !subcomponentTypeMatch) {
-				return false
+			// Check parent item matches
+			const itemMatches = {
+				type: !filters.type || item.type === filters.type,
+				search: !searchTerm || containsSearchTerm(item.name) || containsSearchTerm(item.description),
+				tags: !filters.tags?.length || (item.tags && filters.tags.some((tag) => item.tags!.includes(tag))),
 			}
 
-			// Search filter
-			if (searchTerm) {
-				const nameMatch = containsSearchTerm(item.name)
-				const descMatch = containsSearchTerm(item.description)
-				const subcomponentMatch =
-					item.items?.some(
-						(subItem) =>
-							subItem.metadata &&
-							(containsSearchTerm(subItem.metadata.name) ||
-								containsSearchTerm(subItem.metadata.description)),
-					) ?? false
-				return nameMatch || descMatch || subcomponentMatch
-			}
+			// Check subcomponent matches
+			const subcomponentMatches =
+				item.items?.some((subItem) => {
+					const subMatches = {
+						type: !filters.type || subItem.type === filters.type,
+						search:
+							!searchTerm ||
+							(subItem.metadata &&
+								(containsSearchTerm(subItem.metadata.name) ||
+									containsSearchTerm(subItem.metadata.description))),
+						tags:
+							!filters.tags?.length ||
+							(subItem.metadata?.tags &&
+								filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))),
+					}
 
-			return true
+					// When filtering by type, require exact type match
+					// For other filters (search/tags), any match is sufficient
+					return (
+						subMatches.type &&
+						(!searchTerm || subMatches.search) &&
+						(!filters.tags?.length || subMatches.tags)
+					)
+				}) ?? false
+
+			// Include item if either:
+			// 1. Parent matches all active filters, or
+			// 2. Parent is a package and any subcomponent matches any active filter
+			const hasActiveFilters = filters.type || searchTerm || filters.tags?.length
+			if (!hasActiveFilters) return true
+
+			const parentMatchesAll = itemMatches.type && itemMatches.search && itemMatches.tags
+			const isPackageWithMatchingSubcomponent = item.type === "package" && subcomponentMatches
+			return parentMatchesAll || isPackageWithMatchingSubcomponent
 		})
 
 		console.log("Filtered items:", {
@@ -380,40 +394,45 @@ export class PackageManagerManager {
 		})
 		// Add match info to filtered items
 		return filteredItems.map((item) => {
-			const nameMatch = searchTerm ? containsSearchTerm(item.name) : true
-			const descMatch = searchTerm ? containsSearchTerm(item.description) : true
-			const typeMatch = filters.type ? item.type === filters.type : true
+			// Calculate parent item matches
+			const itemMatches = {
+				type: !filters.type || item.type === filters.type,
+				search: !searchTerm || containsSearchTerm(item.name) || containsSearchTerm(item.description),
+				tags: !filters.tags?.length || (item.tags && filters.tags.some((tag) => item.tags!.includes(tag))),
+			}
 
-			// Process subcomponents first to determine if any match
+			// Process subcomponents
 			let hasMatchingSubcomponents = false
 			if (item.items) {
 				item.items = item.items.map((subItem) => {
-					// Calculate matches
-					const subNameMatch =
-						searchTerm && subItem.metadata ? containsSearchTerm(subItem.metadata.name) : true
-					const subDescMatch =
-						searchTerm && subItem.metadata ? containsSearchTerm(subItem.metadata.description) : true
+					// Calculate individual filter matches for subcomponent
+					const subMatches = {
+						type: !filters.type || subItem.type === filters.type,
+						search:
+							!searchTerm ||
+							(subItem.metadata &&
+								(containsSearchTerm(subItem.metadata.name) ||
+									containsSearchTerm(subItem.metadata.description))),
+						tags:
+							!filters.tags?.length ||
+							(subItem.metadata?.tags &&
+								filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))),
+					}
 
-					// Only calculate type match if type filter is active
-					const subTypeMatch = filters.type ? subItem.type === filters.type : false
-
-					// Determine if item matches based on active filters
-					const subMatched = filters.type
-						? subNameMatch || subDescMatch || subTypeMatch
-						: subNameMatch || subDescMatch
+					// A subcomponent matches if it matches all active filters
+					const subMatched = subMatches.type && subMatches.search && subMatches.tags
 
 					if (subMatched) {
 						hasMatchingSubcomponents = true
-
-						// Only include matchReason if the item matches
+						// Build match reason for matched subcomponent
 						const matchReason: Record<string, boolean> = {
-							nameMatch: subNameMatch,
-							descriptionMatch: subDescMatch,
-						}
-
-						// Only include type match in reason if type filter is active
-						if (filters.type) {
-							matchReason.typeMatch = subTypeMatch
+							...(searchTerm && {
+								nameMatch: !!subItem.metadata && containsSearchTerm(subItem.metadata.name),
+								descriptionMatch:
+									!!subItem.metadata && containsSearchTerm(subItem.metadata.description),
+							}),
+							...(filters.type && { typeMatch: subMatches.type }),
+							...(filters.tags?.length && { tagMatch: !!subMatches.tags }),
 						}
 
 						subItem.matchInfo = {
@@ -430,21 +449,34 @@ export class PackageManagerManager {
 				})
 			}
 
+			// Build match reason for parent item
 			const matchReason: Record<string, boolean> = {
-				nameMatch,
-				descriptionMatch: descMatch,
+				nameMatch: searchTerm ? containsSearchTerm(item.name) : true,
+				descriptionMatch: searchTerm ? containsSearchTerm(item.description) : true,
 			}
 
-			// Only include typeMatch and hasMatchingSubcomponents in matchReason if relevant
 			if (filters.type) {
-				matchReason.typeMatch = typeMatch
+				matchReason.typeMatch = itemMatches.type
+			}
+			if (filters.tags?.length) {
+				matchReason.tagMatch = !!itemMatches.tags
 			}
 			if (hasMatchingSubcomponents) {
 				matchReason.hasMatchingSubcomponents = true
 			}
 
+			// Parent item is matched if:
+			// 1. It matches all active filters directly, or
+			// 2. It's a package and has any matching subcomponents
+			const parentMatchesAll =
+				(!filters.type || itemMatches.type) &&
+				(!searchTerm || itemMatches.search) &&
+				(!filters.tags?.length || itemMatches.tags)
+
+			const isPackageWithMatchingSubcomponent = item.type === "package" && hasMatchingSubcomponents
+
 			item.matchInfo = {
-				matched: nameMatch || descMatch || typeMatch || hasMatchingSubcomponents,
+				matched: parentMatchesAll || isPackageWithMatchingSubcomponent,
 				matchReason,
 			}
 

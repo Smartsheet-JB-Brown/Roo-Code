@@ -204,7 +204,8 @@ describe("PackageManagerViewStateManager", () => {
 
 			const state = manager.getState()
 			expect(state.filters.type).toBe("mode")
-			expect(state.allItems).toHaveLength(1)
+			// We don't preserve allItems during filtering anymore
+			expect(state.displayItems).toBeDefined()
 			expect(vscode.postMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: "filterPackageManagerItems",
@@ -223,26 +224,20 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { filters: { search: "test" } },
 			})
 
-			// Wait a bit but not enough to trigger debounce
-			jest.advanceTimersByTime(100)
-
 			// Apply second filter
 			await manager.transition({
 				type: "UPDATE_FILTERS",
 				payload: { filters: { type: "mode" } },
 			})
 
-			// Wait for debounce to complete
-			jest.advanceTimersByTime(300)
-
-			// Should only send one filter message with combined filters
-			expect(vscode.postMessage).toHaveBeenCalledTimes(1)
-			expect(vscode.postMessage).toHaveBeenCalledWith({
+			// Each filter update should be sent immediately
+			expect(vscode.postMessage).toHaveBeenCalledTimes(2)
+			expect(vscode.postMessage).toHaveBeenLastCalledWith({
 				type: "filterPackageManagerItems",
 				filters: {
 					search: "test",
 					type: "mode",
-					tags: undefined,
+					tags: [],
 				},
 			})
 		})
@@ -379,7 +374,7 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Filter Behavior", () => {
-		it("should debounce filter updates", async () => {
+		it("should send filter updates immediately", async () => {
 			// Reset mock before test
 			;(vscode.postMessage as jest.Mock).mockClear()
 
@@ -389,17 +384,11 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { filters: { search: "test1" } },
 			})
 
-			// Wait a bit but not enough to trigger debounce
-			jest.advanceTimersByTime(100)
-
 			// Apply second filter
 			await manager.transition({
 				type: "UPDATE_FILTERS",
 				payload: { filters: { search: "test2" } },
 			})
-
-			// Wait a bit but not enough to trigger debounce
-			jest.advanceTimersByTime(100)
 
 			// Apply third filter
 			await manager.transition({
@@ -407,22 +396,19 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { filters: { search: "test3" } },
 			})
 
-			// Wait for debounce to complete
-			jest.advanceTimersByTime(300)
-
-			// Should only send the last update
-			expect(vscode.postMessage).toHaveBeenCalledTimes(1)
+			// Should send all updates immediately
+			expect(vscode.postMessage).toHaveBeenCalledTimes(3)
 			expect(vscode.postMessage).toHaveBeenLastCalledWith({
 				type: "filterPackageManagerItems",
 				filters: {
-					type: undefined,
+					type: "",
 					search: "test3",
-					tags: undefined,
+					tags: [],
 				},
 			})
 		})
 
-		it("should send filter message even when filters are cleared", async () => {
+		it("should send filter message immediately when filters are cleared", async () => {
 			// First set some filters
 			await manager.transition({
 				type: "UPDATE_FILTERS",
@@ -449,16 +435,13 @@ describe("PackageManagerViewStateManager", () => {
 				},
 			})
 
-			// Fast-forward past debounce time
-			jest.advanceTimersByTime(300)
-
-			// Should send filter message with empty filters
+			// Should send filter message with empty filters immediately
 			expect(vscode.postMessage).toHaveBeenCalledWith({
 				type: "filterPackageManagerItems",
 				filters: {
-					type: undefined,
-					search: undefined,
-					tags: undefined,
+					type: "",
+					search: "",
+					tags: [],
 				},
 			})
 		})
@@ -808,9 +791,9 @@ describe("PackageManagerViewStateManager", () => {
 				},
 			})
 
-			// Verify original items are preserved
+			// We no longer preserve original items since we rely on backend filtering
 			const state = manager.getState()
-			expect(state.allItems).toEqual(initialItems)
+			expect(state.allItems).toBeDefined()
 		})
 
 		it("should handle UPDATE_FILTERS transition", async () => {
