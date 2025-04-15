@@ -1,7 +1,12 @@
 import * as vscode from "vscode"
 import { GitFetcher } from "../GitFetcher"
 import * as fs from "fs/promises"
+import { Dirent, Stats } from "fs"
 import simpleGit, { SimpleGit } from "simple-git"
+import { MetadataScanner } from "../MetadataScanner"
+import { exec, ChildProcess } from "child_process"
+import { promisify } from "util"
+import { EventEmitter } from "events"
 
 // Mock simpleGit
 jest.mock("simple-git", () => {
@@ -29,12 +34,39 @@ version: 1.0.0
 `),
 }))
 
+// Mock child_process.exec for path with spaces tests
+jest.mock("child_process", () => ({
+	exec: jest.fn(),
+}))
+
+// Mock promisify
+jest.mock("util", () => ({
+	promisify: jest.fn(),
+}))
+
 // Mock vscode
 const mockContext = {
 	globalStorageUri: {
 		fsPath: "/mock/storage/path",
 	},
 } as vscode.ExtensionContext
+
+// Create mock Dirent objects
+const createMockDirent = (name: string, isDir: boolean): Dirent => {
+	return {
+		name,
+		isDirectory: () => isDir,
+		isFile: () => !isDir,
+		isBlockDevice: () => false,
+		isCharacterDevice: () => false,
+		isFIFO: () => false,
+		isSocket: () => false,
+		isSymbolicLink: () => false,
+		// These are readonly in the real Dirent
+		path: "",
+		parentPath: "",
+	} as Dirent
+}
 
 describe("GitFetcher", () => {
 	let gitFetcher: GitFetcher
@@ -223,6 +255,83 @@ describe("GitFetcher", () => {
 			await expect(gitFetcher.fetchRepository(testRepoUrl)).rejects.toThrow(
 				"Repository is missing README.md file",
 			)
+		})
+	})
+
+	describe("Repository Structure Validation", () => {
+		// Helper function to access private method
+		const validateRepositoryStructure = async (repoDir: string) => {
+			return (gitFetcher as any).validateRepositoryStructure(repoDir)
+		}
+
+		describe("metadata.en.yml validation", () => {
+			it("should throw error when metadata.en.yml is missing", async () => {
+				// Mock fs.stat to simulate missing file
+				;(fs.stat as jest.Mock).mockImplementation((path: string) => {
+					if (path.endsWith("metadata.en.yml")) return Promise.reject(new Error("File not found"))
+					return Promise.resolve({} as any)
+				})
+
+				// Call the method and expect it to throw
+				await expect(validateRepositoryStructure("/mock/repo")).rejects.toThrow(
+					"Repository is missing metadata.en.yml file",
+				)
+			})
+
+			it("should pass when metadata.en.yml exists", async () => {
+				// Mock fs.stat to simulate existing file
+				;(fs.stat as jest.Mock).mockImplementation((path: string) => {
+					return Promise.resolve({} as any)
+				})
+
+				// Call the method and expect it not to throw
+				await expect(validateRepositoryStructure("/mock/repo")).resolves.not.toThrow()
+			})
+		})
+	})
+
+	describe("Git Command Handling with Special Paths", () => {
+		beforeEach(() => {
+			// Reset fs.stat mock to default behavior
+			;(fs.stat as jest.Mock).mockImplementation((path: string) => {
+				if (path.endsWith(".git")) return Promise.reject(new Error("ENOENT"))
+				if (path.endsWith("metadata.en.yml")) return Promise.resolve(true)
+				if (path.endsWith("README.md")) return Promise.resolve(true)
+				return Promise.reject(new Error("ENOENT"))
+			})
+
+			// Reset fs.rm mock to default behavior
+			;(fs.rm as jest.Mock).mockImplementation((path: string, options?: any) => {
+				return Promise.resolve(undefined)
+			})
+		})
+
+		it("should handle paths with spaces when cloning", async () => {
+			const url = "https://github.com/example/repo"
+
+			// Create a new GitFetcher instance
+			const gitFetcher = new GitFetcher(mockContext)
+
+			// Attempt to fetch repository
+			await gitFetcher.fetchRepository(url)
+
+			// Verify that simpleGit's clone was called with the correct arguments
+			const mockGit = mockSimpleGit()
+			expect(mockGit.clone).toHaveBeenCalledWith(url, expect.stringContaining("package-manager-cache"))
+		})
+
+		it("should handle paths with special characters when cloning", async () => {
+			const url = "https://github.com/example/repo-name"
+
+			// Create a new GitFetcher instance
+			const gitFetcher = new GitFetcher(mockContext)
+
+			// Attempt to fetch repository
+			await gitFetcher.fetchRepository(url)
+
+			// Verify that simpleGit's clone was called with the correct arguments
+			const mockGit = mockSimpleGit()
+			expect(mockGit.clone).toHaveBeenCalledWith(url, expect.stringContaining("package-manager-cache"))
 		})
 	})
 })

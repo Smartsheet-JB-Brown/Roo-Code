@@ -46,10 +46,17 @@ export class MetadataScanner {
 				if (!entry.isDirectory()) continue
 
 				const componentDir = path.join(rootDir, entry.name)
+				console.log("Checking directory:", componentDir)
 				const metadata = await this.loadComponentMetadata(componentDir)
+				console.log("Found metadata:", metadata)
 
-				// Skip if no metadata found at all
-				if (!metadata) continue
+				// If no metadata found, or metadata validation fails, try recursing
+				if (!metadata || !this.getLocalizedMetadata(metadata)) {
+					console.log("No valid metadata found, recursing into:", componentDir)
+					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName)
+					items.push(...subItems)
+					continue
+				}
 
 				// Get localized metadata with fallback
 				const localizedMetadata = this.getLocalizedMetadata(metadata)
@@ -96,7 +103,9 @@ export class MetadataScanner {
 
 				// Recursively scan subdirectories only if not in a package
 				if (!metadata || !this.isPackageMetadata(localizedMetadata)) {
+					console.log("Recursing into directory:", componentDir)
 					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName)
+					console.log("Found sub items:", subItems)
 					items.push(...subItems)
 				}
 			}
@@ -136,9 +145,14 @@ export class MetadataScanner {
 	 */
 	private async loadComponentMetadata(componentDir: string): Promise<LocalizedMetadata<ComponentMetadata> | null> {
 		const metadata: LocalizedMetadata<ComponentMetadata> = {}
+		console.log("Loading metadata from directory:", componentDir)
 
 		try {
 			const entries = await fs.readdir(componentDir, { withFileTypes: true })
+			console.log(
+				"Directory entries:",
+				entries.map((e) => e.name),
+			)
 
 			// Look for metadata.{locale}.yml files
 			for (const entry of entries) {
@@ -152,7 +166,9 @@ export class MetadataScanner {
 
 				try {
 					const content = await fs.readFile(metadataPath, "utf-8")
+					console.log("Metadata content:", content)
 					const parsed = yaml.load(content) as Record<string, any>
+					console.log("Parsed metadata:", parsed)
 
 					// Add type field if missing but has a parent directory indicating type
 					if (!parsed.type) {
