@@ -268,25 +268,19 @@ describe("PackageManagerViewStateManager", () => {
 			// Wait for state to settle
 			jest.runAllTimers()
 
-			const state = manager.getState()
-			expect(state.sources).toEqual([
-				{
-					url: "https://github.com/RooVetGit/Roo-Code-Packages",
-					name: "Roo Code",
-					enabled: true,
-				},
-			])
+			// Get all calls to postMessage
+			const calls = (vscode.postMessage as jest.Mock).mock.calls
+			const sourcesMessages = calls.filter((call) => call[0].type === "packageManagerSources")
+			const lastSourcesMessage = sourcesMessages[sourcesMessages.length - 1]
 
-			// Should send the final sources state to webview with default source
-			expect(vscode.postMessage).toHaveBeenLastCalledWith({
+			// Verify state has default source
+			const state = manager.getState()
+			expect(state.sources).toEqual([DEFAULT_PACKAGE_MANAGER_SOURCE])
+
+			// Verify the last sources message was sent with default source
+			expect(lastSourcesMessage[0]).toEqual({
 				type: "packageManagerSources",
-				sources: [
-					{
-						url: "https://github.com/RooVetGit/Roo-Code-Packages",
-						name: "Roo Code",
-						enabled: true,
-					},
-				],
+				sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 			})
 		})
 
@@ -596,6 +590,44 @@ describe("PackageManagerViewStateManager", () => {
 	// Filter behavior tests are already covered in the previous describe block
 
 	describe("Source Management", () => {
+		beforeEach(() => {
+			// Mock setTimeout to execute immediately
+			jest.useFakeTimers()
+		})
+
+		afterEach(() => {
+			jest.useRealTimers()
+		})
+
+		it("should reset isFetching after source deletion", async () => {
+			// Start with two sources
+			const sources = [
+				{ url: "https://github.com/test/repo1", enabled: true },
+				{ url: "https://github.com/test/repo2", enabled: true },
+			]
+
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources },
+			})
+
+			// Set isFetching to true
+			await manager.transition({ type: "FETCH_ITEMS" })
+
+			// Delete one source
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources: [sources[0]] },
+			})
+
+			// Run any pending timers
+			jest.runAllTimers()
+
+			// Verify isFetching was reset
+			const state = manager.getState()
+			expect(state.isFetching).toBe(false)
+		})
+
 		it("should re-add default source when all sources are removed", async () => {
 			// Add some test sources
 			const sources = [
@@ -608,14 +640,24 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { sources },
 			})
 
+			// Clear mock to ignore previous messages
+			;(vscode.postMessage as jest.Mock).mockClear()
+
 			// Remove all sources
 			await manager.transition({
 				type: "UPDATE_SOURCES",
 				payload: { sources: [] },
 			})
 
-			// Verify that the default source was automatically re-added
-			expect(vscode.postMessage).toHaveBeenLastCalledWith({
+			// Run any pending timers before checking messages
+			jest.runAllTimers()
+
+			// Get all calls to postMessage
+			const calls = (vscode.postMessage as jest.Mock).mock.calls
+			const sourcesMessage = calls.find((call) => call[0].type === "packageManagerSources")
+
+			// Verify that the sources message was sent with default source
+			expect(sourcesMessage[0]).toEqual({
 				type: "packageManagerSources",
 				sources: [
 					{
@@ -730,6 +772,63 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Message Handling", () => {
+		it("should restore sources from packageManagerSources on webview launch", () => {
+			const savedSources = [
+				{
+					url: "https://github.com/RooVetGit/Roo-Code-Packages",
+					name: "Roo Code",
+					enabled: true,
+				},
+				{
+					url: "https://github.com/test/custom-repo",
+					name: "Custom Repo",
+					enabled: true,
+				},
+			]
+
+			// Simulate VS Code restart by sending initial state with saved sources
+			manager.handleMessage({
+				type: "state",
+				state: { packageManagerSources: savedSources },
+			})
+
+			const state = manager.getState()
+			expect(state.sources).toEqual(savedSources)
+		})
+
+		it("should use default source when state message has no sources", () => {
+			manager.handleMessage({
+				type: "state",
+				state: { packageManagerItems: [] },
+			})
+
+			const state = manager.getState()
+			expect(state.sources).toEqual([DEFAULT_PACKAGE_MANAGER_SOURCE])
+		})
+
+		it("should update sources when receiving state message", () => {
+			const customSources = [
+				{
+					url: "https://github.com/test/repo1",
+					name: "Test Repo 1",
+					enabled: true,
+				},
+				{
+					url: "https://github.com/test/repo2",
+					name: "Test Repo 2",
+					enabled: true,
+				},
+			]
+
+			manager.handleMessage({
+				type: "state",
+				state: { sources: customSources },
+			})
+
+			const state = manager.getState()
+			expect(state.sources).toEqual(customSources)
+		})
+
 		it("should handle state message with package manager items", () => {
 			const testItems = [createTestItem()]
 

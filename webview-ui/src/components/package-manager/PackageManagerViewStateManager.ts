@@ -308,15 +308,20 @@ export class PackageManagerViewStateManager {
 				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : sources
 				this.state.sources = updatedSources
 				this.sourcesModified = true // Set the flag when sources are modified
+				this.state.isFetching = false // Reset fetching state when sources change
 				this.notifyStateChange()
 
+				// Send sources update to extension
 				vscode.postMessage({
 					type: "packageManagerSources",
 					sources: updatedSources,
 				} as WebviewMessage)
 
+				// Schedule fetch for next tick to ensure sources message is sent first
 				if (this.state.activeTab === "browse") {
-					void this.transition({ type: "FETCH_ITEMS" })
+					setTimeout(() => {
+						void this.transition({ type: "FETCH_ITEMS" })
+					}, 0)
 				}
 				break
 			}
@@ -351,11 +356,20 @@ export class PackageManagerViewStateManager {
 				isFetching: message.state?.isFetching,
 				itemCount: message.state?.packageManagerItems?.length,
 				firstItem: message.state?.packageManagerItems?.[0],
+				sources: message.state?.sources,
 				currentState: {
 					isFetching: this.state.isFetching,
 					itemCount: this.state.allItems.length,
+					sources: this.state.sources,
 				},
 			})
+
+			// Update sources from either sources or packageManagerSources in state
+			if (message.state?.sources || message.state?.packageManagerSources) {
+				const sources = message.state.packageManagerSources || message.state.sources
+				this.state.sources = sources?.length > 0 ? sources : [DEFAULT_PACKAGE_MANAGER_SOURCE]
+				this.notifyStateChange()
+			}
 
 			if (message.state?.isFetching) {
 				console.log("State indicates fetching, transitioning to FETCH_ITEMS")
