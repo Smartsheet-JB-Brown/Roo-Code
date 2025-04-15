@@ -280,6 +280,8 @@ export class MetadataScanner {
 			path: fullPath,
 			lastUpdated: await this.getLastModifiedDate(componentDir),
 			items: [], // Initialize empty items array for all components
+			author: metadata.author,
+			authorUrl: metadata.authorUrl,
 		}
 	}
 

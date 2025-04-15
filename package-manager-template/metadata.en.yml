@@ -1,3 +1,5 @@
 name: "Package Manager Template"
 description: "A template repository for creating package manager sources"
 version: "1.0.0"
+author: "JB Brown"
+authorUrl: "https://www.linkedin.com/in/jbbrown1/"

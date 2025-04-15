@@ -25,6 +25,8 @@ export interface BaseMetadata {
 	description: string
 	version: string
 	tags?: string[]
+	author?: string
+	authorUrl?: string
 }
 
 /**
@@ -72,6 +74,7 @@ export interface PackageManagerItem {
 	repoUrl: string
 	sourceName?: string
 	author?: string
+	authorUrl?: string
 	tags?: string[]
 	version?: string
 	lastUpdated?: string

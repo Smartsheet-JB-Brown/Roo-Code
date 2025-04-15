@@ -6,7 +6,7 @@ import { groupItemsByType, GroupedItems } from "../utils/grouping"
 import { ExpandableSection } from "./ExpandableSection"
 import { TypeGroup } from "./TypeGroup"
 import { ViewState } from "../PackageManagerViewStateManager"
-import { t } from "../../../../../src/i18n"
+import { t } from "@/i18n"
 
 interface PackageManagerItemCardProps {
 	item: PackageManagerItem
@@ -95,11 +95,39 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 			<div className="flex justify-between items-start">
 				<div>
 					<h3 className="text-lg font-semibold text-vscode-foreground">{item.name}</h3>
-					{item.author && (
+					{item.authorUrl && isValidUrl(item.authorUrl) ? (
+						<p className="text-sm text-vscode-descriptionForeground">
+							{item.author ? (
+								<button
+									type="button"
+									className="text-vscode-textLink hover:underline bg-transparent border-0 p-0 cursor-pointer"
+									onClick={() => {
+										vscode.postMessage({
+											type: "openExternal",
+											url: item.authorUrl,
+										})
+									}}>
+									{t("package_manager:item_card.by_author", { author: item.author })}
+								</button>
+							) : (
+								<button
+									type="button"
+									className="text-vscode-textLink hover:underline bg-transparent border-0 p-0 cursor-pointer"
+									onClick={() => {
+										vscode.postMessage({
+											type: "openExternal",
+											url: item.authorUrl,
+										})
+									}}>
+									{t("package_manager:item_card.authors_profile")}
+								</button>
+							)}
+						</p>
+					) : item.author ? (
 						<p className="text-sm text-vscode-descriptionForeground">
 							{t("package_manager:item_card.by_author", { author: item.author })}
 						</p>
-					)}
+					) : null}
 				</div>
 				<span className={`px-2 py-1 text-xs text-white rounded-full ${getTypeColor(item.type)}`}>
 					{getTypeLabel(item.type)}

@@ -14,6 +14,7 @@
 		"type_package": "Paquet",
 		"type_other": "Autre",
 		"by_author": "par {{author}}",
+		"authors_profile": "Profil de l'auteur",
 		"remove_tag_filter": "Supprimer le filtre de tag : {{tag}}",
 		"filter_by_tag": "Filtrer par tag : {{tag}}",
 		"component_details": "Détails du composant",

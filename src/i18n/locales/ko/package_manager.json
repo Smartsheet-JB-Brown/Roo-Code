@@ -14,6 +14,7 @@
 		"type_package": "패키지",
 		"type_other": "기타",
 		"by_author": "작성자: {{author}}",
+		"authors_profile": "작성자 프로필",
 		"remove_tag_filter": "태그 필터 제거: {{tag}}",
 		"filter_by_tag": "태그로 필터링: {{tag}}",
 		"component_details": "컴포넌트 상세정보",

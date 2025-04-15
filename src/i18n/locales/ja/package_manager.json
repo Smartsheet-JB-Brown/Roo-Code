@@ -14,6 +14,7 @@
 		"type_package": "パッケージ",
 		"type_other": "その他",
 		"by_author": "作成者：{{author}}",
+		"authors_profile": "作成者のプロフィール",
 		"remove_tag_filter": "タグフィルターを削除：{{tag}}",
 		"filter_by_tag": "タグでフィルター：{{tag}}",
 		"component_details": "コンポーネントの詳細",

@@ -14,6 +14,7 @@
 		"type_package": "Pacote",
 		"type_other": "Outro",
 		"by_author": "por {{author}}",
+		"authors_profile": "Perfil do Autor",
 		"remove_tag_filter": "Remover filtro de tag: {{tag}}",
 		"filter_by_tag": "Filtrar por tag: {{tag}}",
 		"component_details": "Detalhes do Componente",

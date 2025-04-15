@@ -14,6 +14,7 @@
 		"type_package": "पैकेज",
 		"type_other": "अन्य",
 		"by_author": "लेखक: {{author}}",
+		"authors_profile": "लेखक का प्रोफ़ाइल",
 		"remove_tag_filter": "टैग फ़िल्टर हटाएं: {{tag}}",
 		"filter_by_tag": "टैग से फ़िल्टर करें: {{tag}}",
 		"component_details": "कंपोनेंट विवरण",
