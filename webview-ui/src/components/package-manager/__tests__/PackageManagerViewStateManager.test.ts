@@ -307,6 +307,38 @@ describe("PackageManagerViewStateManager", () => {
 			expect(state.allItems).toHaveLength(1)
 			expect(state.isFetching).toBe(false)
 		})
+
+		it("should trigger fetch after adding a new source and switching to browse", async () => {
+			// Reset mock before test
+			;(vscode.postMessage as jest.Mock).mockClear()
+
+			// Add a new source
+			const newSource = { url: "https://github.com/test/repo1", enabled: true }
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources: [DEFAULT_PACKAGE_MANAGER_SOURCE, newSource] },
+			})
+
+			// Switch to browse tab
+			await manager.transition({
+				type: "SET_ACTIVE_TAB",
+				payload: { tab: "browse" },
+			})
+
+			// Run any pending timers
+			jest.runAllTimers()
+
+			// Verify that a fetch was triggered
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "fetchPackageManagerItems",
+				bool: true,
+			})
+
+			// Verify state
+			const state = manager.getState()
+			expect(state.isFetching).toBe(true)
+			expect(state.activeTab).toBe("browse")
+		})
 	})
 
 	describe("Error Handling", () => {
@@ -599,7 +631,7 @@ describe("PackageManagerViewStateManager", () => {
 			jest.useRealTimers()
 		})
 
-		it("should reset isFetching after source deletion", async () => {
+		it("should trigger fetch for remaining source after source deletion", async () => {
 			// Start with two sources
 			const sources = [
 				{ url: "https://github.com/test/repo1", enabled: true },
@@ -611,8 +643,8 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { sources },
 			})
 
-			// Set isFetching to true
-			await manager.transition({ type: "FETCH_ITEMS" })
+			// Clear mock to ignore initial fetch
+			;(vscode.postMessage as jest.Mock).mockClear()
 
 			// Delete one source
 			await manager.transition({
@@ -620,12 +652,15 @@ describe("PackageManagerViewStateManager", () => {
 				payload: { sources: [sources[0]] },
 			})
 
-			// Run any pending timers
-			jest.runAllTimers()
+			// Verify that a fetch was triggered for the remaining source
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "fetchPackageManagerItems",
+				bool: true,
+			})
 
-			// Verify isFetching was reset
+			// Verify state has the remaining source
 			const state = manager.getState()
-			expect(state.isFetching).toBe(false)
+			expect(state.sources).toEqual([sources[0]])
 		})
 
 		it("should re-add default source when all sources are removed", async () => {

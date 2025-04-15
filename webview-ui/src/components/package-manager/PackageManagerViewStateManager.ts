@@ -308,7 +308,9 @@ export class PackageManagerViewStateManager {
 				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : sources
 				this.state.sources = updatedSources
 				this.sourcesModified = true // Set the flag when sources are modified
-				this.state.isFetching = false // Reset fetching state when sources change
+
+				// Reset fetching state first
+				this.state.isFetching = false
 				this.notifyStateChange()
 
 				// Send sources update to extension
@@ -317,11 +319,17 @@ export class PackageManagerViewStateManager {
 					sources: updatedSources,
 				} as WebviewMessage)
 
-				// Schedule fetch for next tick to ensure sources message is sent first
-				if (this.state.activeTab === "browse") {
-					setTimeout(() => {
-						void this.transition({ type: "FETCH_ITEMS" })
-					}, 0)
+				// Only start fetching if we have sources
+				if (updatedSources.length > 0) {
+					// Set fetching state and notify
+					this.state.isFetching = true
+					this.notifyStateChange()
+
+					// Send fetch request
+					vscode.postMessage({
+						type: "fetchPackageManagerItems",
+						bool: true,
+					} as WebviewMessage)
 				}
 				break
 			}
