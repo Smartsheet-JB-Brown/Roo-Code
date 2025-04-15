@@ -68,12 +68,17 @@ export class GitFetcher {
 		const metadata = await this.parseRepositoryMetadata(repoDir)
 
 		// Parse package manager items
+		// Get current branch
+		const git = simpleGit(repoDir)
+		const branch = await git.revparse(["--abbrev-ref", "HEAD"])
+
 		const items = await this.parsePackageManagerItems(repoDir, repoUrl, sourceName || metadata.name)
 
 		return {
 			metadata,
-			items,
+			items: items.map((item) => ({ ...item, defaultBranch: branch })),
 			url: repoUrl,
+			defaultBranch: branch,
 		}
 	}
 

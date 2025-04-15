@@ -1,4 +1,7 @@
 import * as path from "path"
+
+// Helper function to normalize paths for test assertions
+const normalizePath = (p: string) => p.replace(/\\/g, "/")
 import * as fs from "fs/promises"
 import { Dirent } from "fs"
 import { MetadataScanner } from "../MetadataScanner"
@@ -76,16 +79,21 @@ describe("MetadataScanner", () => {
 	describe("Basic Metadata Scanning", () => {
 		it("should discover components with English metadata", async () => {
 			// Mock directory structure
-			;(fs.readdir as jest.Mock).mockImplementation((path: any, options?: any) => {
-				const pathStr = path.toString()
-				if (pathStr === mockBasePath) {
+			// Mock fs.readdir to simulate directory structure
+			;(fs.readdir as jest.Mock).mockImplementation((dirPath: string) => {
+				// Normalize path to use forward slashes
+				const normalizedPath = dirPath.replace(/\\/g, "/")
+				const relativePath = path.relative(mockBasePath, normalizedPath).replace(/\\/g, "/")
+				const parts = relativePath.split("/")
+
+				if (normalizedPath === mockBasePath) {
 					return Promise.resolve([
 						createMockDirent("component1", true),
 						createMockDirent("README.md", false),
 						createMockDirent(".git", true),
 					])
 				}
-				if (pathStr.includes("component1")) {
+				if (normalizedPath.includes("component1")) {
 					return Promise.resolve([createMockDirent("metadata.en.yml", false)])
 				}
 				return Promise.resolve([])
@@ -108,6 +116,8 @@ version: 1.0.0
 			expect(items).toHaveLength(1)
 			expect(items[0].name).toBe("Test Component")
 			expect(items[0].type).toBe("mcp server")
+			expect(items[0].url).toBe("https://example.com/repo/tree/main/component1")
+			expect(items[0].path).toBe("component1")
 		})
 
 		it("should skip components without English metadata", async () => {
@@ -256,25 +266,79 @@ version: 1.0.0
 			const metadataFile = path.join(fileAnalyzerDir, "metadata.en.yml")
 			const readmeFile = path.join(mockRepo, "README.md")
 
+			// Mock fs.stat to handle repository validation and metadata files
+			;(fs.stat as jest.Mock).mockImplementation((filePath: string) => {
+				const normalizedPath = filePath.replace(/\\/g, "/")
+				if (normalizedPath === fileAnalyzerDir) {
+					return Promise.resolve({
+						mtime: new Date("2025-04-13T10:00:00-07:00"),
+						isFile: () => false,
+						isDirectory: () => true,
+					})
+				}
+				return Promise.resolve({
+					mtime: new Date(),
+					isFile: () => false,
+					isDirectory: () => true,
+				})
+			})
+
 			// Mock directory structure using createMockDirent helper
+			// Mock fs.readdir to simulate directory structure
+			// Mock directory structure
+			const mockDirs = new Map<string, Dirent[]>()
+			mockDirs.set(mockRepo, [
+				createMockDirent("mcp servers", true),
+				createMockDirent("README.md", false),
+				createMockDirent(".git", true),
+			])
+			mockDirs.set(mcpServersDir, [createMockDirent("file-analyzer", true)])
+			mockDirs.set(fileAnalyzerDir, [createMockDirent("metadata.en.yml", false)])
 			;(fs.readdir as jest.Mock).mockImplementation((dirPath: string) => {
-				if (dirPath === mockRepo) {
-					return Promise.resolve([
-						createMockDirent("mcp servers", true),
-						createMockDirent("README.md", false),
-						createMockDirent(".git", true),
-					])
+				const normalizedPath = dirPath.replace(/\\/g, "/")
+				return Promise.resolve(mockDirs.get(normalizedPath) || [])
+			})
+
+			// Mock fs.stat to handle repository validation and metadata files
+			;(fs.stat as jest.Mock).mockImplementation((filePath: string) => {
+				const normalizedPath = filePath.replace(/\\/g, "/")
+				const relativePath = path.relative(mockRepo, normalizedPath).replace(/\\/g, "/")
+				const parts = relativePath.split("/")
+
+				if (parts[0] === "mcp servers" && parts[1] === "file-analyzer" && parts[2] === "metadata.en.yml") {
+					return Promise.resolve({
+						mtime: new Date("2025-04-13T10:00:00-07:00"),
+						isFile: () => true,
+						isDirectory: () => false,
+					})
 				}
-				if (dirPath === mcpServersDir) {
-					console.log("Reading mcp servers dir:", mcpServersDir)
-					return Promise.resolve([createMockDirent("file-analyzer", true)])
+
+				return Promise.resolve({
+					mtime: new Date(),
+					isFile: () => false,
+					isDirectory: () => true,
+				})
+			})
+
+			// Mock fs.stat to handle repository validation and metadata files
+			;(fs.stat as jest.Mock).mockImplementation((filePath: string) => {
+				const normalizedPath = filePath.replace(/\\/g, "/")
+				const relativePath = path.relative(mockRepo, normalizedPath).replace(/\\/g, "/")
+				const parts = relativePath.split("/")
+
+				if (parts[0] === "mcp servers" && parts[1] === "file-analyzer" && parts[2] === "metadata.en.yml") {
+					return Promise.resolve({
+						mtime: new Date("2025-04-13T10:00:00-07:00"),
+						isFile: () => true,
+						isDirectory: () => false,
+					})
 				}
-				console.log("Checking if path matches file analyzer dir:", dirPath, fileAnalyzerDir)
-				if (dirPath === fileAnalyzerDir) {
-					console.log("Reading file analyzer dir:", fileAnalyzerDir)
-					return Promise.resolve([createMockDirent("metadata.en.yml", false)])
-				}
-				return Promise.resolve([])
+
+				return Promise.resolve({
+					mtime: new Date(),
+					isFile: () => false,
+					isDirectory: () => true,
+				})
 			})
 
 			// Mock metadata file content with proper YAML format
@@ -302,6 +366,145 @@ tags: []`)
 			expect(items[0].type).toBe("mcp server")
 			expect(items[0].version).toBe("1.0.0")
 			expect(items[0].lastUpdated).toBe("2025-04-13T10:00:00-07:00")
+			expect(items[0].url).toBe("https://github.com/example/repo/tree/main/mcp%20servers/file-analyzer")
+			expect(items[0].path).toBe("mcp servers/file-analyzer")
+		})
+		it("should handle nested group directories without path duplication", async () => {
+			const mockRepo = "/mock/repo"
+			const groupsDir = path.join(mockRepo, "groups")
+			const dataEngDir = path.join(groupsDir, "data-engineering")
+			const modesDir = path.join(dataEngDir, "modes")
+			const engineerModeDir = path.join(modesDir, "data-engineer-mode")
+			const metadataFile = path.join(engineerModeDir, "metadata.en.yml")
+
+			// Mock directory structure
+			const mockDirs = new Map<string, Dirent[]>()
+			mockDirs.set(mockRepo, [createMockDirent("groups", true)])
+			mockDirs.set(groupsDir, [createMockDirent("data-engineering", true)])
+			mockDirs.set(dataEngDir, [createMockDirent("modes", true)])
+			mockDirs.set(modesDir, [createMockDirent("data-engineer-mode", true)])
+			mockDirs.set(engineerModeDir, [createMockDirent("metadata.en.yml", false)])
+			;(fs.readdir as jest.Mock).mockImplementation((dirPath: string) => {
+				const normalizedPath = dirPath.replace(/\\/g, "/")
+				return Promise.resolve(mockDirs.get(normalizedPath) || [])
+			})
+
+			// Mock metadata file content
+			;(fs.readFile as jest.Mock).mockImplementation((filePath: string) => {
+				if (filePath === metadataFile) {
+					return Promise.resolve(`---
+name: Data Engineer Mode
+description: A mode for data engineering
+type: mode
+version: 1.0.0
+`)
+				}
+				return Promise.resolve("")
+			})
+
+			const items = await metadataScanner.scanDirectory(mockRepo, "https://github.com/example/repo")
+
+			expect(items).toHaveLength(1)
+			expect(items[0].name).toBe("Data Engineer Mode")
+			expect(items[0].type).toBe("mode")
+			expect(normalizePath(items[0].path!)).toBe("groups/data-engineering/modes/data-engineer-mode")
+			expect(items[0].url).toBe(
+				"https://github.com/example/repo/tree/main/groups/data-engineering/modes/data-engineer-mode",
+			)
+		})
+
+		it("should handle deeply nested directories", async () => {
+			const mockRepo = "/mock/repo"
+			const nestedPath = path.join(mockRepo, "mcp servers", "category", "subcategory", "deep-component")
+			const metadataFile = path.join(nestedPath, "metadata.en.yml")
+
+			// Mock fs.stat to handle repository validation and metadata files
+			;(fs.stat as jest.Mock).mockImplementation((filePath: string) => {
+				const normalizedPath = filePath.replace(/\\/g, "/")
+				if (normalizedPath === nestedPath) {
+					return Promise.resolve({
+						mtime: new Date("2025-04-13T10:00:00-07:00"),
+						isFile: () => false,
+						isDirectory: () => true,
+					})
+				}
+				return Promise.resolve({
+					mtime: new Date(),
+					isFile: () => false,
+					isDirectory: () => true,
+				})
+			})
+
+			// Mock directory structure
+			const mockDirs = new Map<string, Dirent[]>()
+			const mcpServersDir = path.join(mockRepo, "mcp servers")
+			const categoryDir = path.join(mcpServersDir, "category")
+			const subcategoryDir = path.join(categoryDir, "subcategory")
+			const deepComponentDir = path.join(subcategoryDir, "deep-component")
+
+			mockDirs.set(mockRepo, [createMockDirent("mcp servers", true)])
+			mockDirs.set(mcpServersDir, [createMockDirent("category", true)])
+			mockDirs.set(categoryDir, [createMockDirent("subcategory", true)])
+			mockDirs.set(subcategoryDir, [createMockDirent("deep-component", true)])
+			mockDirs.set(deepComponentDir, [createMockDirent("metadata.en.yml", false)])
+			;(fs.readdir as jest.Mock).mockImplementation((dirPath: string) => {
+				const normalizedPath = dirPath.replace(/\\/g, "/")
+				return Promise.resolve(mockDirs.get(normalizedPath) || [])
+			})
+
+			// Mock fs.stat to handle repository validation and metadata files
+			;(fs.stat as jest.Mock).mockImplementation((filePath: string) => {
+				const normalizedPath = filePath.replace(/\\/g, "/")
+				const relativePath = path.relative(mockRepo, normalizedPath).replace(/\\/g, "/")
+				const parts = relativePath.split("/")
+
+				if (
+					parts[0] === "mcp servers" &&
+					parts[1] === "category" &&
+					parts[2] === "subcategory" &&
+					parts[3] === "deep-component" &&
+					parts[4] === "metadata.en.yml"
+				) {
+					return Promise.resolve({
+						mtime: new Date("2025-04-13T10:00:00-07:00"),
+						isFile: () => true,
+						isDirectory: () => false,
+					})
+				}
+
+				return Promise.resolve({
+					mtime: new Date(),
+					isFile: () => false,
+					isDirectory: () => true,
+				})
+			})
+
+			// Mock metadata file content
+			;(fs.readFile as jest.Mock).mockImplementation((filePath: string) => {
+				const relativePath = path.relative(mockRepo, filePath)
+				if (
+					relativePath ===
+					path.join("mcp servers", "category", "subcategory", "deep-component", "metadata.en.yml")
+				) {
+					return Promise.resolve(`---
+name: Deep Component
+description: A deeply nested component
+type: mcp server
+version: 1.0.0
+`)
+				}
+				return Promise.resolve("")
+			})
+
+			const items = await metadataScanner.scanDirectory(mockRepo, "https://github.com/example/repo")
+
+			expect(items).toHaveLength(1)
+			expect(items[0].name).toBe("Deep Component")
+			expect(items[0].type).toBe("mcp server")
+			expect(items[0].url).toBe(
+				"https://github.com/example/repo/tree/main/mcp%20servers/category/subcategory/deep-component",
+			)
+			expect(items[0].path).toBe("mcp servers/category/subcategory/deep-component")
 		})
 
 		it("should parse items from modes directory", async () => {
@@ -753,6 +956,9 @@ version: 1.0.0
 					},
 					lastUpdated: "2025-04-13T09:00:00-07:00",
 				})
+				expect(items[0].url).toBe("https://example.com/tree/main/test-package")
+				expect(items[0].path).toBe("test-package")
+				expect(items[0].items![0].path).toBe("subcomponent1")
 			})
 
 			it("should load subcomponents from directory structure", async () => {

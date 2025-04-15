@@ -115,7 +115,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 											}
 											className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded mr-2">
 											<option value="name">Name</option>
-											<option value="author">Author</option>
 											<option value="lastUpdated">Last Updated</option>
 										</select>
 										<button

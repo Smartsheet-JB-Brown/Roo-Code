@@ -76,6 +76,8 @@ export interface PackageManagerItem {
 	version?: string
 	lastUpdated?: string
 	sourceUrl?: string
+	defaultBranch?: string
+	path?: string // Add path to main item
 	items?: {
 		type: ComponentType
 		path: string
@@ -103,6 +105,7 @@ export interface PackageManagerRepository {
 	items: PackageManagerItem[]
 	url: string
 	error?: string
+	defaultBranch?: string
 }
 
 /**

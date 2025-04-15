@@ -62,7 +62,19 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 	}
 
 	const handleOpenUrl = () => {
-		const urlToOpen = item.sourceUrl && isValidUrl(item.sourceUrl) ? item.sourceUrl : item.repoUrl
+		let urlToOpen = item.sourceUrl && isValidUrl(item.sourceUrl) ? item.sourceUrl : item.repoUrl
+
+		// If we have a defaultBranch, append it to the URL
+		if (item.defaultBranch) {
+			urlToOpen = `${urlToOpen}/tree/${item.defaultBranch}`
+			// If we also have a path, append it
+			if (item.path) {
+				// Ensure path uses forward slashes and doesn't start with one
+				const normalizedPath = item.path.replace(/\\/g, "/").replace(/^\/+/, "")
+				urlToOpen = `${urlToOpen}/${normalizedPath}`
+			}
+		}
+
 		vscode.postMessage({
 			type: "openExternal",
 			url: urlToOpen,
