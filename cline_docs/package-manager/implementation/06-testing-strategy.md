@@ -12,6 +12,104 @@ The Package Manager follows a multi-layered testing approach to ensure reliabili
 4. **Test-Driven Development**: Writing tests before implementation when appropriate
 5. **Continuous Testing**: Running tests automatically on code changes
 
+## Test Setup and Dependencies
+
+### Required Dependencies
+
+The Package Manager requires specific testing dependencies:
+
+```json
+{
+	"devDependencies": {
+		"@types/jest": "^29.0.0",
+		"@types/mocha": "^10.0.0",
+		"@vscode/test-electron": "^2.3.8",
+		"jest": "^29.0.0",
+		"ts-jest": "^29.0.0"
+	}
+}
+```
+
+### E2E Test Configuration
+
+End-to-end tests require specific setup:
+
+```typescript
+// e2e/src/runTest.ts
+import * as path from "path"
+import { runTests } from "@vscode/test-electron"
+
+async function main() {
+	try {
+		const extensionDevelopmentPath = path.resolve(__dirname, "../../")
+		const extensionTestsPath = path.resolve(__dirname, "./suite/index")
+
+		await runTests({
+			extensionDevelopmentPath,
+			extensionTestsPath,
+			launchArgs: ["--disable-extensions"],
+		})
+	} catch (err) {
+		console.error("Failed to run tests:", err)
+		process.exit(1)
+	}
+}
+
+main()
+```
+
+### Test Framework Setup
+
+```typescript
+// e2e/src/suite/index.ts
+import * as path from "path"
+import * as Mocha from "mocha"
+import { glob } from "glob"
+
+export async function run(): Promise<void> {
+	const mocha = new Mocha({
+		ui: "tdd",
+		color: true,
+		timeout: 60000,
+	})
+
+	const testsRoot = path.resolve(__dirname, ".")
+	const files = await glob("**/**.test.js", { cwd: testsRoot })
+
+	files.forEach((f) => mocha.addFile(path.resolve(testsRoot, f)))
+
+	try {
+		return new Promise<void>((resolve, reject) => {
+			mocha.run((failures) => {
+				failures > 0 ? reject(new Error(`${failures} tests failed.`)) : resolve()
+			})
+		})
+	} catch (err) {
+		console.error(err)
+		throw err
+	}
+}
+```
+
+### TypeScript Configuration
+
+E2E tests require specific TypeScript configuration:
+
+```json
+// e2e/tsconfig.json
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "ES2020",
+		"lib": ["ES2020"],
+		"sourceMap": true,
+		"strict": true,
+		"types": ["mocha", "node", "@vscode/test-electron"]
+	},
+	"exclude": ["node_modules", ".vscode-test"]
+}
+```
+
 ## Unit Tests
 
 Unit tests focus on testing individual functions, classes, and components in isolation.
