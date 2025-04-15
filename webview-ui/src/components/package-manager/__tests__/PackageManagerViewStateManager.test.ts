@@ -1,6 +1,10 @@
 import { PackageManagerViewStateManager } from "../PackageManagerViewStateManager"
-import { vscode } from "@/utils/vscode"
-import { ComponentType, PackageManagerItem, PackageManagerSource } from "@package-manager/types"
+import { vscode } from "../../../utils/vscode"
+import {
+	ComponentType,
+	PackageManagerItem,
+	PackageManagerSource,
+} from "../../../../../src/services/package-manager/types"
 
 const createTestItem = (overrides = {}): PackageManagerItem => ({
 	name: "test",
@@ -22,7 +26,7 @@ const createTestSources = (): PackageManagerSource[] => [
 ]
 
 // Mock vscode.postMessage
-jest.mock("@/utils/vscode", () => ({
+jest.mock("../../../utils/vscode", () => ({
 	vscode: {
 		postMessage: jest.fn(),
 	},

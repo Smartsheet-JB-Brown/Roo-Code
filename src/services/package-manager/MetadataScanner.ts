@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as vscode from "vscode"
 import * as yaml from "js-yaml"
 import { SimpleGit } from "simple-git"
-import { validateAnyMetadata } from "@package-manager/schemas"
+import { validateAnyMetadata } from "./schemas"
 import {
 	ComponentMetadata,
 	ComponentType,
@@ -11,8 +11,8 @@ import {
 	LocalizedMetadata,
 	PackageManagerItem,
 	PackageMetadata,
-} from "@package-manager/types"
-import { getUserLocale } from "@package-manager/utils"
+} from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Handles component discovery and metadata loading

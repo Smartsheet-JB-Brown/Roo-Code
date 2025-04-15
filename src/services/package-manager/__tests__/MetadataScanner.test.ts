@@ -1,9 +1,9 @@
 import * as path from "path"
 import * as fs from "fs/promises"
 import { Dirent } from "fs"
-import { MetadataScanner } from "@package-manager/MetadataScanner"
+import { MetadataScanner } from "../MetadataScanner"
 import { SimpleGit } from "simple-git"
-import { ComponentMetadata, LocalizationOptions, LocalizedMetadata, PackageMetadata } from "@package-manager/types"
+import { ComponentMetadata, LocalizationOptions, LocalizedMetadata, PackageMetadata } from "../types"
 
 // Mock fs/promises
 jest.mock("fs/promises")

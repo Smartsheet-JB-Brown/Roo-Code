@@ -3,15 +3,10 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as yaml from "js-yaml"
 import simpleGit, { SimpleGit } from "simple-git"
-import { MetadataScanner } from "@package-manager/MetadataScanner"
-import { validateAnyMetadata } from "@package-manager/schemas"
-import {
-	LocalizationOptions,
-	PackageManagerItem,
-	PackageManagerRepository,
-	RepositoryMetadata,
-} from "@package-manager/types"
-import { getUserLocale } from "@package-manager/utils"
+import { MetadataScanner } from "./MetadataScanner"
+import { validateAnyMetadata } from "./schemas"
+import { LocalizationOptions, PackageManagerItem, PackageManagerRepository, RepositoryMetadata } from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Handles fetching and caching package manager repositories

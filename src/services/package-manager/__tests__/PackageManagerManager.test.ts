@@ -1,7 +1,7 @@
-import { PackageManagerManager } from "@package-manager/PackageManagerManager"
-import { PackageManagerItem, PackageManagerSource, PackageManagerRepository } from "@package-manager/types"
-import { MetadataScanner } from "@package-manager/MetadataScanner"
-import { GitFetcher } from "@package-manager/GitFetcher"
+import { PackageManagerManager } from "../PackageManagerManager"
+import { PackageManagerItem, PackageManagerSource, PackageManagerRepository, ComponentType } from "../types"
+import { MetadataScanner } from "../MetadataScanner"
+import { GitFetcher } from "../GitFetcher"
 import * as path from "path"
 import * as vscode from "vscode"
 
@@ -511,20 +511,49 @@ describe("Concurrency Control", () => {
 
 		let activeScans = 0
 		let maxConcurrentScans = 0
+		const scanPromises: Promise<void>[] = []
 
-		// Mock metadata scanner to track concurrent scans
-		jest.spyOn(MetadataScanner.prototype, "scanDirectory").mockImplementation(async () => {
+		// Create a mock MetadataScanner
+		const mockScanner = new MetadataScanner()
+		const scanDirectorySpy = jest.spyOn(mockScanner, "scanDirectory").mockImplementation(async () => {
 			activeScans++
 			maxConcurrentScans = Math.max(maxConcurrentScans, activeScans)
-			await new Promise((resolve) => setTimeout(resolve, 50))
+			const promise = new Promise<void>((resolve) => setTimeout(resolve, 50))
+			scanPromises.push(promise)
+			await promise
 			activeScans--
 			return []
 		})
 
+		// Create a mock GitFetcher that uses our mock scanner
+		const mockGitFetcher = new GitFetcher({
+			globalStorageUri: { fsPath: "/test/path" },
+		} as vscode.ExtensionContext)
+
+		// Replace GitFetcher's metadataScanner with our mock
+		;(mockGitFetcher as any).metadataScanner = mockScanner
+
+		// Mock GitFetcher's fetchRepository to trigger metadata scanning
+		jest.spyOn(mockGitFetcher, "fetchRepository").mockImplementation(async (repoUrl: string) => {
+			// Call scanDirectory through our mock scanner
+			await mockScanner.scanDirectory("/test/path", repoUrl)
+
+			return {
+				metadata: { name: "test", description: "test", version: "1.0.0" },
+				items: [],
+				url: repoUrl,
+			}
+		})
+
+		// Replace the GitFetcher instance in the manager
+		;(manager as any).gitFetcher = mockGitFetcher
+
 		// Process all sources
 		await manager.getPackageManagerItems(sources)
+		await Promise.all(scanPromises)
 
-		// Verify only one scan was active at a time
+		// Verify scans were called and only one was active at a time
+		expect(scanDirectorySpy).toHaveBeenCalledTimes(sources.length)
 		expect(maxConcurrentScans).toBe(1)
 	})
 })

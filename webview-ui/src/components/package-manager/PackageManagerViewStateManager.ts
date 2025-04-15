@@ -1,6 +1,6 @@
-import { PackageManagerItem, PackageManagerSource } from "@package-manager/types"
-import { vscode } from "@/utils/vscode"
-import { WebviewMessage } from "@shared/WebviewMessage"
+import { PackageManagerItem, PackageManagerSource } from "../../../../src/services/package-manager/types"
+import { vscode } from "../../utils/vscode"
+import { WebviewMessage } from "../../../../src/shared/WebviewMessage"
 
 export interface ViewState {
 	allItems: PackageManagerItem[]
@@ -219,8 +219,15 @@ export class PackageManagerViewStateManager {
 				})
 
 				if (isActive) {
-					// In test environment, execute filter immediately
-					if (process.env.NODE_ENV === "test") {
+					// Always use debounce
+					if (this.filterTimeoutId) {
+						console.log("Clearing existing filter timeout")
+						clearTimeout(this.filterTimeoutId)
+					}
+
+					console.log("Setting up new filter timeout")
+					this.filterTimeoutId = setTimeout(() => {
+						console.log("Filter timeout executed, sending message")
 						vscode.postMessage({
 							type: "filterPackageManagerItems",
 							filters: {
@@ -229,27 +236,8 @@ export class PackageManagerViewStateManager {
 								tags: this.state.filters.tags.length > 0 ? this.state.filters.tags : undefined,
 							},
 						} as WebviewMessage)
-					} else {
-						// In production, use debounce
-						if (this.filterTimeoutId) {
-							console.log("Clearing existing filter timeout")
-							clearTimeout(this.filterTimeoutId)
-						}
-
-						console.log("Setting up new filter timeout")
-						this.filterTimeoutId = setTimeout(() => {
-							console.log("Filter timeout executed, sending message")
-							vscode.postMessage({
-								type: "filterPackageManagerItems",
-								filters: {
-									type: this.state.filters.type || undefined,
-									search: this.state.filters.search || undefined,
-									tags: this.state.filters.tags.length > 0 ? this.state.filters.tags : undefined,
-								},
-							} as WebviewMessage)
-							this.filterTimeoutId = undefined
-						}, this.FILTER_DEBOUNCE)
-					}
+						this.filterTimeoutId = undefined
+					}, this.FILTER_DEBOUNCE)
 				}
 				console.log("=== UPDATE_FILTERS Finished ===")
 				break

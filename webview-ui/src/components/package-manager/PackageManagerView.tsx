@@ -6,7 +6,7 @@ import { PackageManagerSource } from "../../../../src/services/package-manager/t
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
 import { isFilterActive as checkFilterActive } from "./selectors"
 import { PackageManagerItemCard } from "./components/PackageManagerItemCard"
-import { useStateManager } from "./state/useStateManager"
+import { useStateManager } from "./useStateManager"
 
 interface PackageManagerViewProps {
 	onDone?: () => void

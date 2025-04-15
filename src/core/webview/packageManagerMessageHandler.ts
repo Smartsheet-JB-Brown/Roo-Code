@@ -9,8 +9,8 @@ import {
 	PackageManagerSource,
 	validateSources,
 	ValidationError,
-} from "@package-manager"
-import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "@package-manager/constants"
+} from "../../services/package-manager"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
 import { GlobalState } from "../../schemas"
 
 /**

@@ -177,19 +177,6 @@ const extensionConfig = {
 				build.onResolve({ filter: /^pkce-challenge$/ }, (args) => {
 					return { path: require.resolve("pkce-challenge/dist/index.browser.js") }
 				})
-
-				// Handle @package-manager barrel file
-				build.onResolve({ filter: /^@package-manager$/ }, (args) => {
-					const resolvedPath = path.resolve(__dirname, "src/services/package-manager/index.ts")
-					return { path: resolvedPath }
-				})
-
-				// Handle @package-manager/* paths
-				build.onResolve({ filter: /^@package-manager\// }, (args) => {
-					const modulePath = args.path.replace(/^@package-manager\//, "")
-					const fullPath = path.resolve(__dirname, "src/services/package-manager", `${modulePath}.ts`)
-					return { path: fullPath }
-				})
 			},
 		},
 	],

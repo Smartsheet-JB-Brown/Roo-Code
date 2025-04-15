@@ -20,10 +20,7 @@
 		"useDefineForClassFields": true,
 		"useUnknownInCatchVariables": false,
 		"baseUrl": ".",
-		"paths": {
-			"@package-manager": ["src/services/package-manager"],
-			"@package-manager/*": ["src/services/package-manager/*"]
-		}
+		"paths": {}
 	},
 	"include": ["src/**/*", "scripts/**/*", ".changeset/**/*"],
 	"exclude": ["node_modules", ".vscode-test", "webview-ui"]

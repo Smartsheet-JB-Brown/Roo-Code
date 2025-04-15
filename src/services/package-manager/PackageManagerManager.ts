@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
-import { GitFetcher } from "@package-manager/GitFetcher"
+import { GitFetcher } from "./GitFetcher"
 import {
 	PackageManagerItem,
 	PackageManagerRepository,
@@ -9,8 +9,8 @@ import {
 	ComponentType,
 	ComponentMetadata,
 	LocalizationOptions,
-} from "@package-manager/types"
-import { getUserLocale } from "@package-manager/utils"
+} from "./types"
+import { getUserLocale } from "./utils"
 
 /**
  * Service for managing package manager data

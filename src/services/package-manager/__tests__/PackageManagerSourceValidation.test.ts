@@ -6,8 +6,8 @@ import {
 	validateSource,
 	validateSources,
 	ValidationError,
-} from "@package-manager/PackageManagerSourceValidation"
-import { PackageManagerSource } from "@package-manager/types"
+} from "../PackageManagerSourceValidation"
+import { PackageManagerSource } from "../types"
 
 describe("PackageManagerSourceValidation", () => {
 	describe("isValidGitRepositoryUrl", () => {
