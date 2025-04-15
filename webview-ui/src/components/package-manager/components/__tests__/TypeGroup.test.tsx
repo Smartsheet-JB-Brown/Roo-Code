@@ -20,8 +20,13 @@ describe("TypeGroup", () => {
 		render(<TypeGroup type="mcp server" items={mockItems} />)
 
 		expect(screen.getByText("MCP Servers")).toBeInTheDocument()
-		expect(screen.getByText("Test Item 1 - Description 1")).toBeInTheDocument()
-		expect(screen.getByText("Test Item 2 - Description 2")).toBeInTheDocument()
+
+		// Check items using list roles and text content
+		const items = screen.getAllByRole("listitem")
+		expect(items[0]).toHaveTextContent("Test Item 1")
+		expect(items[0]).toHaveTextContent("Description 1")
+		expect(items[1]).toHaveTextContent("Test Item 2")
+		expect(items[1]).toHaveTextContent("Description 2")
 	})
 
 	it("should format different types correctly", () => {

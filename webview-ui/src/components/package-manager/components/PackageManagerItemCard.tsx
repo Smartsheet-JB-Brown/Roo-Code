@@ -5,13 +5,14 @@ import { vscode } from "@/utils/vscode"
 import { groupItemsByType, GroupedItems } from "../utils/grouping"
 import { ExpandableSection } from "./ExpandableSection"
 import { TypeGroup } from "./TypeGroup"
+import { ViewState } from "../state/PackageManagerViewStateManager"
 
 interface PackageManagerItemCardProps {
 	item: PackageManagerItem
-	filters: { type: string; search: string; tags: string[] }
-	setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>
-	activeTab: "browse" | "sources"
-	setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>
+	filters: ViewState["filters"]
+	setFilters: (filters: Partial<ViewState["filters"]>) => void
+	activeTab: ViewState["activeTab"]
+	setActiveTab: (tab: ViewState["activeTab"]) => void
 }
 
 export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
@@ -103,12 +104,10 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 							onClick={() => {
 								if (filters.tags.includes(tag)) {
 									setFilters({
-										...filters,
 										tags: filters.tags.filter((t) => t !== tag),
 									})
 								} else {
 									setFilters({
-										...filters,
 										tags: [...filters.tags, tag],
 									})
 									if (activeTab !== "browse") {

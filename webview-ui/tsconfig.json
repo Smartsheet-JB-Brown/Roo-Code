@@ -17,8 +17,10 @@
 		"jsx": "react-jsx",
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"@package-manager/*": ["../src/services/package-manager/*"],
+			"@shared/*": ["../src/shared/*"]
 		}
 	},
-	"include": ["src", "../src/shared"]
+	"include": ["src", "../src/shared", "../src/services"]
 }
