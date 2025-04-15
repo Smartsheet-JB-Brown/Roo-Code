@@ -53,7 +53,7 @@ export class PackageManagerViewStateManager {
 			isFetching: false,
 			activeTab: "browse",
 			refreshingUrls: [],
-			sources: [],
+			sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 			filters: {
 				type: "",
 				search: "",
@@ -64,6 +64,14 @@ export class PackageManagerViewStateManager {
 				order: "asc",
 			},
 		}
+	}
+
+	public initialize(): void {
+		// Send initial sources to extension
+		vscode.postMessage({
+			type: "packageManagerSources",
+			sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
+		} as WebviewMessage)
 	}
 
 	public onStateChange(handler: StateChangeHandler): () => void {
@@ -192,6 +200,16 @@ export class PackageManagerViewStateManager {
 			case "SET_ACTIVE_TAB": {
 				const { tab } = transition.payload as TransitionPayloads["SET_ACTIVE_TAB"]
 				this.state.activeTab = tab
+
+				// Add default source when switching to sources tab if no sources exist
+				if (tab === "sources" && this.state.sources.length === 0) {
+					this.state.sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
+					vscode.postMessage({
+						type: "packageManagerSources",
+						sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
+					} as WebviewMessage)
+				}
+
 				this.notifyStateChange()
 				if (tab === "browse") {
 					void this.transition({ type: "FETCH_ITEMS" })

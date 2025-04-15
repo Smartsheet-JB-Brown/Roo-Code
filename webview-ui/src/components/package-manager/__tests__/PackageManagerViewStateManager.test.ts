@@ -5,6 +5,7 @@ import {
 	PackageManagerItem,
 	PackageManagerSource,
 } from "../../../../../src/services/package-manager/types"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../../../../src/services/package-manager/constants"
 
 const createTestItem = (overrides = {}): PackageManagerItem => ({
 	name: "test",
@@ -39,6 +40,7 @@ describe("PackageManagerViewStateManager", () => {
 		jest.clearAllMocks()
 		jest.useFakeTimers()
 		manager = new PackageManagerViewStateManager()
+		manager.initialize() // Send initial sources
 	})
 
 	afterEach(() => {
@@ -54,7 +56,7 @@ describe("PackageManagerViewStateManager", () => {
 				isFetching: false,
 				activeTab: "browse",
 				refreshingUrls: [],
-				sources: [],
+				sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 				filters: {
 					type: "",
 					search: "",
@@ -66,10 +68,45 @@ describe("PackageManagerViewStateManager", () => {
 				},
 			})
 		})
+
+		it("should send initial sources when initialized", () => {
+			manager.initialize()
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "packageManagerSources",
+				sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
+			})
+		})
+
+		it("should initialize with default source", () => {
+			const manager = new PackageManagerViewStateManager()
+
+			// Initial state should include default source
+			const state = manager.getState()
+			expect(state.sources).toEqual([
+				{
+					url: "https://github.com/RooVetGit/Roo-Code-Packages",
+					name: "Roo Code Package Manager Template",
+					enabled: true,
+				},
+			])
+
+			// Verify initial message was sent to update sources
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "packageManagerSources",
+				sources: [
+					{
+						url: "https://github.com/RooVetGit/Roo-Code-Packages",
+						name: "Roo Code Package Manager Template",
+						enabled: true,
+					},
+				],
+			})
+		})
 	})
 
 	describe("Fetch Transitions", () => {
 		it("should handle FETCH_ITEMS transition", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
 			await manager.transition({ type: "FETCH_ITEMS" })
 
 			expect(vscode.postMessage).toHaveBeenCalledWith({
@@ -82,6 +119,7 @@ describe("PackageManagerViewStateManager", () => {
 		})
 
 		it("should not start a new fetch if one is in progress", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
 			// Start first fetch
 			await manager.transition({ type: "FETCH_ITEMS" })
 
@@ -491,6 +529,8 @@ describe("PackageManagerViewStateManager", () => {
 		})
 
 		it("should prevent concurrent fetches during timeout period", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
+
 			// Start first fetch
 			await manager.transition({ type: "FETCH_ITEMS" })
 
