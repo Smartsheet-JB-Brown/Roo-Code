@@ -24,15 +24,6 @@ The implementation documentation provides technical details for developers:
 3. [Data Structures](./implementation/03-data-structures.md) - Data models and structures used in the Package Manager
 4. [Search and Filter](./implementation/04-search-and-filter.md) - Implementation of search and filtering functionality
 
-### Improvement Proposals
-
-These documents outline proposed improvements to the Package Manager:
-
-1. [Package Manager Improvements Summary](./implementation/package-manager-improvements-summary.md) - Overview of completed and proposed improvements
-2. [Type Filter Improvements](./implementation/type-filter-improvements.md) - Proposal for making type filter behavior more consistent
-3. [Type Filter Test Plan](./implementation/type-filter-test-plan.md) - Test plan for the proposed type filter improvements
-4. [Localization Improvements](./implementation/localization-improvements.md) - Implementation plan for proper locale fallback mechanism
-
 ## Key Features
 
 The Package Manager provides the following key features:
