@@ -6,6 +6,110 @@ import * as path from "path"
 import * as vscode from "vscode"
 
 describe("PackageManagerManager", () => {
+	describe("filterItems", () => {
+		// Create a mock context with required properties
+		const mockContext = {
+			globalStorageUri: {
+				fsPath: path.resolve(__dirname, "../../../../mock/settings/path"),
+			},
+			extensionPath: path.resolve(__dirname, "../../../../"),
+			subscriptions: [],
+			workspaceState: {
+				get: jest.fn(),
+				update: jest.fn(),
+			},
+			globalState: {
+				get: jest.fn(),
+				update: jest.fn(),
+			},
+			asAbsolutePath: jest.fn((p) => p),
+			storagePath: "",
+			logPath: "",
+			extensionUri: { fsPath: "" },
+			environmentVariableCollection: {},
+			extensionMode: 1,
+			storageUri: { fsPath: "" },
+		} as unknown as vscode.ExtensionContext
+
+		let manager: PackageManagerManager
+
+		beforeEach(() => {
+			// Create a new manager instance with the mock context for each test
+			manager = new PackageManagerManager(mockContext)
+		})
+
+		it("should correctly filter items by search term", () => {
+			const items: PackageManagerItem[] = [
+				{
+					name: "Test Item 1",
+					description: "First test item",
+					type: "mode",
+					url: "test1",
+					repoUrl: "test1",
+				},
+				{
+					name: "Another Item",
+					description: "Second item",
+					type: "mode",
+					url: "test2",
+					repoUrl: "test2",
+				},
+			]
+
+			const filtered = manager.filterItems(items, { search: "test" })
+			expect(filtered).toHaveLength(1)
+			expect(filtered[0].name).toBe("Test Item 1")
+			expect(filtered[0].matchInfo?.matched).toBe(true)
+		})
+
+		it("should correctly filter items by type", () => {
+			const items: PackageManagerItem[] = [
+				{
+					name: "Mode Item",
+					description: "A mode",
+					type: "mode",
+					url: "test1",
+					repoUrl: "test1",
+				},
+				{
+					name: "Server Item",
+					description: "A server",
+					type: "mcp server",
+					url: "test2",
+					repoUrl: "test2",
+				},
+			]
+
+			const filtered = manager.filterItems(items, { type: "mode" })
+			expect(filtered).toHaveLength(1)
+			expect(filtered[0].name).toBe("Mode Item")
+			expect(filtered[0].matchInfo?.matchReason?.typeMatch).toBe(true)
+		})
+
+		it("should preserve original items when filtering", () => {
+			const items: PackageManagerItem[] = [
+				{
+					name: "Test Item 1",
+					description: "First test item",
+					type: "mode",
+					url: "test1",
+					repoUrl: "test1",
+				},
+				{
+					name: "Another Item",
+					description: "Second item",
+					type: "mode",
+					url: "test2",
+					repoUrl: "test2",
+				},
+			]
+
+			const originalItemsJson = JSON.stringify(items)
+			manager.filterItems(items, { search: "test" })
+			expect(JSON.stringify(items)).toBe(originalItemsJson)
+		})
+	})
+
 	let manager: PackageManagerManager
 	let metadataScanner: MetadataScanner
 	let realItems: PackageManagerItem[]

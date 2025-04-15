@@ -10,7 +10,7 @@ export const DEFAULT_PACKAGE_MANAGER_REPO_URL = "https://github.com/RooVetGit/Ro
 /**
  * Default package manager repository name
  */
-export const DEFAULT_PACKAGE_MANAGER_REPO_NAME = "Roo Code Package Manager Template"
+export const DEFAULT_PACKAGE_MANAGER_REPO_NAME = "Roo Code"
 
 /**
  * Default package manager source

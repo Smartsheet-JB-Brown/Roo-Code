@@ -53,6 +53,7 @@ describe("PackageManagerViewStateManager", () => {
 			const state = manager.getState()
 			expect(state).toEqual({
 				allItems: [],
+				displayItems: [],
 				isFetching: false,
 				activeTab: "browse",
 				refreshingUrls: [],
@@ -421,7 +422,22 @@ describe("PackageManagerViewStateManager", () => {
 			})
 		})
 
-		it("should not send filter message if no filters are active", async () => {
+		it("should send filter message even when filters are cleared", async () => {
+			// First set some filters
+			await manager.transition({
+				type: "UPDATE_FILTERS",
+				payload: {
+					filters: {
+						type: "mode",
+						search: "test",
+					},
+				},
+			})
+
+			// Clear mock to ignore the first filter message
+			;(vscode.postMessage as jest.Mock).mockClear()
+
+			// Clear filters
 			await manager.transition({
 				type: "UPDATE_FILTERS",
 				payload: {
@@ -436,12 +452,15 @@ describe("PackageManagerViewStateManager", () => {
 			// Fast-forward past debounce time
 			jest.advanceTimersByTime(300)
 
-			// Should not send filter message
-			expect(vscode.postMessage).not.toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "filterPackageManagerItems",
-				}),
-			)
+			// Should send filter message with empty filters
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "filterPackageManagerItems",
+				filters: {
+					type: undefined,
+					search: undefined,
+					tags: undefined,
+				},
+			})
 		})
 	})
 
@@ -760,6 +779,40 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Filter Transitions", () => {
+		it("should preserve original items when receiving filtered results", async () => {
+			// Set up initial items
+			const initialItems = [
+				createTestItem({ name: "Item 1" }),
+				createTestItem({ name: "Item 2" }),
+				createTestItem({ name: "Item 3" }),
+			]
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items: initialItems },
+			})
+
+			// Apply a filter
+			await manager.transition({
+				type: "UPDATE_FILTERS",
+				payload: { filters: { search: "Item 1" } },
+			})
+
+			// Fast-forward past debounce time
+			jest.advanceTimersByTime(300)
+
+			// Simulate receiving filtered results
+			manager.handleMessage({
+				type: "state",
+				state: {
+					packageManagerItems: [initialItems[0]], // Only Item 1
+				},
+			})
+
+			// Verify original items are preserved
+			const state = manager.getState()
+			expect(state.allItems).toEqual(initialItems)
+		})
+
 		it("should handle UPDATE_FILTERS transition", async () => {
 			const filters = {
 				type: "mode",

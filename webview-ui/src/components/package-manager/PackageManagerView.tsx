@@ -22,10 +22,13 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 	useEffect(() => {
 		console.log("State updated:", {
 			allItems: state.allItems,
+			displayItems: state.displayItems,
 			itemsLength: state.allItems.length,
-			showingEmptyState: state.allItems.length === 0,
+			displayItemsLength: state.displayItems?.length,
+			showingEmptyState: (state.displayItems || state.allItems).length === 0,
+			filters: state.filters,
 		})
-	}, [state.allItems])
+	}, [state.allItems, state.displayItems, state.filters])
 
 	// Fetch items on mount
 	useEffect(() => {
@@ -238,7 +241,9 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 
 						{(() => {
 							// Debug log state
-							const items = state.allItems || []
+							const items = checkFilterActive(state.filters)
+								? state.displayItems || []
+								: state.allItems || []
 							const isEmpty = items.length === 0
 							const isLoading = state.isFetching
 							console.log("=== Rendering PackageManagerView ===")
@@ -251,8 +256,8 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 								filters: state.filters,
 							})
 
-							// Show loading state if fetching
-							if (isLoading) {
+							// Show loading state if fetching and not filtering
+							if (isLoading && !checkFilterActive(state.filters)) {
 								console.log("Rendering loading state due to isFetching=true")
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">

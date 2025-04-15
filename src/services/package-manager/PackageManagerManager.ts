@@ -316,6 +316,15 @@ export class PackageManagerManager {
 		items: PackageManagerItem[],
 		filters: { type?: ComponentType; search?: string; tags?: string[] },
 	): PackageManagerItem[] {
+		console.log("DEBUG: Starting filterItems", {
+			itemCount: items.length,
+			filters: {
+				type: filters.type,
+				search: filters.search,
+				tags: filters.tags,
+			},
+		})
+
 		// Helper function to normalize text for case/whitespace-insensitive comparison
 		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
 
@@ -328,124 +337,118 @@ export class PackageManagerManager {
 			return normalizeText(text).includes(normalizeText(searchTerm))
 		}
 
-		const filteredItems = items.map((originalItem) => {
-			// Create a deep clone of the item to avoid modifying the original
-			return JSON.parse(JSON.stringify(originalItem)) as PackageManagerItem
-		})
+		// Create a deep clone of all items
+		const clonedItems = items.map((originalItem) => JSON.parse(JSON.stringify(originalItem)) as PackageManagerItem)
 
-		console.log("Initial items:", JSON.stringify(filteredItems))
-		return filteredItems.filter((item) => {
-			// For packages, handle differently based on filters
-			if (item.type === "package") {
-				// If we have a type filter
-				if (filters.type) {
-					// Check if the package itself matches the type filter
-					const packageTypeMatch = item.type === filters.type
+		console.log("Initial items:", JSON.stringify(clonedItems))
 
-					// Check subcomponents if they exist
-					let hasMatchingSubcomponents = false
-					if (item.items && item.items.length > 0) {
-						// Mark subcomponents with matchInfo based on type
-						item.items.forEach((subItem) => {
-							const subTypeMatch = subItem.type === filters.type
-							subItem.matchInfo = {
-								matched: subTypeMatch,
-								matchReason: {
-									typeMatch: subTypeMatch,
-								},
-							}
-						})
+		// Apply filters
+		const filteredItems = clonedItems.filter((item) => {
+			// Check if item itself matches type filter
+			const itemTypeMatch = !filters.type || item.type === filters.type
 
-						// Check if any subcomponents match
-						hasMatchingSubcomponents = item.items.some((subItem) => subItem.matchInfo?.matched)
-					}
+			// Check if any subcomponents match type filter
+			const subcomponentTypeMatch =
+				item.items?.some((subItem) => !filters.type || subItem.type === filters.type) ?? false
 
-					// Set package matchInfo
-					item.matchInfo = {
-						matched: packageTypeMatch || hasMatchingSubcomponents,
-						matchReason: {
-							typeMatch: packageTypeMatch,
-							hasMatchingSubcomponents,
-						},
-					}
-
-					// Keep package if it or any of its subcomponents match the type filter
-					return packageTypeMatch || hasMatchingSubcomponents
-				}
-
-				// For search term
-				if (searchTerm) {
-					// Check package and subcomponents
-					const nameMatch = containsSearchTerm(item.name)
-					const descMatch = containsSearchTerm(item.description)
-
-					// Process subcomponents if they exist
-					if (item.items && item.items.length > 0) {
-						// Add matchInfo to each subcomponent
-						item.items.forEach((subItem) => {
-							if (!subItem.metadata) {
-								subItem.matchInfo = { matched: false }
-								return
-							}
-
-							const subNameMatch = containsSearchTerm(subItem.metadata.name)
-							const subDescMatch = containsSearchTerm(subItem.metadata.description)
-
-							console.log(`Checking subcomponent: ${subItem.metadata.name}`)
-							console.log(`Search term: ${searchTerm}`)
-							console.log(`Name match: ${subNameMatch}, Desc match: ${subDescMatch}`)
-
-							if (subNameMatch || subDescMatch) {
-								subItem.matchInfo = {
-									matched: true,
-									matchReason: {
-										nameMatch: subNameMatch,
-										descriptionMatch: subDescMatch,
-									},
-								}
-							} else {
-								subItem.matchInfo = { matched: false }
-							}
-						})
-					}
-
-					// Check if any subcomponents matched
-					const hasMatchingSubcomponents = item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false
-
-					// Set package matchInfo
-					item.matchInfo = {
-						matched: nameMatch || descMatch || hasMatchingSubcomponents,
-						matchReason: {
-							nameMatch,
-							descriptionMatch: descMatch,
-							hasMatchingSubcomponents,
-						},
-					}
-
-					// Only keep package if it or its subcomponents match the exact search term
-					const packageMatches = nameMatch || descMatch
-					const subcomponentMatches = hasMatchingSubcomponents
-					return packageMatches || subcomponentMatches
-				}
-
-				// No search term, everything matches
-				item.matchInfo = { matched: true }
-				if (item.items) {
-					item.items.forEach((subItem) => {
-						subItem.matchInfo = { matched: true }
-					})
-				}
-				return true
-			}
-
-			// For non-packages
-			if (filters.type && item.type !== filters.type) {
+			// Type filter - include if item or any subcomponent matches
+			if (filters.type && !itemTypeMatch && !subcomponentTypeMatch) {
 				return false
 			}
+
+			// Search filter
 			if (searchTerm) {
-				return containsSearchTerm(item.name) || containsSearchTerm(item.description)
+				const nameMatch = containsSearchTerm(item.name)
+				const descMatch = containsSearchTerm(item.description)
+				const subcomponentMatch =
+					item.items?.some(
+						(subItem) =>
+							subItem.metadata &&
+							(containsSearchTerm(subItem.metadata.name) ||
+								containsSearchTerm(subItem.metadata.description)),
+					) ?? false
+				return nameMatch || descMatch || subcomponentMatch
 			}
+
 			return true
+		})
+
+		console.log("Filtered items:", {
+			before: clonedItems.length,
+			after: filteredItems.length,
+			filters,
+		})
+		// Add match info to filtered items
+		return filteredItems.map((item) => {
+			const nameMatch = searchTerm ? containsSearchTerm(item.name) : true
+			const descMatch = searchTerm ? containsSearchTerm(item.description) : true
+			const typeMatch = filters.type ? item.type === filters.type : true
+
+			// Process subcomponents first to determine if any match
+			let hasMatchingSubcomponents = false
+			if (item.items) {
+				item.items = item.items.map((subItem) => {
+					// Calculate matches
+					const subNameMatch =
+						searchTerm && subItem.metadata ? containsSearchTerm(subItem.metadata.name) : true
+					const subDescMatch =
+						searchTerm && subItem.metadata ? containsSearchTerm(subItem.metadata.description) : true
+
+					// Only calculate type match if type filter is active
+					const subTypeMatch = filters.type ? subItem.type === filters.type : false
+
+					// Determine if item matches based on active filters
+					const subMatched = filters.type
+						? subNameMatch || subDescMatch || subTypeMatch
+						: subNameMatch || subDescMatch
+
+					if (subMatched) {
+						hasMatchingSubcomponents = true
+
+						// Only include matchReason if the item matches
+						const matchReason: Record<string, boolean> = {
+							nameMatch: subNameMatch,
+							descriptionMatch: subDescMatch,
+						}
+
+						// Only include type match in reason if type filter is active
+						if (filters.type) {
+							matchReason.typeMatch = subTypeMatch
+						}
+
+						subItem.matchInfo = {
+							matched: true,
+							matchReason,
+						}
+					} else {
+						subItem.matchInfo = {
+							matched: false,
+						}
+					}
+
+					return subItem
+				})
+			}
+
+			const matchReason: Record<string, boolean> = {
+				nameMatch,
+				descriptionMatch: descMatch,
+			}
+
+			// Only include typeMatch and hasMatchingSubcomponents in matchReason if relevant
+			if (filters.type) {
+				matchReason.typeMatch = typeMatch
+			}
+			if (hasMatchingSubcomponents) {
+				matchReason.hasMatchingSubcomponents = true
+			}
+
+			item.matchInfo = {
+				matched: nameMatch || descMatch || typeMatch || hasMatchingSubcomponents,
+				matchReason,
+			}
+
+			return item
 		})
 	}
 

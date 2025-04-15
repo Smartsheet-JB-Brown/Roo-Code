@@ -5,6 +5,7 @@ import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../../../src/services/package
 
 export interface ViewState {
 	allItems: PackageManagerItem[]
+	displayItems?: PackageManagerItem[] // Items currently being displayed (filtered or all)
 	isFetching: boolean
 	activeTab: "browse" | "sources"
 	refreshingUrls: string[]
@@ -51,6 +52,7 @@ export class PackageManagerViewStateManager {
 	constructor() {
 		this.state = {
 			allItems: [],
+			displayItems: [] as PackageManagerItem[],
 			isFetching: false,
 			activeTab: "browse",
 			refreshingUrls: [],
@@ -96,9 +98,12 @@ export class PackageManagerViewStateManager {
 		console.log("=== State Change Notification ===")
 		console.log("Current state:", {
 			allItems: this.state.allItems,
+			displayItems: this.state.displayItems,
 			itemsLength: this.state.allItems.length,
+			displayItemsLength: this.state.displayItems?.length,
 			isFetching: this.state.isFetching,
 			activeTab: this.state.activeTab,
+			filters: this.state.filters,
 		})
 
 		// Create a deep copy to ensure React sees changes
@@ -106,9 +111,12 @@ export class PackageManagerViewStateManager {
 
 		console.log("Notifying handlers with state:", {
 			allItems: newState.allItems,
+			displayItems: newState.displayItems,
 			itemsLength: newState.allItems.length,
+			displayItemsLength: newState.displayItems?.length,
 			isFetching: newState.isFetching,
 			activeTab: newState.activeTab,
+			filters: newState.filters,
 		})
 
 		this.stateChangeHandlers.forEach((handler) => {
@@ -136,23 +144,24 @@ export class PackageManagerViewStateManager {
 				})
 
 				// Create a new state object to ensure React sees the change
-				this.state = {
+				const newState = {
 					...this.state,
 					isFetching: true,
 				}
 
-				console.log("After setting isFetching:", {
-					isFetching: this.state.isFetching,
-					allItems: this.state.allItems.length,
-				})
-
+				// Clear any existing timeout before starting new fetch
 				this.clearFetchTimeout()
+
+				// Update state and notify before starting fetch
+				this.state = newState
 				this.notifyStateChange()
 
+				// Set timeout for fetch operation
 				this.fetchTimeoutId = setTimeout(() => {
 					void this.transition({ type: "FETCH_ERROR" })
 				}, this.FETCH_TIMEOUT)
 
+				// Request items from extension
 				vscode.postMessage({
 					type: "fetchPackageManagerItems",
 					bool: true,
@@ -171,14 +180,25 @@ export class PackageManagerViewStateManager {
 					receivedItems: items.length,
 				})
 
+				// Clear any existing timeout
 				this.clearFetchTimeout()
 
-				// Create a new state object to ensure React sees the change
-				this.state = {
+				// Create a new state object
+				const newState = {
 					...this.state,
 					isFetching: false,
 					allItems: [...items],
+					displayItems: this.isFilterActive() ? this.state.displayItems : [...items],
 				}
+
+				// If filters are active, apply them to the new items
+				if (this.isFilterActive()) {
+					const { filterItems } = await import("./selectors")
+					newState.displayItems = filterItems(items, this.state.filters)
+				}
+
+				// Update state and notify
+				this.state = newState
 
 				console.log("After state update:", {
 					isFetching: this.state.isFetching,
@@ -193,35 +213,51 @@ export class PackageManagerViewStateManager {
 
 			case "FETCH_ERROR": {
 				this.clearFetchTimeout()
-				this.state.isFetching = false
+
+				// Create a new state object to ensure React sees the change
+				this.state = {
+					...this.state,
+					isFetching: false,
+				}
+
 				this.notifyStateChange()
 				break
 			}
 
 			case "SET_ACTIVE_TAB": {
 				const { tab } = transition.payload as TransitionPayloads["SET_ACTIVE_TAB"]
-				this.state.activeTab = tab
+
+				// Create a new state object
+				const newState = {
+					...this.state,
+					activeTab: tab,
+				}
 
 				// Add default source when switching to sources tab if no sources exist
-				if (tab === "sources" && this.state.sources.length === 0) {
-					this.state.sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
+				if (tab === "sources" && newState.sources.length === 0) {
+					newState.sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
 					vscode.postMessage({
 						type: "packageManagerSources",
 						sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 					} as WebviewMessage)
 				}
 
+				// Update state and notify
+				this.state = newState
 				this.notifyStateChange()
+
+				// Handle browse tab switch
 				if (tab === "browse") {
+					// Clear any existing timeouts
+					this.clearFetchTimeout()
+
 					// Always fetch when switching to browse if sources were modified
 					if (this.sourcesModified) {
 						this.sourcesModified = false // Reset the flag
 						void this.transition({ type: "FETCH_ITEMS" })
-					} else {
+					} else if (this.state.allItems.length === 0) {
 						// Only fetch if we don't have any items yet
-						if (this.state.allItems.length === 0) {
-							void this.transition({ type: "FETCH_ITEMS" })
-						}
+						void this.transition({ type: "FETCH_ITEMS" })
 					}
 				}
 				break
@@ -234,40 +270,63 @@ export class PackageManagerViewStateManager {
 					newFilters: filters,
 				})
 
-				this.state.filters = {
-					...this.state.filters,
-					...filters,
+				// Create new state with updated filters
+				const newState = {
+					...this.state,
+					filters: {
+						...this.state.filters,
+						...filters,
+					},
 				}
+
+				// Check if all filters are being cleared
+				const isFilterClearing = filters
+					? Object.values(filters).every(
+							(value) => value === "" || (Array.isArray(value) && value.length === 0),
+						)
+					: true
+
+				// Update display items based on filter state
+				if (isFilterClearing) {
+					console.log("Clearing all filters, restoring original items")
+					newState.displayItems = [...newState.allItems]
+				} else {
+					// Apply client-side filtering immediately
+					const { filterItems } = await import("./selectors")
+					newState.displayItems = filterItems(newState.allItems, newState.filters)
+				}
+
+				// Update state and notify
+				this.state = newState
 				this.notifyStateChange()
 
-				const isActive = this.isFilterActive()
 				console.log("Filter state:", {
 					filters: this.state.filters,
-					isActive,
 					hasTimeout: !!this.filterTimeoutId,
+					displayItemsCount: this.state.displayItems?.length ?? 0,
+					isFilterClearing,
 				})
 
-				if (isActive) {
-					// Always use debounce
-					if (this.filterTimeoutId) {
-						console.log("Clearing existing filter timeout")
-						clearTimeout(this.filterTimeoutId)
-					}
-
-					console.log("Setting up new filter timeout")
-					this.filterTimeoutId = setTimeout(() => {
-						console.log("Filter timeout executed, sending message")
-						vscode.postMessage({
-							type: "filterPackageManagerItems",
-							filters: {
-								type: this.state.filters.type || undefined,
-								search: this.state.filters.search || undefined,
-								tags: this.state.filters.tags.length > 0 ? this.state.filters.tags : undefined,
-							},
-						} as WebviewMessage)
-						this.filterTimeoutId = undefined
-					}, this.FILTER_DEBOUNCE)
+				// Debounce server-side filter request
+				if (this.filterTimeoutId) {
+					console.log("Clearing existing filter timeout")
+					clearTimeout(this.filterTimeoutId)
 				}
+
+				console.log("Setting up new filter timeout")
+				this.filterTimeoutId = setTimeout(() => {
+					console.log("Filter timeout executed, sending message")
+					vscode.postMessage({
+						type: "filterPackageManagerItems",
+						filters: {
+							type: this.state.filters.type || undefined,
+							search: this.state.filters.search || undefined,
+							tags: this.state.filters.tags.length > 0 ? this.state.filters.tags : undefined,
+						},
+					} as WebviewMessage)
+					this.filterTimeoutId = undefined
+				}, this.FILTER_DEBOUNCE)
+
 				console.log("=== UPDATE_FILTERS Finished ===")
 				break
 			}
@@ -337,9 +396,15 @@ export class PackageManagerViewStateManager {
 	}
 
 	private clearFetchTimeout(): void {
+		// Clear fetch timeout
 		if (this.fetchTimeoutId) {
 			clearTimeout(this.fetchTimeoutId)
 			this.fetchTimeoutId = undefined
+		}
+		// Also clear any pending filter timeout to avoid race conditions
+		if (this.filterTimeoutId) {
+			clearTimeout(this.filterTimeoutId)
+			this.filterTimeoutId = undefined
 		}
 	}
 
@@ -347,7 +412,7 @@ export class PackageManagerViewStateManager {
 		return !!(this.state.filters.type || this.state.filters.search || this.state.filters.tags.length > 0)
 	}
 
-	public handleMessage(message: any): void {
+	public async handleMessage(message: any): Promise<void> {
 		console.log("=== Handling Message ===", {
 			messageType: message.type,
 			hasPackageManagerItems: !!message.state?.packageManagerItems,
@@ -379,17 +444,35 @@ export class PackageManagerViewStateManager {
 				this.notifyStateChange()
 			}
 
-			if (message.state?.isFetching) {
-				console.log("State indicates fetching, transitioning to FETCH_ITEMS")
-				void this.transition({
-					type: "FETCH_ITEMS",
-				})
-			} else if (message.state?.packageManagerItems) {
+			if (message.state?.packageManagerItems) {
 				console.log("State includes items, transitioning to FETCH_COMPLETE")
-				void this.transition({
-					type: "FETCH_COMPLETE",
-					payload: { items: message.state.packageManagerItems },
-				})
+				// Always update allItems with the latest items
+				const newState = {
+					...this.state,
+					allItems: message.state.packageManagerItems,
+					displayItems: this.isFilterActive() ? this.state.displayItems : message.state.packageManagerItems,
+					isFetching: false,
+				}
+
+				// If filters are active, apply them to the new items
+				if (this.isFilterActive()) {
+					const { filterItems } = await import("./selectors")
+					newState.displayItems = filterItems(newState.allItems, this.state.filters)
+
+					// Send filter message
+					vscode.postMessage({
+						type: "filterPackageManagerItems",
+						filters: {
+							type: this.state.filters.type || undefined,
+							search: this.state.filters.search || undefined,
+							tags: this.state.filters.tags.length > 0 ? this.state.filters.tags : undefined,
+						},
+					} as WebviewMessage)
+				}
+
+				// Update state and notify
+				this.state = newState
+				this.notifyStateChange()
 			}
 		}
 
