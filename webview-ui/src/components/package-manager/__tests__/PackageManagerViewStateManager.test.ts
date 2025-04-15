@@ -37,7 +37,13 @@ describe("PackageManagerViewStateManager", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks()
+		jest.useFakeTimers()
 		manager = new PackageManagerViewStateManager()
+	})
+
+	afterEach(() => {
+		jest.clearAllTimers()
+		jest.useRealTimers()
 	})
 
 	describe("Initial State", () => {
@@ -110,14 +116,6 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Race Conditions", () => {
-		beforeEach(() => {
-			jest.useFakeTimers()
-		})
-
-		afterEach(() => {
-			jest.useRealTimers()
-		})
-
 		it("should handle rapid tab switching during initial load", async () => {
 			// Start initial load
 			await manager.transition({ type: "FETCH_ITEMS" })
@@ -268,14 +266,6 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Error Handling", () => {
-		beforeEach(() => {
-			jest.useFakeTimers()
-		})
-
-		afterEach(() => {
-			jest.useRealTimers()
-		})
-
 		it("should handle fetch timeout", async () => {
 			await manager.transition({ type: "FETCH_ITEMS" })
 
@@ -312,14 +302,6 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Filter Behavior", () => {
-		beforeEach(() => {
-			jest.useFakeTimers()
-		})
-
-		afterEach(() => {
-			jest.useRealTimers()
-		})
-
 		it("should debounce filter updates", async () => {
 			// Reset mock before test
 			;(vscode.postMessage as jest.Mock).mockClear()
@@ -468,14 +450,6 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Fetch Timeout Handling", () => {
-		beforeEach(() => {
-			jest.useFakeTimers()
-		})
-
-		afterEach(() => {
-			jest.useRealTimers()
-		})
-
 		it("should handle fetch timeout", async () => {
 			await manager.transition({ type: "FETCH_ITEMS" })
 
@@ -591,8 +565,8 @@ describe("PackageManagerViewStateManager", () => {
 			const state = manager.getState()
 			expect(state.filters).toEqual(filters)
 
-			// Wait for debounce
-			await new Promise((resolve) => setTimeout(resolve, 300))
+			// Fast-forward past debounce time
+			jest.advanceTimersByTime(300)
 
 			expect(vscode.postMessage).toHaveBeenCalledWith({
 				type: "filterPackageManagerItems",

@@ -5,7 +5,7 @@ import { vscode } from "@/utils/vscode"
 import { groupItemsByType, GroupedItems } from "../utils/grouping"
 import { ExpandableSection } from "./ExpandableSection"
 import { TypeGroup } from "./TypeGroup"
-import { ViewState } from "../state/PackageManagerViewStateManager"
+import { ViewState } from "../PackageManagerViewStateManager"
 
 interface PackageManagerItemCardProps {
 	item: PackageManagerItem
@@ -104,7 +104,7 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 							onClick={() => {
 								if (filters.tags.includes(tag)) {
 									setFilters({
-										tags: filters.tags.filter((t) => t !== tag),
+										tags: filters.tags.filter((t: string) => t !== tag),
 									})
 								} else {
 									setFilters({
