@@ -2,172 +2,190 @@
 
 This document provides detailed information about the core components of the Package Manager system, their responsibilities, implementation details, and interactions.
 
+## GitFetcher
+
+The GitFetcher is responsible for managing Git repository operations, including cloning, pulling, and caching repository data.
+
+### Responsibilities
+
+- Cloning and updating Git repositories
+- Managing repository cache
+- Validating repository structure
+- Coordinating with MetadataScanner
+- Handling repository timeouts and errors
+
+### Implementation Details
+
+```typescript
+class GitFetcher {
+	private readonly cacheDir: string
+	private metadataScanner: MetadataScanner
+	private git?: SimpleGit
+
+	/**
+	 * Fetch repository data
+	 * @param repoUrl Repository URL
+	 * @param forceRefresh Whether to bypass cache
+	 * @param sourceName Optional source name
+	 * @returns Repository data
+	 */
+	public async fetchRepository(
+		repoUrl: string,
+		forceRefresh = false,
+		sourceName?: string,
+	): Promise<PackageManagerRepository> {
+		// Implementation details
+	}
+
+	/**
+	 * Clone or pull repository
+	 * @param repoUrl Repository URL
+	 * @param repoDir Repository directory
+	 * @param forceRefresh Whether to force refresh
+	 */
+	private async cloneOrPullRepository(repoUrl: string, repoDir: string, forceRefresh: boolean): Promise<void> {
+		// Implementation details
+	}
+
+	/**
+	 * Clean up git locks
+	 * @param repoDir Repository directory
+	 */
+	private async cleanupGitLocks(repoDir: string): Promise<void> {
+		// Implementation details
+	}
+}
+```
+
+### Key Algorithms
+
+#### Repository Management
+
+The repository management process includes:
+
+1. **Cache Management**:
+
+    - Check if repository exists in cache
+    - Validate cache freshness
+    - Clean up stale cache entries
+    - Handle cache directory creation
+
+2. **Repository Operations**:
+
+    - Clone new repositories
+    - Pull updates for existing repos
+    - Handle git lock files
+    - Clean up failed operations
+
+3. **Error Recovery**:
+    - Handle network timeouts
+    - Recover from corrupt repositories
+    - Clean up partial clones
+    - Retry failed operations
+
 ## MetadataScanner
 
-The MetadataScanner is responsible for reading and parsing package metadata from various sources, including local file systems and remote Git repositories.
+The MetadataScanner is responsible for reading and parsing package metadata from repositories.
 
 ### Responsibilities
 
 - Scanning directories for package metadata files
 - Parsing YAML metadata into structured objects
 - Building component hierarchies
-- Handling file system and Git operations
 - Supporting localized metadata
+- Validating metadata structure
 
 ### Implementation Details
 
 ```typescript
 class MetadataScanner {
+	private git: SimpleGit
+	private localizationOptions: LocalizationOptions
+
 	/**
-	 * Scans a directory for package metadata
-	 * @param directoryPath Path to the directory to scan
-	 * @param baseUrl Base URL for the repository (for remote sources)
+	 * Scan directory for package metadata
+	 * @param directoryPath Directory to scan
+	 * @param baseUrl Base repository URL
+	 * @param sourceName Source repository name
 	 * @returns Array of package items
 	 */
-	public async scanDirectory(directoryPath: string, baseUrl?: string): Promise<PackageManagerItem[]> {
+	public async scanDirectory(
+		directoryPath: string,
+		baseUrl?: string,
+		sourceName?: string,
+	): Promise<PackageManagerItem[]> {
 		// Implementation details
 	}
 
 	/**
-	 * Scans a Git repository for package metadata
-	 * @param repoUrl URL of the Git repository
-	 * @returns Array of package items
+	 * Parse metadata file
+	 * @param filePath Path to metadata file
+	 * @returns Parsed metadata
 	 */
-	public async scanRepository(repoUrl: string): Promise<PackageManagerItem[]> {
-		// Implementation details
-	}
-
-	/**
-	 * Parses a YAML metadata file
-	 * @param filePath Path to the metadata file
-	 * @returns Parsed metadata object
-	 */
-	private async parseMetadataFile(filePath: string): Promise<any> {
-		// Implementation details
-	}
-
-	/**
-	 * Builds a component hierarchy from flat items
-	 * @param items Array of items to organize
-	 * @returns Hierarchical structure of items
-	 */
-	private buildComponentHierarchy(items: any[]): PackageManagerItem[] {
+	private async parseMetadataFile(filePath: string): Promise<ComponentMetadata> {
 		// Implementation details
 	}
 }
 ```
 
-### Key Algorithms
-
-#### Directory Scanning
-
-The directory scanning algorithm recursively traverses directories looking for metadata files:
-
-1. Start at the root directory
-2. Look for `metadata.*.yml` files in the current directory
-3. Parse found metadata files
-4. For each subdirectory:
-    - Determine the component type based on directory name
-    - Recursively scan the subdirectory
-    - Associate child components with parent components
-5. Build the component hierarchy
-
-#### Metadata Parsing
-
-The metadata parsing process handles multiple formats and localizations:
-
-1. Read the YAML file content
-2. Parse the YAML into a JavaScript object
-3. Extract the locale from the filename (e.g., `en` from `metadata.en.yml`)
-4. Validate required fields (name, description, version)
-5. Process optional fields (tags, author, etc.)
-6. Return a structured metadata object
-
-### Error Handling
-
-The MetadataScanner includes robust error handling:
-
-- Invalid YAML files are reported with specific parsing errors
-- Missing required fields trigger validation errors
-- File system access issues are caught and reported
-- Network errors during Git operations are handled gracefully
-- Partial results are returned when possible, with error flags
-
 ## PackageManagerManager
 
-The PackageManagerManager is the central component that manages package items, applies filters, and handles package operations.
+The PackageManagerManager is the central component that manages package data, caching, and operations.
 
 ### Responsibilities
 
-- Storing and managing package items
-- Applying filters and search criteria
+- Managing concurrent operations
+- Handling repository caching
+- Coordinating with GitFetcher
+- Applying filters and sorting
 - Managing package sources
-- Handling package operations
-- Maintaining state between sessions
 
 ### Implementation Details
 
 ```typescript
 class PackageManagerManager {
 	private currentItems: PackageManagerItem[] = []
-	private sources: PackageManagerSource[] = []
+	private cache: Map<string, { data: PackageManagerRepository; timestamp: number }>
+	private gitFetcher: GitFetcher
+	private activeSourceOperations = new Set<string>()
+	private isMetadataScanActive = false
+	private pendingOperations: Array<() => Promise<void>> = []
 
 	/**
-	 * Constructor
-	 * @param context VS Code extension context
+	 * Queue an operation to run when no metadata scan is active
 	 */
-	constructor(private context: vscode.ExtensionContext) {
-		// Initialize from stored state
+	private async queueOperation(operation: () => Promise<void>): Promise<void> {
+		// Implementation details
 	}
 
 	/**
-	 * Get all items
-	 * @returns Array of all package items
+	 * Get package manager items from sources
 	 */
-	public getItems(): PackageManagerItem[] {
-		return this.currentItems
+	public async getPackageManagerItems(
+		sources: PackageManagerSource[],
+	): Promise<{ items: PackageManagerItem[]; errors?: string[] }> {
+		// Implementation details
 	}
 
 	/**
 	 * Filter items based on criteria
-	 * @param filters Filter criteria
-	 * @returns Filtered array of items
 	 */
-	public filterItems(filters: { type?: string; search?: string; tags?: string[] }): PackageManagerItem[] {
+	public filterItems(
+		items: PackageManagerItem[],
+		filters: { type?: ComponentType; search?: string; tags?: string[] },
+	): PackageManagerItem[] {
 		// Implementation details
 	}
 
 	/**
-	 * Add a new package source
-	 * @param url Source repository URL
-	 * @param name Optional source name
-	 * @returns Success status
+	 * Sort items by field
 	 */
-	public async addSource(url: string, name?: string): Promise<boolean> {
-		// Implementation details
-	}
-
-	/**
-	 * Remove a package source
-	 * @param url Source repository URL
-	 * @returns Success status
-	 */
-	public removeSource(url: string): boolean {
-		// Implementation details
-	}
-
-	/**
-	 * Refresh all sources
-	 * @returns Updated items
-	 */
-	public async refreshSources(): Promise<PackageManagerItem[]> {
-		// Implementation details
-	}
-
-	/**
-	 * Save state to persistent storage
-	 */
-	private saveState(): void {
+	public sortItems(
+		items: PackageManagerItem[],
+		sortBy: keyof Pick<PackageManagerItem, "name" | "author" | "lastUpdated">,
+		sortOrder: "asc" | "desc",
+		sortSubcomponents: boolean = false,
+	): PackageManagerItem[] {
 		// Implementation details
 	}
 }
@@ -175,362 +193,139 @@ class PackageManagerManager {
 
 ### Key Algorithms
 
-#### Item Filtering
+#### Concurrency Control
 
-The filtering algorithm applies multiple criteria to the package items:
+The manager implements sophisticated concurrency control:
 
-1. Start with the complete set of items
-2. If a search term and/or filter is specified:
-    - Check item name, description, and author for matches
-    - Check subcomponents for matches
-    - Keep items that match or have matching subcomponents
-    - Add match information to the items
-3. Return the filtered items with match information
+1. **Operation Queueing**:
 
-#### Source Management
+    - Queue operations during active scans
+    - Process operations sequentially
+    - Handle operation dependencies
+    - Maintain operation order
 
-The source management process handles adding, removing, and refreshing sources:
+2. **Source Locking**:
 
-1. For adding a source:
+    - Lock sources during operations
+    - Prevent concurrent source access
+    - Handle lock timeouts
+    - Clean up stale locks
 
-    - Validate the repository URL
-    - Check if the source already exists
-    - Add the source to the list
-    - Scan the repository for items
-    - Add the items to the current set
-    - Save the updated source list
+3. **Cache Management**:
+    - Implement cache expiration
+    - Handle cache invalidation
+    - Clean up unused cache
+    - Optimize cache storage
 
-2. For removing a source:
+#### Advanced Filtering
 
-    - Find the source in the list
-    - Remove items from that source
-    - Remove the source from the list
-    - Save the updated source list
+The filtering system provides rich functionality:
 
-3. For refreshing sources:
-    - Clear the current items
-    - For each enabled source:
-        - Scan the repository for items
-        - Add the items to the current set
-    - Return the updated items
+1. **Multi-level Filtering**:
 
-### State Persistence
+    - Filter parent items
+    - Filter subcomponents
+    - Handle package-specific logic
+    - Track match information
 
-The PackageManagerManager maintains state between sessions:
+2. **Match Information**:
+    - Track match reasons
+    - Handle partial matches
+    - Support highlighting
+    - Maintain match context
 
-- Source configurations are stored in extension global state
-- User preferences are persisted
-- Cached metadata can be stored for performance
-- State is loaded during initialization
-- State is saved after significant changes
+## PackageManagerViewStateManager
 
-## packageManagerMessageHandler
-
-The packageManagerMessageHandler is responsible for routing messages between the UI and the backend components.
+The PackageManagerViewStateManager handles UI state and view-level operations.
 
 ### Responsibilities
 
-- Processing messages from the UI
-- Calling appropriate PackageManagerManager methods
-- Returning results to the UI
-- Handling errors and status updates
-- Managing asynchronous operations
+- Managing view-level state
+- Handling UI filters
+- Coordinating sorting
+- Managing item visibility
 
 ### Implementation Details
 
 ```typescript
-/**
- * Handle package manager messages
- * @param message The message to handle
- * @param packageManager The package manager instance
- * @returns Response object
- */
-export async function handlePackageManagerMessages(message: any, packageManager: PackageManagerManager): Promise<any> {
-	switch (message.type) {
-		case "getItems":
-			return {
-				type: "items",
-				data: packageManager.getItems(),
-			}
+class PackageManagerViewStateManager {
+	private items: PackageManagerItem[] = []
+	private sortBy: "name" | "lastUpdated" = "name"
+	private sortOrder: "asc" | "desc" = "asc"
+	private filters: Filters = { type: "", search: "", tags: [] }
 
-		case "search":
-			return {
-				type: "searchResults",
-				data: packageManager.filterItems({
-					search: message.search,
-					type: message.typeFilter,
-					tags: message.tagFilters,
-				}),
-			}
+	/**
+	 * Get filtered and sorted items
+	 */
+	public getFilteredAndSortedItems(): PackageManagerItem[] {
+		// Implementation details
+	}
 
-		case "addSource":
-			try {
-				const success = await packageManager.addSource(message.url, message.name)
-				return {
-					type: "sourceAdded",
-					data: { success },
-				}
-			} catch (error) {
-				return {
-					type: "error",
-					error: error.message,
-				}
-			}
-
-		// Additional message handlers...
-
-		default:
-			return {
-				type: "error",
-				error: `Unknown message type: ${message.type}`,
-			}
+	/**
+	 * Check if item matches current filters
+	 */
+	private itemMatchesFilters(item: PackageManagerItem | Subcomponent): boolean {
+		// Implementation details
 	}
 }
 ```
 
-### Message Types
+## Component Integration
 
-The message handler processes several types of messages:
+The components work together through well-defined interfaces:
 
-#### Input Messages
+### Data Flow
 
-1. **getItems**: Request all package items
+1. **Repository Operations**:
 
-    ```typescript
-    {
-    	type: "getItems"
-    }
-    ```
-
-2. **search**: Apply search and filter criteria
-
-    ```typescript
-    {
-      type: "search",
-      search: "search term",
-      typeFilter: "mode",
-      tagFilters: ["tag1", "tag2"]
-    }
-    ```
-
-3. **addSource**: Add a new package source
-
-    ```typescript
-    {
-      type: "addSource",
-      url: "https://github.com/username/repo.git",
-      name: "Custom Source"
-    }
-    ```
-
-4. **removeSource**: Remove a package source
-
-    ```typescript
-    {
-      type: "removeSource",
-      url: "https://github.com/username/repo.git"
-    }
-    ```
-
-5. **refreshSources**: Refresh all sources
-    ```typescript
-    {
-    	type: "refreshSources"
-    }
-    ```
-
-#### Output Messages
-
-1. **items**: Response with all items
-
-    ```typescript
-    {
-      type: "items",
-      data: [/* package items */]
-    }
-    ```
-
-2. **searchResults**: Response with filtered items
-
-    ```typescript
-    {
-      type: "searchResults",
-      data: [/* filtered items */]
-    }
-    ```
-
-3. **sourceAdded**: Response after adding a source
-
-    ```typescript
-    {
-      type: "sourceAdded",
-      data: { success: true }
-    }
-    ```
-
-4. **error**: Error response
-    ```typescript
-    {
-      type: "error",
-      error: "Error message"
-    }
-    ```
-
-### Asynchronous Processing
-
-The message handler manages asynchronous operations:
-
-1. Asynchronous methods return promises
-2. Errors are caught and returned as error messages
-3. Long-running operations can provide progress updates
-4. The UI can display loading indicators during processing
-
-## UI Components
-
-The Package Manager includes several key UI components that render the interface and handle user interactions.
-
-### PackageManagerView
-
-The main container component that manages the overall UI:
-
-```tsx
-const PackageManagerView: React.FC = () => {
-	const [items, setItems] = useState<PackageManagerItem[]>([])
-	const [filters, setFilters] = useState({ type: "", search: "", tags: [] })
-	const [activeTab, setActiveTab] = useState<"browse" | "sources">("browse")
-
-	// Implementation details...
-
-	return (
-		<div className="package-manager-container">
-			<div className="tabs">
-				<button className={activeTab === "browse" ? "active" : ""} onClick={() => setActiveTab("browse")}>
-					Browse
-				</button>
-				<button className={activeTab === "sources" ? "active" : ""} onClick={() => setActiveTab("sources")}>
-					Sources
-				</button>
-			</div>
-
-			{activeTab === "browse" ? (
-				<div className="browse-container">
-					<FilterPanel filters={filters} setFilters={setFilters} />
-					<div className="results-area">
-						{items.map((item) => (
-							<PackageManagerItemCard
-								key={item.name}
-								item={item}
-								filters={filters}
-								setFilters={setFilters}
-								activeTab={activeTab}
-								setActiveTab={setActiveTab}
-							/>
-						))}
-					</div>
-				</div>
-			) : (
-				<SourcesPanel />
-			)}
-		</div>
-	)
-}
-```
-
-### Component Interactions
-
-The UI components interact through props and state:
-
-1. **Parent-Child Communication**:
-
-    - Parent components pass data and callbacks to children
-    - Children invoke callbacks to notify parents of events
+    - PackageManagerManager coordinates with GitFetcher
+    - GitFetcher manages repository state
+    - MetadataScanner processes repository content
+    - Results flow back to PackageManagerManager
 
 2. **State Management**:
 
-    - Component state for UI-specific state
-    - Shared state for filters and active tab
-    - Backend state accessed through messages
+    - PackageManagerManager maintains backend state
+    - ViewStateManager handles UI state
+    - State changes trigger UI updates
+    - Components react to state changes
 
-3. **Event Handling**:
+3. **User Interactions**:
     - UI events trigger state updates
-    - State updates cause re-renders
-    - Messages are sent to the backend when needed
-
-### Accessibility Features
-
-The UI components include several accessibility features:
-
-1. **Keyboard Navigation**:
-
-    - Tab order follows logical flow
-    - Focus indicators are visible
-    - Keyboard shortcuts for common actions
-
-2. **Screen Reader Support**:
-
-    - ARIA attributes for dynamic content
-    - Semantic HTML structure
-    - Descriptive labels and announcements
-
-3. **Visual Accessibility**:
-    - High contrast mode support
-    - Resizable text
-    - Color schemes that work with color blindness
-
-## Component Integration
-
-The core components work together to provide a complete package management experience:
-
-### Initialization Flow
-
-1. The Package Manager is activated
-2. The PackageManagerManager loads stored state
-3. The UI sends an initial "getItems" message
-4. The message handler calls PackageManagerManager.getItems()
-5. The UI receives and displays the items
-
-### Search and Filter Flow
-
-1. The user enters a search term or selects filters
-2. The UI sends a "search" message with the criteria
-3. The message handler calls PackageManagerManager.filterItems()
-4. The PackageManagerManager applies the filters
-5. The UI receives and displays the filtered items
-
-### Source Management Flow
-
-1. The user adds a new source
-2. The UI sends an "addSource" message
-3. The message handler calls PackageManagerManager.addSource()
-4. The PackageManagerManager adds the source and scans for items
-5. The UI receives confirmation and updates the display
+    - ViewStateManager processes changes
+    - Changes propagate to backend
+    - Results update UI state
 
 ## Performance Optimizations
 
-The core components include several performance optimizations:
+The system includes several optimizations:
 
-1. **Lazy Loading**:
+1. **Concurrent Operations**:
 
-    - Items are loaded on demand
-    - Heavy operations are deferred
-    - Components render incrementally
+    - Operation queueing
+    - Source locking
+    - Parallel processing where safe
+    - Resource management
 
-2. **Caching**:
+2. **Efficient Caching**:
 
-    - Parsed metadata is cached
-    - Filter results can be cached
-    - Repository data is cached when possible
+    - Multi-level cache
+    - Cache invalidation
+    - Lazy loading
+    - Cache cleanup
 
-3. **Efficient Filtering**:
+3. **Smart Filtering**:
 
-    - Filtering happens on the backend
-    - Only necessary data is transferred
-    - Algorithms optimize for common cases
+    - Optimized algorithms
+    - Match tracking
+    - Incremental updates
+    - Result caching
 
-4. **UI Optimizations**:
-    - Virtual scrolling for large lists
-    - Debounced search input
-    - Optimized rendering of complex components
+4. **State Management**:
+    - Minimal updates
+    - State normalization
+    - Change batching
+    - Update optimization
 
 ---
 

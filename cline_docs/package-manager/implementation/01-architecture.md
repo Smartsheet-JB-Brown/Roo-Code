@@ -13,7 +13,8 @@ graph TD
     User[User] -->|Interacts with| UI[Package Manager UI]
     UI -->|Sends messages| MH[Message Handler]
     MH -->|Processes requests| PM[PackageManagerManager]
-    PM -->|Loads data from| MS[MetadataScanner]
+    PM -->|Fetches repos| GF[GitFetcher]
+    GF -->|Scans metadata| MS[MetadataScanner]
     MS -->|Reads| FS[File System / Git Repositories]
     PM -->|Returns filtered data| MH
     MH -->|Updates state| UI
@@ -35,20 +36,23 @@ The Package Manager components interact through a well-defined message flow:
 
 1. **Data Loading**:
 
+    - GitFetcher handles repository cloning and updates
     - MetadataScanner loads package data from repositories
-    - PackageManagerManager stores and manages this data
+    - PackageManagerManager manages caching and concurrency
     - UI requests data through the message handler
 
 2. **Filtering and Search**:
 
     - UI sends filter/search criteria to the backend
-    - PackageManagerManager applies filters to the data
+    - PackageManagerManager applies filters with match info
     - Filtered results are returned to the UI
+    - State manager handles view-level filtering
 
 3. **Source Management**:
     - UI sends source management commands
-    - PackageManagerManager updates source configurations
-    - MetadataScanner reloads data from updated sources
+    - PackageManagerManager coordinates with GitFetcher
+    - Cache is managed with timeout protection
+    - Sources are processed with concurrency control
 
 ## Data Flow Diagram
 
@@ -62,6 +66,7 @@ graph LR
     end
 
     subgraph Backend
+        GF[GitFetcher]
         MS[MetadataScanner]
         PM[PackageManagerManager]
         MH[Message Handler]
@@ -72,10 +77,11 @@ graph LR
         State[State Management]
     end
 
-    GR -->|Raw Data| MS
-    FS -->|Template Data| MS
-    MS -->|Parsed Metadata| PM
-    PM -->|Stored Items| PM
+    GR -->|Clone/Pull| GF
+    FS -->|Cache| GF
+    GF -->|Metadata| MS
+    MS -->|Parsed Data| PM
+    PM -->|Cached Items| PM
     UI -->|User Actions| MH
     MH -->|Messages| PM
     PM -->|Filtered Data| MH
@@ -95,16 +101,20 @@ sequenceDiagram
     participant UI as UI Components
     participant MH as Message Handler
     participant PM as PackageManagerManager
+    participant GF as GitFetcher
     participant MS as MetadataScanner
     participant FS as File System/Git
 
     User->>UI: Open Package Manager
     UI->>MH: Send init message
     MH->>PM: Initialize
-    PM->>MS: Request metadata scan
+    PM->>GF: Request repository data
+    GF->>FS: Clone/pull repository
+    GF->>MS: Request metadata scan
     MS->>FS: Read repository data
     FS-->>MS: Return raw data
-    MS-->>PM: Return parsed metadata
+    MS-->>GF: Return parsed metadata
+    GF-->>PM: Return repository data
     PM-->>MH: Return initial items
     MH-->>UI: Update with items
     UI-->>User: Display packages
@@ -118,23 +128,28 @@ This sequence diagram illustrates the search and filter process:
 sequenceDiagram
     participant User
     participant UI as UI Components
+    participant State as State Manager
     participant MH as Message Handler
     participant PM as PackageManagerManager
 
     User->>UI: Enter search term
-    UI->>MH: Send search message
+    UI->>State: Update filters
+    State->>MH: Send search message
     MH->>PM: Apply search filter
-    PM->>PM: Filter items
+    PM->>PM: Filter items with match info
     PM-->>MH: Return filtered items
-    MH-->>UI: Update with filtered items
+    MH-->>State: Update with filtered items
+    State-->>UI: Update view
     UI-->>User: Display filtered results
 
     User->>UI: Select type filter
-    UI->>MH: Send type filter message
+    UI->>State: Update type filter
+    State->>MH: Send type filter message
     MH->>PM: Apply type filter
-    PM->>PM: Filter by type
+    PM->>PM: Filter by type with match info
     PM-->>MH: Return type-filtered items
-    MH-->>UI: Update with type-filtered items
+    MH-->>State: Update filtered items
+    State-->>UI: Update view
     UI-->>User: Display type-filtered results
 ```
 
@@ -148,257 +163,178 @@ The following class diagram shows the main classes in the Package Manager system
 classDiagram
     class PackageManagerManager {
         -currentItems: PackageManagerItem[]
-        -sources: PackageManagerSource[]
-        +getItems(): PackageManagerItem[]
+        -cache: Map
+        -gitFetcher: GitFetcher
+        -activeSourceOperations: Set
+        +getPackageManagerItems(): PackageManagerItem[]
         +filterItems(filters): PackageManagerItem[]
-        +addSource(url): void
-        +removeSource(url): void
-        +refreshSources(): void
+        +sortItems(sortBy, order): PackageManagerItem[]
+        +refreshRepository(url): void
+        -queueOperation(operation): void
+    }
+
+    class GitFetcher {
+        -cacheDir: string
+        -metadataScanner: MetadataScanner
+        +fetchRepository(url): PackageManagerRepository
+        -cloneOrPullRepository(url): void
+        -validateRepositoryStructure(dir): void
+        -parseRepositoryMetadata(dir): RepositoryMetadata
     }
 
     class MetadataScanner {
+        -git: SimpleGit
         +scanDirectory(path): PackageManagerItem[]
-        +scanRepository(url): PackageManagerItem[]
-        -parseMetadata(file): any
+        +parseMetadata(file): ComponentMetadata
         -buildComponentHierarchy(items): PackageManagerItem[]
     }
 
-    class PackageManagerMessageHandler {
-        +handleMessage(message): any
-        -handleSearchMessage(message): any
-        -handleFilterMessage(message): any
-        -handleSourceMessage(message): any
-    }
-
-    class PackageManagerItem {
-        +name: string
-        +description: string
-        +type: string
-        +items: any[]
-        +tags: string[]
-        +matchInfo: MatchInfo
-    }
-
-    class PackageManagerSource {
-        +url: string
-        +name: string
-        +enabled: boolean
-    }
-
-    PackageManagerManager --> PackageManagerItem: manages
-    PackageManagerManager --> PackageManagerSource: configures
-    PackageManagerManager --> MetadataScanner: uses
-    PackageManagerMessageHandler --> PackageManagerManager: calls
-```
-
-### UI Component Classes
-
-This class diagram shows the main UI components:
-
-```mermaid
-classDiagram
-    class PackageManagerView {
+    class PackageManagerViewStateManager {
         -items: PackageManagerItem[]
         -filters: Filters
-        -activeTab: string
-        +render(): JSX
-        +handleFilterChange(): void
-        +handleSearch(): void
+        -sortBy: string
+        -sortOrder: string
+        +setFilters(filters): void
+        +getFilteredAndSortedItems(): PackageManagerItem[]
+        -itemMatchesFilters(item): boolean
     }
 
-    class PackageManagerItemCard {
-        -item: PackageManagerItem
-        -filters: Filters
-        +render(): JSX
-        +handleTagClick(): void
-    }
-
-    class ExpandableSection {
-        -title: string
-        -isExpanded: boolean
-        +toggle(): void
-        +render(): JSX
-    }
-
-    class TypeGroup {
-        -type: string
-        -items: any[]
-        -searchTerm: string
-        +render(): JSX
-    }
-
-    PackageManagerView --> PackageManagerItemCard: contains
-    PackageManagerItemCard --> ExpandableSection: contains
-    ExpandableSection --> TypeGroup: contains
+    PackageManagerManager --> GitFetcher: uses
+    GitFetcher --> MetadataScanner: uses
+    PackageManagerManager --> PackageManagerViewStateManager: updates
 ```
 
 ## Component Responsibilities
 
 ### Backend Components
 
-1. **MetadataScanner**
+1. **GitFetcher**
 
-    - Scans directories and repositories for package metadata
+    - Handles Git repository operations
+    - Manages repository caching
+    - Validates repository structure
+    - Coordinates with MetadataScanner
+
+2. **MetadataScanner**
+
+    - Scans directories and repositories
     - Parses YAML metadata files
     - Builds component hierarchies
-    - Handles file system and Git operations
+    - Handles file system operations
 
-2. **PackageManagerManager**
+3. **PackageManagerManager**
 
-    - Stores and manages package items
-    - Applies filters and search criteria
-    - Manages package sources
-    - Handles package operations
+    - Manages concurrent operations
+    - Handles caching with timeout protection
+    - Coordinates repository operations
+    - Provides filtering and sorting
 
-3. **packageManagerMessageHandler**
+4. **packageManagerMessageHandler**
     - Routes messages between UI and backend
     - Processes commands from the UI
-    - Returns data and status updates to the UI
+    - Returns data and status updates
     - Handles error conditions
 
 ### Frontend Components
 
-1. **PackageManagerView**
+1. **PackageManagerViewStateManager**
 
-    - Main container component
-    - Manages overall UI state
-    - Handles tab navigation
-    - Displays filter controls
+    - Manages view-level state
+    - Handles filtering and sorting
+    - Maintains UI preferences
+    - Coordinates with backend state
 
 2. **PackageManagerItemCard**
 
-    - Displays individual package information
+    - Displays package information
     - Handles tag interactions
-    - Manages expandable details section
-    - Provides action buttons
+    - Manages expandable sections
+    - Shows match highlights
 
 3. **ExpandableSection**
 
-    - Provides collapsible UI sections
+    - Provides collapsible sections
     - Manages expand/collapse state
     - Handles animations
-    - Displays section headers and badges
+    - Shows section metadata
 
 4. **TypeGroup**
-    - Groups and displays components by type
+    - Groups items by type
     - Formats item lists
     - Highlights search matches
-    - Provides consistent styling
-
-## Data Flow Patterns
-
-### Message-Based Communication
-
-The Package Manager uses a message-based architecture for communication between the frontend and backend:
-
-1. **Message Structure**:
-
-    ```typescript
-    {
-    	type: string // The message type (e.g., "search", "filter", "addSource")
-    	payload: any // The message data
-    }
-    ```
-
-2. **Common Message Types**:
-
-    - `search`: Apply a search term filter
-    - `filter`: Apply type or tag filters
-    - `addSource`: Add a new package source
-    - `removeSource`: Remove a package source
-    - `refreshSources`: Reload data from sources
-
-3. **Response Structure**:
-    ```typescript
-    {
-      type: string;     // The response type
-      data: any;        // The response data
-      error?: string;   // Optional error message
-    }
-    ```
-
-### State Management
-
-The Package Manager maintains state in several places:
-
-1. **Backend State**:
-
-    - Current items in the PackageManagerManager
-    - Source configurations
-    - Cached metadata
-
-2. **Frontend State**:
-
-    - Current filters and search terms
-    - UI state (active tab, expanded sections)
-    - Display preferences
-
-3. **Persistent State**:
-    - Source configurations stored in extension settings
-    - User preferences
+    - Maintains consistent styling
 
 ## Performance Considerations
 
 The Package Manager architecture addresses several performance challenges:
 
-1. **Lazy Loading**:
+1. **Concurrency Control**:
 
-    - Metadata is loaded on demand
-    - Repositories are scanned only when needed
-    - UI components render incrementally
+    - Source operations are locked to prevent conflicts
+    - Operations are queued during metadata scanning
+    - Cache timeouts prevent hanging operations
+    - Repository operations are atomic
 
-2. **Efficient Filtering**:
+2. **Efficient Caching**:
 
-    - Filtering happens on the backend to reduce data transfer
-    - Search algorithms optimize for common patterns
-    - Results are cached when possible
+    - Repository data is cached with expiry
+    - Cache is cleaned up automatically
+    - Forced refresh available when needed
+    - Cache directories managed efficiently
 
-3. **Responsive UI**:
-    - Asynchronous operations prevent UI blocking
-    - Animations provide feedback during loading
-    - Pagination limits the number of items displayed at once
+3. **Smart Filtering**:
+    - Match info tracks filter matches
+    - Filtering happens at multiple levels
+    - View state optimizes re-renders
+    - Search is case-insensitive and normalized
 
 ## Error Handling
 
 The architecture includes robust error handling:
 
-1. **Source Errors**:
+1. **Repository Operations**:
 
-    - Invalid repositories are marked with error states
-    - Users are notified of access issues
-    - The system continues to function with other sources
+    - Git lock files are cleaned up
+    - Failed clones are retried
+    - Corrupt repositories are re-cloned
+    - Network timeouts are handled
 
-2. **Parsing Errors**:
+2. **Data Processing**:
 
-    - Malformed metadata is gracefully handled
-    - Partial results are displayed when possible
-    - Error details are logged for debugging
+    - Invalid metadata is gracefully handled
+    - Missing files are reported clearly
+    - Parse errors preserve partial data
+    - Type validation ensures consistency
 
-3. **Network Errors**:
-    - Timeouts and retries for network operations
-    - Offline mode with cached data
-    - Clear error messages for user troubleshooting
+3. **State Management**:
+    - Invalid filters are normalized
+    - Sort operations handle missing data
+    - View updates are atomic
+    - Error states are preserved
 
 ## Extensibility Points
 
 The Package Manager architecture is designed for extensibility:
 
-1. **New Component Types**:
+1. **Repository Sources**:
 
-    - The system can be extended to support new component types
-    - Type-specific rendering can be added to the UI
-    - Backend processing adapts to new types
+    - Support for multiple Git providers
+    - Custom repository validation
+    - Flexible metadata formats
+    - Localization support
 
-2. **Additional Filters**:
+2. **Filtering System**:
 
-    - New filter types can be added to the system
-    - Filter logic can be extended in the PackageManagerManager
-    - UI can be updated to display new filter controls
+    - Custom filter types
+    - Extensible match info
+    - Flexible sort options
+    - View state customization
 
-3. **Custom Sources**:
-    - The source system supports various repository types
-    - Custom source providers can be implemented
-    - Authentication mechanisms can be extended
+3. **UI Components**:
+    - Custom item renderers
+    - Flexible layout system
+    - Theme integration
+    - Accessibility support
 
 ---
 

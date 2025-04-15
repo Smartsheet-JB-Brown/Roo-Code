@@ -22,131 +22,30 @@ These types represent the different kinds of components that can be managed by t
 3. **package**: Collections of related components
 4. **mcp server**: Model Context Protocol servers that provide additional functionality
 
-The type system is extensible, allowing for new component types to be added in the future.
+## Core Data Structures
 
-## Metadata Interfaces
-
-The Package Manager uses a set of interfaces to define the structure of metadata for different components:
-
-### BaseMetadata
+### PackageManagerRepository
 
 ```typescript
 /**
- * Base metadata interface
+ * Represents a repository with its metadata and items
  */
-export interface BaseMetadata {
-	name: string
-	description: string
-	version: string
-	tags?: string[]
+export interface PackageManagerRepository {
+	metadata: RepositoryMetadata
+	items: PackageManagerItem[]
+	url: string
+	defaultBranch: string
+	error?: string
 }
 ```
 
-This interface defines the common properties shared by all metadata types:
+This interface represents a complete repository:
 
-- **name**: The display name of the component
-- **description**: A detailed explanation of the component's purpose
-- **version**: The semantic version number
-- **tags**: Optional array of relevant keywords
-
-### RepositoryMetadata
-
-```typescript
-/**
- * Repository root metadata
- */
-export interface RepositoryMetadata extends BaseMetadata {}
-```
-
-This interface represents the metadata for a package source repository. It currently inherits all properties from BaseMetadata without adding additional fields, but is defined separately to allow for future repository-specific extensions.
-
-### ComponentMetadata
-
-```typescript
-/**
- * Component metadata with type
- */
-export interface ComponentMetadata extends BaseMetadata {
-	type: ComponentType
-}
-```
-
-This interface extends BaseMetadata to include a type field, which specifies the component type.
-
-### PackageMetadata
-
-```typescript
-/**
- * Package metadata with optional subcomponents
- */
-export interface PackageMetadata extends ComponentMetadata {
-	type: "package"
-	items?: {
-		type: ComponentType
-		path: string
-		metadata?: ComponentMetadata
-	}[]
-}
-```
-
-This interface represents packages that can contain subcomponents:
-
-- **type**: Always "package" for this interface
-- **items**: Optional array of subcomponents, each with:
-    - **type**: The subcomponent type
-    - **path**: The file system path to the subcomponent
-    - **metadata**: Optional metadata for the subcomponent
-
-### SubcomponentMetadata
-
-```typescript
-/**
- * Subcomponent metadata with parent reference
- */
-export interface SubcomponentMetadata extends ComponentMetadata {
-	parentPackage: {
-		name: string
-		path: string
-	}
-}
-```
-
-This interface represents components that are part of a parent package:
-
-- All fields from ComponentMetadata
-- **parentPackage**: Reference to the parent package
-    - **name**: The name of the parent package
-    - **path**: The file system path to the parent package
-
-## Item Structures
-
-The Package Manager uses several interfaces to represent items in the UI:
-
-### MatchInfo
-
-```typescript
-/**
- * Information about why an item matched search/filter criteria
- */
-export interface MatchInfo {
-	matched: boolean
-	matchReason?: {
-		nameMatch?: boolean
-		descriptionMatch?: boolean
-		tagMatch?: boolean
-		hasMatchingSubcomponents?: boolean
-	}
-}
-```
-
-This interface provides information about why an item matched search or filter criteria:
-
-- **matched**: Boolean indicating if the item matched
-- **matchReason**: Optional object with specific match reasons
-    - **nameMatch**: True if the name matched
-    - **descriptionMatch**: True if the description matched
-    - **tagMatch**: True if a tag matched
-    - **hasMatchingSubcomponents**: True if a subcomponent matched
+- **metadata**: The repository metadata
+- **items**: Array of items in the repository
+- **url**: The URL to the repository
+- **defaultBranch**: The default Git branch (e.g., "main")
+- **error**: Optional error message if there was a problem
 
 ### PackageManagerItem
 
@@ -166,6 +65,7 @@ export interface PackageManagerItem {
 	version?: string
 	lastUpdated?: string
 	sourceUrl?: string
+	defaultBranch?: string
 	items?: {
 		type: ComponentType
 		path: string
@@ -177,27 +77,145 @@ export interface PackageManagerItem {
 }
 ```
 
-This interface represents a complete package manager item as displayed in the UI:
+Key changes:
 
-- **name**: The display name of the item
-- **description**: A detailed explanation of the item's purpose
-- **type**: The component type
-- **url**: The URL to the item's source
-- **repoUrl**: The URL to the repository containing the item
-- **sourceName**: Optional name of the source repository
-- **author**: Optional author name
-- **tags**: Optional array of relevant keywords
-- **version**: Optional semantic version number
-- **lastUpdated**: Optional date of last update
-- **sourceUrl**: Optional URL to additional documentation
-- **items**: Optional array of subcomponents
-- **matchInfo**: Optional information about search/filter matches
+- Added **defaultBranch** field for Git branch tracking
+- Enhanced **matchInfo** structure for better filtering
+- Improved subcomponent handling
+
+### MatchInfo
+
+```typescript
+/**
+ * Information about why an item matched search/filter criteria
+ */
+export interface MatchInfo {
+	matched: boolean
+	matchReason?: {
+		nameMatch?: boolean
+		descriptionMatch?: boolean
+		typeMatch?: boolean
+		tagMatch?: boolean
+		hasMatchingSubcomponents?: boolean
+	}
+}
+```
+
+Enhanced match tracking:
+
+- Added **typeMatch** for component type filtering
+- More detailed match reasons
+- Support for subcomponent matching
+
+## State Management Structures
+
+### ViewState
+
+```typescript
+/**
+ * View-level state management
+ */
+interface ViewState {
+	items: PackageManagerItem[]
+	sortBy: "name" | "lastUpdated"
+	sortOrder: "asc" | "desc"
+	filters: Filters
+}
+```
+
+Manages UI state:
+
+- Current items
+- Sort configuration
+- Filter state
+
+### Filters
+
+```typescript
+/**
+ * Filter criteria
+ */
+interface Filters {
+	type: string
+	search: string
+	tags: string[]
+}
+```
+
+Enhanced filtering:
+
+- Component type filtering
+- Text search
+- Tag-based filtering
+
+## Metadata Interfaces
+
+### BaseMetadata
+
+```typescript
+/**
+ * Base metadata interface
+ */
+export interface BaseMetadata {
+	name: string
+	description: string
+	version: string
+	tags?: string[]
+}
+```
+
+Common metadata properties:
+
+- **name**: Display name
+- **description**: Detailed explanation
+- **version**: Semantic version
+- **tags**: Optional keywords
+
+### ComponentMetadata
+
+```typescript
+/**
+ * Component metadata with type
+ */
+export interface ComponentMetadata extends BaseMetadata {
+	type: ComponentType
+	lastUpdated?: string
+}
+```
+
+Added:
+
+- **lastUpdated** field for tracking changes
+
+### PackageMetadata
+
+```typescript
+/**
+ * Package metadata with subcomponents
+ */
+export interface PackageMetadata extends ComponentMetadata {
+	type: "package"
+	items?: {
+		type: ComponentType
+		path: string
+		metadata?: ComponentMetadata
+		lastUpdated?: string
+	}[]
+}
+```
+
+Enhanced with:
+
+- Subcomponent tracking
+- Last update timestamps
+
+## Source Management
 
 ### PackageManagerSource
 
 ```typescript
 /**
- * Represents a Git repository source for package manager items
+ * Git repository source
  */
 export interface PackageManagerSource {
 	url: string
@@ -206,462 +224,202 @@ export interface PackageManagerSource {
 }
 ```
 
-This interface represents a package source repository:
+Repository source configuration:
 
-- **url**: The URL to the Git repository
-- **name**: Optional display name for the source
-- **enabled**: Boolean indicating if the source is active
+- **url**: Git repository URL
+- **name**: Optional display name
+- **enabled**: Source status
 
-### PackageManagerRepository
+### SourceOperation
 
 ```typescript
 /**
- * Represents a repository with its metadata and items
+ * Source operation tracking
  */
-export interface PackageManagerRepository {
-	metadata: RepositoryMetadata
-	items: PackageManagerItem[]
+interface SourceOperation {
 	url: string
-	error?: string
+	type: "clone" | "pull" | "refresh"
+	timestamp: number
 }
 ```
 
-This interface represents a complete repository with its metadata and items:
+Tracks repository operations:
 
-- **metadata**: The repository metadata
-- **items**: Array of items in the repository
-- **url**: The URL to the repository
-- **error**: Optional error message if there was a problem loading the repository
+- Operation type
+- Timestamp
+- Source URL
 
-### LocalizedMetadata
+## Cache Management
+
+### CacheEntry
 
 ```typescript
 /**
- * Utility type for metadata files with locale
+ * Cache entry structure
  */
-export type LocalizedMetadata<T> = {
-	[locale: string]: T
+interface CacheEntry<T> {
+	data: T
+	timestamp: number
 }
 ```
 
-This utility type represents metadata that can be localized to different languages:
+Generic cache structure:
 
-- **[locale: string]**: Keys are locale identifiers (e.g., "en", "fr")
-- **T**: The type of metadata being localized
+- Cached data
+- Timestamp for expiry
 
-## UI Component Props
-
-The Package Manager UI components use several prop interfaces:
-
-### PackageManagerItemCardProps
+### RepositoryCache
 
 ```typescript
-interface PackageManagerItemCardProps {
-	item: PackageManagerItem
-	filters: { type: string; search: string; tags: string[] }
-	setFilters: React.Dispatch<React.SetStateAction<{ type: string; search: string; tags: string[] }>>
-	activeTab: "browse" | "sources"
-	setActiveTab: React.Dispatch<React.SetStateAction<"browse" | "sources">>
-}
+/**
+ * Repository cache management
+ */
+type RepositoryCache = Map<string, CacheEntry<PackageManagerRepository>>
 ```
 
-This interface defines the props for the PackageManagerItemCard component:
+Specialized for repositories:
 
-- **item**: The package item to display
-- **filters**: The current filter state
-- **setFilters**: Function to update filters
-- **activeTab**: The currently active tab
-- **setActiveTab**: Function to change the active tab
-
-### ExpandableSectionProps
-
-```typescript
-interface ExpandableSectionProps {
-	title: string
-	children: React.ReactNode
-	className?: string
-	defaultExpanded?: boolean
-	badge?: string
-}
-```
-
-This interface defines the props for the ExpandableSection component:
-
-- **title**: The section header text
-- **children**: The content to display when expanded
-- **className**: Optional CSS class name
-- **defaultExpanded**: Optional flag to set initial expanded state
-- **badge**: Optional badge text to display
-
-### TypeGroupProps
-
-```typescript
-interface TypeGroupProps {
-	type: string
-	items: Array<{
-		name: string
-		description?: string
-		metadata?: any
-		path?: string
-	}>
-	className?: string
-	searchTerm?: string
-}
-```
-
-This interface defines the props for the TypeGroup component:
-
-- **type**: The component type to display
-- **items**: Array of items of this type
-- **className**: Optional CSS class name
-- **searchTerm**: Optional search term for highlighting matches
-
-## Grouped Items Structure
-
-The Package Manager uses a specialized structure for grouping items by type:
-
-### GroupedItems
-
-```typescript
-export interface GroupedItems {
-	[type: string]: {
-		type: string
-		items: Array<{
-			name: string
-			description?: string
-			metadata?: any
-			path?: string
-		}>
-	}
-}
-```
-
-This interface represents items grouped by their type:
-
-- **[type: string]**: Keys are component types
-- **type**: The component type (redundant with the key)
-- **items**: Array of items of this type
-    - **name**: The item name
-    - **description**: Optional item description
-    - **metadata**: Optional additional metadata
-    - **path**: Optional file system path
-
-## Filter and Sort Structures
-
-The Package Manager uses several structures for filtering and sorting:
-
-### Filters
-
-```typescript
-interface Filters {
-	type: string
-	search: string
-	tags: string[]
-}
-```
-
-This interface represents the filter criteria:
-
-- **type**: The component type filter
-- **search**: The search term
-- **tags**: Array of tag filters
-
-### SortConfig
-
-```typescript
-interface SortConfig {
-	by: string
-	order: "asc" | "desc"
-}
-```
-
-This interface represents the sort configuration:
-
-- **by**: The field to sort by (e.g., "name", "author")
-- **order**: The sort order ("asc" for ascending, "desc" for descending)
+- URL-based lookup
+- Timestamp-based expiry
+- Full repository data
 
 ## Message Structures
-
-The Package Manager uses a message-based architecture for communication:
 
 ### Input Messages
 
 ```typescript
-// Get all items
-{ type: "getItems" }
-
-// Apply search and filter criteria
-{
-  type: "search",
-  search: string,
-  typeFilter: string,
-  tagFilters: string[]
-}
-
-// Add a new package source
-{
-  type: "addSource",
-  url: string,
-  name?: string
-}
-
-// Remove a package source
-{
-  type: "removeSource",
-  url: string
-}
-
-// Refresh all sources
-{ type: "refreshSources" }
+type PackageManagerMessage =
+	| { type: "getItems" }
+	| {
+			type: "search"
+			search: string
+			typeFilter: string
+			tagFilters: string[]
+	  }
+	| {
+			type: "addSource"
+			url: string
+			name?: string
+	  }
+	| {
+			type: "removeSource"
+			url: string
+	  }
+	| { type: "refreshSources" }
 ```
 
 ### Output Messages
 
 ```typescript
-// Response with all items
-{
-  type: "items",
-  data: PackageManagerItem[]
-}
-
-// Response with filtered items
-{
-  type: "searchResults",
-  data: PackageManagerItem[]
-}
-
-// Response after adding a source
-{
-  type: "sourceAdded",
-  data: { success: boolean }
-}
-
-// Error response
-{
-  type: "error",
-  error: string
-}
+type PackageManagerResponse =
+	| {
+			type: "items"
+			data: PackageManagerItem[]
+	  }
+	| {
+			type: "searchResults"
+			data: PackageManagerItem[]
+			filters: Filters
+	  }
+	| {
+			type: "sourceAdded" | "sourceRemoved"
+			data: { success: boolean }
+	  }
+	| {
+			type: "error"
+			error: string
+	  }
 ```
 
-## Template Structure
+Enhanced with:
 
-The Package Manager uses a specific directory structure for templates:
-
-### Basic Template Structure
-
-```
-package-manager-template/
-├── metadata.en.yml           # Repository metadata
-├── README.md                 # Repository documentation
-├── packages/                 # Directory for package components
-│   └── data-platform/        # Example package
-│       └── metadata.en.yml   # Package metadata
-├── modes/                    # Directory for mode components
-│   └── developer-mode/       # Example mode
-│       └── metadata.en.yml   # Mode metadata
-├── mcp servers/              # Directory for MCP server components
-│   ├── example-server/       # Example server
-│   │   └── metadata.en.yml   # Server metadata
-│   └── file-analyzer/        # Another example server
-│       └── metadata.en.yml   # Server metadata
-└── groups/                   # Directory for grouping components
-    └── data-engineering/     # Example group
-        └── metadata.en.yml   # Group metadata
-```
-
-### Metadata File Structure
-
-```yaml
-# Repository metadata (metadata.en.yml)
-name: "Package Manager Template"
-description: "A template repository for creating package manager sources"
-version: "1.0.0"
-
-# Component metadata (e.g., modes/developer-mode/metadata.en.yml)
-name: "Developer Mode"
-description: "A specialized mode for software development tasks"
-version: "1.0.0"
-type: "mode"
-tags:
-  - development
-  - coding
-  - software
-```
-
-## Data Flow and Transformations
-
-The Package Manager transforms data through several stages:
-
-### From File System to Metadata
-
-1. Raw YAML files are read from the file system
-2. YAML is parsed into JavaScript objects
-3. Objects are validated against metadata interfaces
-4. Localized metadata is combined into a single structure
-
-### From Metadata to Items
-
-1. Metadata objects are transformed into PackageManagerItem objects
-2. File paths are converted to URLs
-3. Parent-child relationships are established
-4. Additional information is added (e.g., lastUpdated)
-
-### From Items to UI
-
-1. Items are filtered based on user criteria
-2. Match information is added to items
-3. Items are sorted according to user preferences
-4. Items are grouped by type for display
+- Filter state in search results
+- Operation success tracking
+- Detailed error reporting
 
 ## Data Validation
-
-The Package Manager includes validation at several levels:
 
 ### Metadata Validation
 
 ```typescript
-function validateMetadata(metadata: any): boolean {
-	// Required fields
-	if (!metadata.name || !metadata.description || !metadata.version) {
-		return false
-	}
+/**
+ * Validate component metadata
+ */
+function validateMetadata(metadata: unknown): metadata is ComponentMetadata {
+	if (!isObject(metadata)) return false
 
-	// Type validation for components
-	if (metadata.type && !["mode", "prompt", "package", "mcp server"].includes(metadata.type)) {
-		return false
-	}
-
-	// Additional validation...
-
-	return true
+	return (
+		typeof metadata.name === "string" &&
+		typeof metadata.description === "string" &&
+		typeof metadata.version === "string" &&
+		(metadata.tags === undefined || Array.isArray(metadata.tags)) &&
+		isValidComponentType(metadata.type)
+	)
 }
 ```
 
 ### URL Validation
 
 ```typescript
-function isValidUrl(urlString: string): boolean {
-	try {
-		new URL(urlString)
-		return true
-	} catch (e) {
-		return false
-	}
+/**
+ * Validate Git repository URL
+ */
+function isValidGitUrl(url: string): boolean {
+	if (!url) return false
+
+	// Support common Git URL formats
+	return /^(https?:\/\/|git@)/.test(url) && /\.git$/.test(url)
 }
 ```
 
-### Tag Validation
+## Data Flow
 
-```typescript
-function validateTags(tags: any[]): string[] {
-	if (!Array.isArray(tags)) {
-		return []
-	}
+The Package Manager transforms data through several stages:
 
-	return tags.filter((tag) => typeof tag === "string" && tag.trim().length > 0).map((tag) => tag.trim())
-}
-```
+1. **Repository Level**:
+
+    - Clone/pull Git repositories
+    - Parse metadata files
+    - Build component hierarchy
+
+2. **Cache Level**:
+
+    - Store repository data
+    - Track timestamps
+    - Handle expiration
+
+3. **View Level**:
+    - Apply filters
+    - Sort items
+    - Track matches
+    - Manage UI state
 
 ## Data Relationships
 
-The Package Manager maintains several important relationships between data structures:
-
-### Parent-Child Relationships
-
-Packages can contain subcomponents, creating a hierarchical structure:
+### Component Hierarchy
 
 ```
-Package
-├── Mode
-├── MCP Server
-├── Prompt
-└── Nested Package
-    ├── Mode
-    └── MCP Server
+Repository
+├── Metadata
+└── Items
+    ├── Package
+    │   ├── Mode
+    │   ├── MCP Server
+    │   └── Prompt
+    └── Standalone Components
 ```
 
-This relationship is represented in the data structures:
+### State Flow
 
-- Packages have an `items` array containing subcomponents
-- Subcomponents have a `parentPackage` reference
-
-### Source-Item Relationships
-
-Items are associated with their source repositories:
-
-- Each item has a `repoUrl` field pointing to its source
-- Sources have a list of items they provide
-- When a source is disabled, its items are hidden
-
-### Type-Group Relationships
-
-Items are grouped by their type for display:
-
-- The `GroupedItems` interface organizes items by type
-- Each type group contains items of that type
-- The UI displays these groups separately
-
-## Serialization and Persistence
-
-The Package Manager serializes data for persistence:
-
-### Source Persistence
-
-```typescript
-// Save sources to extension state
-private saveState(): void {
-  this.context.globalState.update("packageManagerSources", this.sources);
-}
-
-// Load sources from extension state
-private loadState(): void {
-  const savedSources = this.context.globalState.get<PackageManagerSource[]>("packageManagerSources", []);
-  this.sources = savedSources;
-}
+```
+Git Repository → Cache → PackageManager → ViewState → UI
 ```
 
-### Metadata Caching
+### Filter Chain
 
-```typescript
-// Cache metadata to improve performance
-private cacheMetadata(url: string, metadata: any): void {
-  const cacheKey = `metadata_${url}`;
-  this.context.globalState.update(cacheKey, {
-    timestamp: Date.now(),
-    data: metadata
-  });
-}
-
-// Retrieve cached metadata
-private getCachedMetadata(url: string): any | null {
-  const cacheKey = `metadata_${url}`;
-  const cached = this.context.globalState.get(cacheKey);
-
-  if (!cached || Date.now() - cached.timestamp > CACHE_TTL) {
-    return null;
-  }
-
-  return cached.data;
-}
 ```
-
-## Data Structure Evolution
-
-The Package Manager's data structures are designed for evolution:
-
-### Versioning Strategy
-
-- Interfaces include version fields
-- New fields are added as optional
-- Breaking changes are avoided when possible
-- Migration code handles legacy data formats
-
-### Extensibility Points
-
-- The ComponentType can be extended with new types
-- Metadata interfaces can be extended with new fields
-- The message system can handle new message types
-- The UI can adapt to display new data formats
+Raw Items → Type Filter → Search Filter → Tag Filter → Sorted Results
+```
 
 ---
 
