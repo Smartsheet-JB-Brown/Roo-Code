@@ -94,15 +94,52 @@ describe("PackageManagerView", () => {
 		})
 	})
 
-	it("should initialize with empty states", async () => {
+	it("should automatically fetch items on mount", async () => {
 		render(<PackageManagerView />)
 
-		// Should show empty state message initially
-		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
+		// Should immediately trigger a fetch
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "fetchPackageManagerItems",
+			bool: true,
+		})
 
-		// Simulate receiving empty items
+		// Should show loading state
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
+
+		// Simulate receiving items
 		await act(async () => {
-			// First trigger fetch request which sets isFetching to true
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "state",
+						state: {
+							packageManagerItems: mockItems,
+							isFetching: false,
+							activeTab: "browse",
+							refreshingUrls: [],
+							sources: [],
+							filters: { type: "", search: "", tags: [] },
+							sortConfig: { by: "name", order: "asc" },
+						},
+					},
+				}),
+			)
+		})
+
+		// Should show items
+		expect(screen.getByText("2 items total")).toBeInTheDocument()
+		expect(screen.getByText("Test Package")).toBeInTheDocument()
+		expect(screen.getByText("Another Package")).toBeInTheDocument()
+	})
+
+	it("should show empty state when fetch returns no items", async () => {
+		render(<PackageManagerView />)
+
+		// Should show loading state while fetching
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
+
+		// Simulate receiving empty items from fetch
+		await act(async () => {
 			window.dispatchEvent(
 				new MessageEvent("message", {
 					data: {
@@ -125,69 +162,13 @@ describe("PackageManagerView", () => {
 		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
 	})
 
-	it("should handle state updates correctly", async () => {
-		render(<PackageManagerView />)
-
-		// Initial state should show empty state
-		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
-
-		// Simulate state update
-		await act(async () => {
-			// First trigger fetch request which sets isFetching to true
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "state",
-						state: {
-							packageManagerItems: [],
-							isFetching: true,
-							activeTab: "browse",
-							refreshingUrls: [],
-							sources: [],
-							filters: { type: "", search: "", tags: [] },
-							sortConfig: { by: "name", order: "asc" },
-						},
-					},
-				}),
-			)
-		})
-
-		// Wait for loading state to appear
-		await screen.findByText("Loading items...")
-
-		// Complete the state update
-		await act(async () => {
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "state",
-						state: {
-							packageManagerItems: mockItems,
-							isFetching: false,
-							activeTab: "browse",
-							refreshingUrls: [],
-							sources: [],
-							filters: { type: "", search: "", tags: [] },
-							sortConfig: { by: "name", order: "asc" },
-						},
-					},
-				}),
-			)
-		})
-
-		// Then wait for items to appear
-		await screen.findByText("2 items total")
-		expect(screen.getByText("Test Package")).toBeInTheDocument()
-		expect(screen.getByText("Another Package")).toBeInTheDocument()
-	})
-
 	it("should handle filter state transitions", async () => {
 		render(<PackageManagerView />)
 
-		// Initial state should show empty state
-		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
+		// Should show loading state initially
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
 
-		// Load initial items
+		// Simulate receiving items
 		await act(async () => {
 			window.dispatchEvent(
 				new MessageEvent("message", {
@@ -248,11 +229,12 @@ describe("PackageManagerView", () => {
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.queryByText("Another Package")).not.toBeInTheDocument()
 	})
+
 	it("should handle tab switching correctly", async () => {
 		render(<PackageManagerView />)
 
-		// Initial state should show empty state
-		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
+		// Should show loading state initially
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
 
 		// Load initial items
 		await act(async () => {
@@ -316,12 +298,11 @@ describe("PackageManagerView", () => {
 		expect(screen.getByText("Another Package")).toBeInTheDocument()
 	})
 
-	// Set shorter timeout for faster failure during debugging
 	it("should handle source changes correctly", async () => {
 		render(<PackageManagerView />)
 
-		// Initial state should show empty state
-		expect(screen.getByText("No package manager items found")).toBeInTheDocument()
+		// Should show loading state initially
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
 
 		// Ensure state is updated and synchronized
 		await act(async () => {
@@ -354,7 +335,6 @@ describe("PackageManagerView", () => {
 		await screen.findByText("Configure Package Manager Sources")
 
 		// Add new source
-		// Add new source
 		const urlInput = screen.getByPlaceholderText(/^Git repository URL/)
 		fireEvent.change(urlInput, { target: { value: "https://github.com/test/repo" } })
 
@@ -377,34 +357,12 @@ describe("PackageManagerView", () => {
 			bool: true,
 		})
 	})
+
 	it("should preserve filter state during tab switches", async () => {
 		render(<PackageManagerView />)
 
-		// Set initial state
-		await act(async () => {
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "state",
-						state: {
-							packageManagerItems: [],
-							isFetching: false,
-							activeTab: "browse",
-							refreshingUrls: [],
-							sources: [],
-							filters: { type: "", search: "", tags: [] },
-							sortConfig: { by: "name", order: "asc" },
-						},
-					},
-				}),
-			)
-		})
-
-		// Wait for initial render to complete
-		await screen.findByText("No package manager items found")
-
-		// Wait for initial render to complete
-		await screen.findByText("No package manager items found")
+		// Should show loading state initially
+		expect(screen.getByText("Loading items...")).toBeInTheDocument()
 
 		// Load initial items with explicit state transitions
 		await act(async () => {
@@ -476,6 +434,7 @@ describe("PackageManagerView", () => {
 		await screen.findByText("1 item total")
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.queryByText("Another Package")).not.toBeInTheDocument()
+
 		// Update search input and filter state
 		const searchInput = screen.getByPlaceholderText("Search package manager items...")
 		fireEvent.change(searchInput, { target: { value: "test" } })
@@ -503,30 +462,9 @@ describe("PackageManagerView", () => {
 				}),
 			)
 		})
+
 		// Verify filtered text appears (handle both singular and plural cases)
 		await screen.findByText(/1 item.*found.*filtered|1 items.*found.*filtered/)
-
-		// Switch to sources tab
-		await act(async () => {
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "state",
-						state: {
-							packageManagerItems: [mockItems[0]],
-							isFetching: false,
-							activeTab: "browse",
-							refreshingUrls: [],
-							sources: [],
-							filters: { type: "", search: "test", tags: [] },
-							sortConfig: { by: "name", order: "asc" },
-							isFiltered: true,
-							filteredCount: 1,
-						},
-					},
-				}),
-			)
-		})
 
 		// Switch to sources tab
 		const sourcesTab = screen.getByRole("button", { name: "Sources" })

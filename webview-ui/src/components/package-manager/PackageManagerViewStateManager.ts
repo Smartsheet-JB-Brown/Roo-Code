@@ -46,6 +46,7 @@ export class PackageManagerViewStateManager {
 	private readonly FETCH_TIMEOUT = 30000 // 30 seconds
 	private readonly FILTER_DEBOUNCE = 300 // 300 milliseconds
 	private stateChangeHandlers: Set<StateChangeHandler> = new Set()
+	private sourcesModified = false // Track if sources have been modified
 
 	constructor() {
 		this.state = {
@@ -212,7 +213,16 @@ export class PackageManagerViewStateManager {
 
 				this.notifyStateChange()
 				if (tab === "browse") {
-					void this.transition({ type: "FETCH_ITEMS" })
+					// Always fetch when switching to browse if sources were modified
+					if (this.sourcesModified) {
+						this.sourcesModified = false // Reset the flag
+						void this.transition({ type: "FETCH_ITEMS" })
+					} else {
+						// Only fetch if we don't have any items yet
+						if (this.state.allItems.length === 0) {
+							void this.transition({ type: "FETCH_ITEMS" })
+						}
+					}
 				}
 				break
 			}
@@ -297,6 +307,7 @@ export class PackageManagerViewStateManager {
 				// If all sources are removed, add the default source
 				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : sources
 				this.state.sources = updatedSources
+				this.sourcesModified = true // Set the flag when sources are modified
 				this.notifyStateChange()
 
 				vscode.postMessage({

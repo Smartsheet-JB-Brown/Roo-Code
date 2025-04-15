@@ -85,7 +85,7 @@ describe("PackageManagerViewStateManager", () => {
 			expect(state.sources).toEqual([
 				{
 					url: "https://github.com/RooVetGit/Roo-Code-Packages",
-					name: "Roo Code Package Manager Template",
+					name: "Roo Code",
 					enabled: true,
 				},
 			])
@@ -96,7 +96,7 @@ describe("PackageManagerViewStateManager", () => {
 				sources: [
 					{
 						url: "https://github.com/RooVetGit/Roo-Code-Packages",
-						name: "Roo Code Package Manager Template",
+						name: "Roo Code",
 						enabled: true,
 					},
 				],
@@ -272,7 +272,7 @@ describe("PackageManagerViewStateManager", () => {
 			expect(state.sources).toEqual([
 				{
 					url: "https://github.com/RooVetGit/Roo-Code-Packages",
-					name: "Roo Code Package Manager Template",
+					name: "Roo Code",
 					enabled: true,
 				},
 			])
@@ -283,7 +283,7 @@ describe("PackageManagerViewStateManager", () => {
 				sources: [
 					{
 						url: "https://github.com/RooVetGit/Roo-Code-Packages",
-						name: "Roo Code Package Manager Template",
+						name: "Roo Code",
 						enabled: true,
 					},
 				],
@@ -474,12 +474,62 @@ describe("PackageManagerViewStateManager", () => {
 			expect(state.activeTab).toBe("sources")
 		})
 
-		it("should trigger fetch when switching to browse tab", async () => {
+		it("should trigger fetch when switching to browse tab with no items", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
 			await manager.transition({
 				type: "SET_ACTIVE_TAB",
 				payload: { tab: "browse" },
 			})
 
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "fetchPackageManagerItems",
+				bool: true,
+			})
+		})
+
+		it("should not trigger fetch when switching to browse tab with existing items", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
+
+			// Add some items first
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items: [createTestItem()] },
+			})
+
+			// Switch to browse tab
+			await manager.transition({
+				type: "SET_ACTIVE_TAB",
+				payload: { tab: "browse" },
+			})
+
+			expect(vscode.postMessage).not.toHaveBeenCalledWith({
+				type: "fetchPackageManagerItems",
+				bool: true,
+			})
+		})
+
+		it("should trigger fetch when switching to browse tab after source modification", async () => {
+			jest.clearAllMocks() // Clear mock to ignore initialize() call
+
+			// Add some items first
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items: [createTestItem()] },
+			})
+
+			// Modify sources
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources: [{ url: "https://github.com/test/repo1", enabled: true }] },
+			})
+
+			// Switch to browse tab
+			await manager.transition({
+				type: "SET_ACTIVE_TAB",
+				payload: { tab: "browse" },
+			})
+
+			// Should trigger fetch due to source modification
 			expect(vscode.postMessage).toHaveBeenCalledWith({
 				type: "fetchPackageManagerItems",
 				bool: true,
@@ -570,7 +620,7 @@ describe("PackageManagerViewStateManager", () => {
 				sources: [
 					{
 						url: "https://github.com/RooVetGit/Roo-Code-Packages",
-						name: "Roo Code Package Manager Template",
+						name: "Roo Code",
 						enabled: true,
 					},
 				],

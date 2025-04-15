@@ -27,6 +27,11 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 		})
 	}, [state.allItems])
 
+	// Fetch items on mount
+	useEffect(() => {
+		manager.transition({ type: "FETCH_ITEMS" })
+	}, [manager])
+
 	// Compute all available tags
 	const allTags = Array.from(new Set(state.allItems.flatMap((item) => item.tags || []))).sort()
 
