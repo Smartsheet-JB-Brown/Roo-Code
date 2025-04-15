@@ -183,12 +183,13 @@ export class PackageManagerViewStateManager {
 				// Clear any existing timeout
 				this.clearFetchTimeout()
 
-				// Create a new state object
+				// Create a new state object with sorted items
+				const sortedItems = this.sortItems([...items])
 				const newState = {
 					...this.state,
 					isFetching: false,
-					allItems: [...items],
-					displayItems: this.isFilterActive() ? this.state.displayItems : [...items],
+					allItems: sortedItems,
+					displayItems: this.isFilterActive() ? this.state.displayItems : sortedItems,
 				}
 
 				// If filters are active, apply them to the new items
@@ -337,6 +338,11 @@ export class PackageManagerViewStateManager {
 					...this.state.sortConfig,
 					...sortConfig,
 				}
+				// Apply sorting to both allItems and displayItems
+				this.state.allItems = this.sortItems(this.state.allItems)
+				if (this.state.displayItems) {
+					this.state.displayItems = this.sortItems(this.state.displayItems)
+				}
 				this.notifyStateChange()
 				break
 			}
@@ -410,6 +416,23 @@ export class PackageManagerViewStateManager {
 
 	private isFilterActive(): boolean {
 		return !!(this.state.filters.type || this.state.filters.search || this.state.filters.tags.length > 0)
+	}
+
+	private sortItems(items: PackageManagerItem[]): PackageManagerItem[] {
+		const { by, order } = this.state.sortConfig
+		return [...items].sort((a, b) => {
+			let aValue = a[by] || ""
+			let bValue = b[by] || ""
+
+			// Handle dates for lastUpdated
+			if (by === "lastUpdated") {
+				aValue = aValue || "1970-01-01T00:00:00Z"
+				bValue = bValue || "1970-01-01T00:00:00Z"
+			}
+
+			const comparison = aValue.localeCompare(bValue)
+			return order === "asc" ? comparison : -comparison
+		})
 	}
 
 	public async handleMessage(message: any): Promise<void> {

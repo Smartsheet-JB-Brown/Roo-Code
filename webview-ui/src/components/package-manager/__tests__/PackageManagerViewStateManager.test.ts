@@ -843,19 +843,103 @@ describe("PackageManagerViewStateManager", () => {
 	})
 
 	describe("Sort Transitions", () => {
-		it("should handle UPDATE_SORT transition", async () => {
-			const sortConfig = {
-				by: "lastUpdated" as const,
-				order: "desc" as const,
-			}
+		it("should sort items by name in ascending order", async () => {
+			const items = [
+				createTestItem({ name: "B Component" }),
+				createTestItem({ name: "A Component" }),
+				createTestItem({ name: "C Component" }),
+			]
+
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items },
+			})
 
 			await manager.transition({
 				type: "UPDATE_SORT",
-				payload: { sortConfig },
+				payload: { sortConfig: { by: "name", order: "asc" } },
 			})
 
 			const state = manager.getState()
-			expect(state.sortConfig).toEqual(sortConfig)
+			expect(state.allItems[0].name).toBe("A Component")
+			expect(state.allItems[1].name).toBe("B Component")
+			expect(state.allItems[2].name).toBe("C Component")
+		})
+
+		it("should sort items by lastUpdated in descending order", async () => {
+			const items = [
+				createTestItem({ lastUpdated: "2025-04-13T09:00:00-07:00" }),
+				createTestItem({ lastUpdated: "2025-04-14T09:00:00-07:00" }),
+				createTestItem({ lastUpdated: "2025-04-12T09:00:00-07:00" }),
+			]
+
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items },
+			})
+
+			await manager.transition({
+				type: "UPDATE_SORT",
+				payload: { sortConfig: { by: "lastUpdated", order: "desc" } },
+			})
+
+			const state = manager.getState()
+			expect(state.allItems[0].lastUpdated).toBe("2025-04-14T09:00:00-07:00")
+			expect(state.allItems[1].lastUpdated).toBe("2025-04-13T09:00:00-07:00")
+			expect(state.allItems[2].lastUpdated).toBe("2025-04-12T09:00:00-07:00")
+		})
+
+		it("should maintain sort order when items are updated", async () => {
+			const items = [
+				createTestItem({ name: "B Component" }),
+				createTestItem({ name: "A Component" }),
+				createTestItem({ name: "C Component" }),
+			]
+
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items },
+			})
+
+			await manager.transition({
+				type: "UPDATE_SORT",
+				payload: { sortConfig: { by: "name", order: "asc" } },
+			})
+
+			// Add a new item
+			const newItems = [...items, createTestItem({ name: "D Component" })]
+
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items: newItems },
+			})
+
+			const state = manager.getState()
+			expect(state.allItems[0].name).toBe("A Component")
+			expect(state.allItems[1].name).toBe("B Component")
+			expect(state.allItems[2].name).toBe("C Component")
+			expect(state.allItems[3].name).toBe("D Component")
+		})
+
+		it("should handle missing values gracefully", async () => {
+			const items = [
+				createTestItem({ name: "B Component", lastUpdated: undefined }),
+				createTestItem({ name: "A Component", lastUpdated: "2025-04-14T09:00:00-07:00" }),
+			]
+
+			await manager.transition({
+				type: "FETCH_COMPLETE",
+				payload: { items },
+			})
+
+			await manager.transition({
+				type: "UPDATE_SORT",
+				payload: { sortConfig: { by: "lastUpdated", order: "desc" } },
+			})
+
+			const state = manager.getState()
+			expect(state.allItems[0].lastUpdated).toBe("2025-04-14T09:00:00-07:00")
+			expect(state.allItems[1].lastUpdated).toBeUndefined()
 		})
 	})
 
