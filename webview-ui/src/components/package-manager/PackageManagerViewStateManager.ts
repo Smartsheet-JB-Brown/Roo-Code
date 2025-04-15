@@ -1,6 +1,7 @@
 import { PackageManagerItem, PackageManagerSource } from "../../../../src/services/package-manager/types"
 import { vscode } from "../../utils/vscode"
 import { WebviewMessage } from "../../../../src/shared/WebviewMessage"
+import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../../../src/services/package-manager/constants"
 
 export interface ViewState {
 	allItems: PackageManagerItem[]
@@ -275,12 +276,14 @@ export class PackageManagerViewStateManager {
 
 			case "UPDATE_SOURCES": {
 				const { sources } = transition.payload as TransitionPayloads["UPDATE_SOURCES"]
-				this.state.sources = sources
+				// If all sources are removed, add the default source
+				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : sources
+				this.state.sources = updatedSources
 				this.notifyStateChange()
 
 				vscode.postMessage({
 					type: "packageManagerSources",
-					sources,
+					sources: updatedSources,
 				} as WebviewMessage)
 
 				if (this.state.activeTab === "browse") {

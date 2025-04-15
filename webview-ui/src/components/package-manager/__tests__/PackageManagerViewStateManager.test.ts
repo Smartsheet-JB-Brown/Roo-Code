@@ -231,12 +231,24 @@ describe("PackageManagerViewStateManager", () => {
 			jest.runAllTimers()
 
 			const state = manager.getState()
-			expect(state.sources).toEqual([])
+			expect(state.sources).toEqual([
+				{
+					url: "https://github.com/RooVetGit/Roo-Code-Packages",
+					name: "Roo Code Package Manager Template",
+					enabled: true,
+				},
+			])
 
-			// Should send the final sources state to webview
+			// Should send the final sources state to webview with default source
 			expect(vscode.postMessage).toHaveBeenLastCalledWith({
 				type: "packageManagerSources",
-				sources: [],
+				sources: [
+					{
+						url: "https://github.com/RooVetGit/Roo-Code-Packages",
+						name: "Roo Code Package Manager Template",
+						enabled: true,
+					},
+				],
 			})
 		})
 
@@ -494,6 +506,37 @@ describe("PackageManagerViewStateManager", () => {
 	// Filter behavior tests are already covered in the previous describe block
 
 	describe("Source Management", () => {
+		it("should re-add default source when all sources are removed", async () => {
+			// Add some test sources
+			const sources = [
+				{ url: "https://github.com/test/repo1", enabled: true },
+				{ url: "https://github.com/test/repo2", enabled: true },
+			]
+
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources },
+			})
+
+			// Remove all sources
+			await manager.transition({
+				type: "UPDATE_SOURCES",
+				payload: { sources: [] },
+			})
+
+			// Verify that the default source was automatically re-added
+			expect(vscode.postMessage).toHaveBeenLastCalledWith({
+				type: "packageManagerSources",
+				sources: [
+					{
+						url: "https://github.com/RooVetGit/Roo-Code-Packages",
+						name: "Roo Code Package Manager Template",
+						enabled: true,
+					},
+				],
+			})
+		})
+
 		it("should handle UPDATE_SOURCES transition", async () => {
 			const sources = [
 				{ url: "https://github.com/test/repo", enabled: true },
