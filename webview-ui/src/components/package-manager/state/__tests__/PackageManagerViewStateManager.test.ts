@@ -1,5 +1,5 @@
 import { PackageManagerViewStateManager } from "../PackageManagerViewStateManager"
-import { PackageManagerItem } from "@services/package-manager"
+import { PackageManagerItem } from "@/types/package-manager"
 
 describe("PackageManagerViewStateManager", () => {
 	let stateManager: PackageManagerViewStateManager

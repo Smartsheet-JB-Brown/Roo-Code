@@ -1,4 +1,4 @@
-import { ComponentMetadata, PackageManagerItem } from "@services/package-manager"
+import { ComponentMetadata, PackageManagerItem } from "@/types/package-manager"
 
 interface Filters {
 	type: string
