@@ -1,6 +1,6 @@
 import React from "react"
 import { cn } from "@/lib/utils"
-import { t } from "@/i18n"
+import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface TypeGroupProps {
 	type: string
@@ -18,6 +18,7 @@ interface TypeGroupProps {
 }
 
 export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className }) => {
+	const { t } = useAppTranslation()
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case "mode":

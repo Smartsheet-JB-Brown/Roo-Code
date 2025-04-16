@@ -6,7 +6,7 @@ import { groupItemsByType, GroupedItems } from "../utils/grouping"
 import { ExpandableSection } from "./ExpandableSection"
 import { TypeGroup } from "./TypeGroup"
 import { ViewState } from "../PackageManagerViewStateManager"
-import { t } from "@/i18n"
+import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface PackageManagerItemCardProps {
 	item: PackageManagerItem
@@ -23,6 +23,7 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 	activeTab,
 	setActiveTab,
 }) => {
+	const { t } = useAppTranslation()
 	const isValidUrl = (urlString: string): boolean => {
 		try {
 			new URL(urlString)

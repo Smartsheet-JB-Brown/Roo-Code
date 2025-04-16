@@ -476,50 +476,167 @@ describe("Cline", () => {
 			})
 
 			it("should handle image blocks based on model capabilities", async () => {
-				// Create a single test instance with image support
-				const [cline] = Cline.create({
-					provider: mockProvider,
-					apiConfiguration: {
-						...mockApiConfig,
-						apiModelId: "claude-3-sonnet",
-					},
-					task: "test task",
-				})
+				// Create two configurations - one with image support, one without
+				const configWithImages = {
+					...mockApiConfig,
+					apiModelId: "claude-3-sonnet",
+				}
+				const configWithoutImages = {
+					...mockApiConfig,
+					apiModelId: "gpt-3.5-turbo",
+				}
 
-				// Mock image support
-				jest.spyOn(cline.api, "getModel").mockReturnValue({
-					id: "claude-3-sonnet",
-					info: { supportsImages: true } as ModelInfo,
-				})
-
-				// Set up simple conversation history
-				cline.apiConversationHistory = [
+				// Create test conversation history with mixed content
+				const conversationHistory: (Anthropic.MessageParam & { ts?: number })[] = [
 					{
-						role: "user",
+						role: "user" as const,
 						content: [
-							{ type: "text", text: "Here is an image" },
-							{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "test" } },
+							{
+								type: "text" as const,
+								text: "Here is an image",
+							} satisfies Anthropic.TextBlockParam,
+							{
+								type: "image" as const,
+								source: {
+									type: "base64" as const,
+									media_type: "image/jpeg",
+									data: "base64data",
+								},
+							} satisfies Anthropic.ImageBlockParam,
+						],
+					},
+					{
+						role: "assistant" as const,
+						content: [
+							{
+								type: "text" as const,
+								text: "I see the image",
+							} satisfies Anthropic.TextBlockParam,
 						],
 					},
 				]
 
-				// Mock createMessage
-				const createMessageSpy = jest.fn().mockReturnValue(
-					(async function* () {
-						yield { type: "text", text: "response" }
-					})(),
-				)
-				jest.spyOn(cline.api, "createMessage").mockImplementation(createMessageSpy)
+				// Test with model that supports images
+				const [clineWithImages, taskWithImages] = Cline.create({
+					provider: mockProvider,
+					apiConfiguration: configWithImages,
+					task: "test task",
+				})
 
-				// Trigger request
-				await cline.recursivelyMakeClineRequests([{ type: "text", text: "test" }])
+				// Mock the model info to indicate image support
+				jest.spyOn(clineWithImages.api, "getModel").mockReturnValue({
+					id: "claude-3-sonnet",
+					info: {
+						supportsImages: true,
+						supportsPromptCache: true,
+						supportsComputerUse: true,
+						contextWindow: 200000,
+						maxTokens: 4096,
+						inputPrice: 0.25,
+						outputPrice: 0.75,
+					} as ModelInfo,
+				})
 
-				// Verify image block was preserved
-				const calls = createMessageSpy.mock.calls
-				expect(calls[0][1][0].content[1]).toHaveProperty("type", "image")
+				clineWithImages.apiConversationHistory = conversationHistory
 
-				// Clean up
-				await cline.abortTask(true)
+				// Test with model that doesn't support images
+				const [clineWithoutImages, taskWithoutImages] = Cline.create({
+					provider: mockProvider,
+					apiConfiguration: configWithoutImages,
+					task: "test task",
+				})
+
+				// Mock the model info to indicate no image support
+				jest.spyOn(clineWithoutImages.api, "getModel").mockReturnValue({
+					id: "gpt-3.5-turbo",
+					info: {
+						supportsImages: false,
+						supportsPromptCache: false,
+						supportsComputerUse: false,
+						contextWindow: 16000,
+						maxTokens: 2048,
+						inputPrice: 0.1,
+						outputPrice: 0.2,
+					} as ModelInfo,
+				})
+
+				clineWithoutImages.apiConversationHistory = conversationHistory
+
+				// Mock abort state for both instances
+				Object.defineProperty(clineWithImages, "abort", {
+					get: () => false,
+					set: () => {},
+					configurable: true,
+				})
+
+				Object.defineProperty(clineWithoutImages, "abort", {
+					get: () => false,
+					set: () => {},
+					configurable: true,
+				})
+
+				// Mock environment details and context loading
+				jest.spyOn(clineWithImages as any, "getEnvironmentDetails").mockResolvedValue("")
+				jest.spyOn(clineWithoutImages as any, "getEnvironmentDetails").mockResolvedValue("")
+				jest.spyOn(clineWithImages as any, "loadContext").mockImplementation(async (content) => [content, ""])
+				jest.spyOn(clineWithoutImages as any, "loadContext").mockImplementation(async (content) => [
+					content,
+					"",
+				])
+
+				// Set up mock streams
+				const mockStreamWithImages = (async function* () {
+					yield { type: "text", text: "test response" }
+				})()
+
+				const mockStreamWithoutImages = (async function* () {
+					yield { type: "text", text: "test response" }
+				})()
+
+				// Set up spies
+				const imagesSpy = jest.fn().mockReturnValue(mockStreamWithImages)
+				const noImagesSpy = jest.fn().mockReturnValue(mockStreamWithoutImages)
+
+				jest.spyOn(clineWithImages.api, "createMessage").mockImplementation(imagesSpy)
+				jest.spyOn(clineWithoutImages.api, "createMessage").mockImplementation(noImagesSpy)
+
+				// Set up conversation history with images
+				clineWithImages.apiConversationHistory = [
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "Here is an image" },
+							{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "base64data" } },
+						],
+					},
+				]
+
+				clineWithImages.abandoned = true
+				await taskWithImages.catch(() => {})
+
+				clineWithoutImages.abandoned = true
+				await taskWithoutImages.catch(() => {})
+
+				// Trigger API requests
+				await clineWithImages.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+				await clineWithoutImages.recursivelyMakeClineRequests([{ type: "text", text: "test request" }])
+
+				// Get the calls
+				const imagesCalls = imagesSpy.mock.calls
+				const noImagesCalls = noImagesSpy.mock.calls
+
+				// Verify model with image support preserves image blocks
+				expect(imagesCalls[0][1][0].content).toHaveLength(2)
+				expect(imagesCalls[0][1][0].content[0]).toEqual({ type: "text", text: "Here is an image" })
+				expect(imagesCalls[0][1][0].content[1]).toHaveProperty("type", "image")
+
+				// Verify model without image support converts image blocks to text
+				expect(noImagesCalls[0][1][0].content).toHaveLength(2)
+				expect(noImagesCalls[0][1][0].content[0]).toEqual({ type: "text", text: "Here is an image" })
+				expect(noImagesCalls[0][1][0].content[1]).toEqual({
+					type: "text",
+					text: "[Referenced image in conversation]",
+				})
 			})
 
 			it.skip("should handle API retry with countdown", async () => {

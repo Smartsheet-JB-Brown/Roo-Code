@@ -173,7 +173,6 @@ const extensionConfig = {
 		{
 			name: "alias-plugin",
 			setup(build) {
-				// Handle pkce-challenge alias
 				build.onResolve({ filter: /^pkce-challenge$/ }, (args) => {
 					return { path: require.resolve("pkce-challenge/dist/index.browser.js") }
 				})
