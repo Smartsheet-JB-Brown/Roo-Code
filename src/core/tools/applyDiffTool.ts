@@ -9,6 +9,8 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { addLineNumbers } from "../../integrations/misc/extract-text"
 import path from "path"
 import fs from "fs/promises"
+import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
+import { telemetryService } from "../../services/telemetry/TelemetryService"
 
 export async function applyDiffTool(
 	cline: Cline,
@@ -76,7 +78,6 @@ export async function applyDiffTool(
 				originalContent,
 				diffContent,
 				parseInt(block.params.start_line ?? ""),
-				parseInt(block.params.end_line ?? ""),
 			)) ?? {
 				success: false,
 				error: "No diff strategy available",
@@ -88,6 +89,9 @@ export async function applyDiffTool(
 				const currentCount = (cline.consecutiveMistakeCountForApplyDiff.get(relPath) || 0) + 1
 				cline.consecutiveMistakeCountForApplyDiff.set(relPath, currentCount)
 				let formattedError = ""
+
+				telemetryService.captureDiffApplicationError(cline.taskId, currentCount)
+
 				if (diffResult.failParts && diffResult.failParts.length > 0) {
 					for (const failPart of diffResult.failParts) {
 						if (failPart.success) {
@@ -107,7 +111,7 @@ export async function applyDiffTool(
 				}
 
 				if (currentCount >= 2) {
-					await cline.say("error", formattedError)
+					await cline.say("diff_error", formattedError)
 				}
 				pushToolResult(formattedError)
 				return
@@ -138,6 +142,10 @@ export async function applyDiffTool(
 			}
 
 			const { newProblemsMessage, userEdits, finalContent } = await cline.diffViewProvider.saveChanges()
+			// Track file edit operation
+			if (relPath) {
+				await cline.getFileContextTracker().trackFileContext(relPath, "roo_edited" as RecordSource)
+			}
 			cline.didEditFile = true // used to determine if we should wait for busy terminal to update before sending api request
 			let partFailHint = ""
 			if (diffResult.failParts && diffResult.failParts.length > 0) {

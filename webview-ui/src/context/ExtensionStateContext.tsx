@@ -41,6 +41,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setSoundVolume: (value: number) => void
 	terminalShellIntegrationTimeout?: number
 	setTerminalShellIntegrationTimeout: (value: number) => void
+	terminalZdotdir?: boolean
+	setTerminalZdotdir: (value: boolean) => void
 	setTtsEnabled: (value: boolean) => void
 	setTtsSpeed: (value: number) => void
 	setDiffEnabled: (value: boolean) => void
@@ -60,8 +62,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setAlwaysApproveResubmit: (value: boolean) => void
 	requestDelaySeconds: number
 	setRequestDelaySeconds: (value: number) => void
-	rateLimitSeconds: number
-	setRateLimitSeconds: (value: number) => void
 	setCurrentApiConfigName: (value: string) => void
 	setListApiConfigMeta: (value: ApiConfigMeta[]) => void
 	mode: Mode
@@ -90,6 +90,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	togglePinnedApiConfig: (configName: string) => void
 	packageManagerSources?: PackageManagerSource[]
 	setPackageManagerSources: (value: PackageManagerSource[]) => void
+	setShowGreeting: (value: boolean) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -127,6 +128,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		clineMessages: [],
 		taskHistory: [],
 		shouldShowAnnouncement: false,
+		showGreeting: true,
 		allowedCommands: [],
 		soundEnabled: false,
 		soundVolume: 0.5,
@@ -134,7 +136,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		ttsSpeed: 1.0,
 		diffEnabled: false,
 		enableCheckpoints: true,
-		checkpointStorage: "task",
 		fuzzyMatchThreshold: 1.0,
 		language: "en", // Default language code
 		writeDelayMs: 1000,
@@ -146,7 +147,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		enableMcpServerCreation: true,
 		alwaysApproveResubmit: false,
 		requestDelaySeconds: 5,
-		rateLimitSeconds: 0, // Minimum time between successive requests (0 = disabled)
 		currentApiConfigName: "default",
 		listApiConfigMeta: [],
 		mode: defaultModeSlug,
@@ -166,6 +166,9 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		maxReadFileLine: 500, // Default max read file line limit
 		packageManagerSources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 		pinnedApiConfigs: {}, // Empty object for pinned API configs
+		terminalZshOhMy: false, // Default Oh My Zsh integration setting
+		terminalZshP10k: false, // Default Powerlevel10k integration setting
+		terminalZdotdir: false, // Default ZDOTDIR handling setting
 	})
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
@@ -173,7 +176,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 	const [theme, setTheme] = useState<any>(undefined)
 	const [filePaths, setFilePaths] = useState<string[]>([])
 	const [openedTabs, setOpenedTabs] = useState<Array<{ label: string; isActive: boolean; path?: string }>>([])
-
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 	const [currentCheckpoint, setCurrentCheckpoint] = useState<string>()
 
@@ -190,15 +192,19 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					console.log("DEBUG: ExtensionStateContext received state message:", {
 						hasApiConfig: !!newState.apiConfiguration,
 						hasPackageManagerItems: !!newState.packageManagerItems,
-						packageManagerItemsCount: newState.packageManagerItems?.length || 0
-					});
-					
+						packageManagerItemsCount: newState.packageManagerItems?.length || 0,
+					})
+
 					setState((prevState) => mergeExtensionState(prevState, newState))
-					
-					const shouldShowWelcome = !checkExistKey(newState.apiConfiguration);
-					console.log("DEBUG: Setting showWelcome to", shouldShowWelcome,
-						"based on apiConfiguration check:", newState.apiConfiguration ? "has config" : "missing config");
-					
+
+					const shouldShowWelcome = !checkExistKey(newState.apiConfiguration)
+					console.log(
+						"DEBUG: Setting showWelcome to",
+						shouldShowWelcome,
+						"based on apiConfiguration check:",
+						newState.apiConfiguration ? "has config" : "missing config",
+					)
+
 					setShowWelcome(shouldShowWelcome)
 					setDidHydrateState(true)
 					break
@@ -307,12 +313,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 			setState((prevState) => ({ ...prevState, terminalOutputLineLimit: value })),
 		setTerminalShellIntegrationTimeout: (value) =>
 			setState((prevState) => ({ ...prevState, terminalShellIntegrationTimeout: value })),
+		setTerminalZdotdir: (value) => setState((prevState) => ({ ...prevState, terminalZdotdir: value })),
 		setMcpEnabled: (value) => setState((prevState) => ({ ...prevState, mcpEnabled: value })),
 		setEnableMcpServerCreation: (value) =>
 			setState((prevState) => ({ ...prevState, enableMcpServerCreation: value })),
 		setAlwaysApproveResubmit: (value) => setState((prevState) => ({ ...prevState, alwaysApproveResubmit: value })),
 		setRequestDelaySeconds: (value) => setState((prevState) => ({ ...prevState, requestDelaySeconds: value })),
-		setRateLimitSeconds: (value) => setState((prevState) => ({ ...prevState, rateLimitSeconds: value })),
 		setCurrentApiConfigName: (value) => setState((prevState) => ({ ...prevState, currentApiConfigName: value })),
 		setListApiConfigMeta,
 		setMode: (value: Mode) => setState((prevState) => ({ ...prevState, mode: value })),
@@ -331,6 +337,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setAwsUsePromptCache: (value) => setState((prevState) => ({ ...prevState, awsUsePromptCache: value })),
 		setMaxReadFileLine: (value) => setState((prevState) => ({ ...prevState, maxReadFileLine: value })),
 		setPinnedApiConfigs: (value) => setState((prevState) => ({ ...prevState, pinnedApiConfigs: value })),
+		setShowGreeting: (value) => setState((prevState) => ({ ...prevState, showGreeting: value })),
 		togglePinnedApiConfig: (configId) =>
 			setState((prevState) => {
 				const currentPinned = prevState.pinnedApiConfigs || {}

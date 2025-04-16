@@ -81,7 +81,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "apr-04-2025-boomerang" // update for Boomerang Tasks announcement
+	public readonly latestAnnouncementId = "apr-16-2025-3-12" // update for v3.12.0 announcement
 	public readonly contextProxy: ContextProxy
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
@@ -187,7 +187,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	// remove the current task/cline instance (at the top of the stack), ao this task is finished
 	// and resume the previous task/cline instance (if it exists)
 	// this is used when a sub task is finished and the parent task needs to be resumed
-	async finishSubTask(lastMessage?: string) {
+	async finishSubTask(lastMessage: string) {
 		console.log(`[subtasks] finishing subtask ${lastMessage}`)
 		// remove the last cline instance from the stack (this is the finished sub task)
 		await this.removeClineFromStack()
@@ -272,6 +272,9 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		promptType: keyof typeof ACTION_NAMES,
 		params: Record<string, string | any[]>,
 	): Promise<void> {
+		// Capture telemetry for code action usage
+		telemetryService.captureCodeActionUsed(promptType)
+
 		const visibleProvider = await ClineProvider.getInstance()
 
 		if (!visibleProvider) {
@@ -305,6 +308,8 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		promptType: "TERMINAL_ADD_TO_CONTEXT" | "TERMINAL_FIX" | "TERMINAL_EXPLAIN",
 		params: Record<string, string | any[]>,
 	): Promise<void> {
+		// Capture telemetry for terminal action usage
+		telemetryService.captureCodeActionUsed(promptType)
 		const visibleProvider = await ClineProvider.getInstance()
 		if (!visibleProvider) {
 			return
@@ -354,10 +359,29 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		}
 
 		// Initialize out-of-scope variables that need to recieve persistent global state values
-		this.getState().then(({ soundEnabled, terminalShellIntegrationTimeout }) => {
-			setSoundEnabled(soundEnabled ?? false)
-			Terminal.setShellIntegrationTimeout(terminalShellIntegrationTimeout ?? TERMINAL_SHELL_INTEGRATION_TIMEOUT)
-		})
+		this.getState().then(
+			({
+				soundEnabled,
+				terminalShellIntegrationTimeout,
+				terminalCommandDelay,
+				terminalZshClearEolMark,
+				terminalZshOhMy,
+				terminalZshP10k,
+				terminalPowershellCounter,
+				terminalZdotdir,
+			}) => {
+				setSoundEnabled(soundEnabled ?? false)
+				Terminal.setShellIntegrationTimeout(
+					terminalShellIntegrationTimeout ?? TERMINAL_SHELL_INTEGRATION_TIMEOUT,
+				)
+				Terminal.setCommandDelay(terminalCommandDelay ?? 0)
+				Terminal.setTerminalZshClearEolMark(terminalZshClearEolMark ?? true)
+				Terminal.setTerminalZshOhMy(terminalZshOhMy ?? false)
+				Terminal.setTerminalZshP10k(terminalZshP10k ?? false)
+				Terminal.setPowershellCounter(terminalPowershellCounter ?? false)
+				Terminal.setTerminalZdotdir(terminalZdotdir ?? false)
+			},
+		)
 
 		// Initialize tts enabled state
 		this.getState().then(({ ttsEnabled }) => {
@@ -462,7 +486,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 				| "customInstructions"
 				| "enableDiff"
 				| "enableCheckpoints"
-				| "checkpointStorage"
 				| "fuzzyMatchThreshold"
 				| "consecutiveMistakeLimit"
 				| "experiments"
@@ -474,7 +497,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			customModePrompts,
 			diffEnabled: enableDiff,
 			enableCheckpoints,
-			checkpointStorage,
 			fuzzyMatchThreshold,
 			mode,
 			customInstructions: globalInstructions,
@@ -490,7 +512,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			customInstructions: effectiveInstructions,
 			enableDiff,
 			enableCheckpoints,
-			checkpointStorage,
 			fuzzyMatchThreshold,
 			task,
 			images,
@@ -519,7 +540,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			customModePrompts,
 			diffEnabled: enableDiff,
 			enableCheckpoints,
-			checkpointStorage,
 			fuzzyMatchThreshold,
 			mode,
 			customInstructions: globalInstructions,
@@ -529,38 +549,12 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const modePrompt = customModePrompts?.[mode] as PromptComponent
 		const effectiveInstructions = [globalInstructions, modePrompt?.customInstructions].filter(Boolean).join("\n\n")
 
-		const taskId = historyItem.id
-		const globalStorageDir = this.contextProxy.globalStorageUri.fsPath
-		const workspaceDir = this.cwd
-
-		const checkpoints: Pick<ClineOptions, "enableCheckpoints" | "checkpointStorage"> = {
-			enableCheckpoints,
-			checkpointStorage,
-		}
-
-		if (enableCheckpoints) {
-			try {
-				checkpoints.checkpointStorage = await ShadowCheckpointService.getTaskStorage({
-					taskId,
-					globalStorageDir,
-					workspaceDir,
-				})
-
-				this.log(
-					`[ClineProvider#initClineWithHistoryItem] Using ${checkpoints.checkpointStorage} storage for ${taskId}`,
-				)
-			} catch (error) {
-				checkpoints.enableCheckpoints = false
-				this.log(`[ClineProvider#initClineWithHistoryItem] Error getting task storage: ${error.message}`)
-			}
-		}
-
 		const cline = new Cline({
 			provider: this,
 			apiConfiguration,
 			customInstructions: effectiveInstructions,
 			enableDiff,
-			...checkpoints,
+			enableCheckpoints,
 			fuzzyMatchThreshold,
 			historyItem,
 			experiments,
@@ -582,7 +576,26 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	}
 
 	private async getHMRHtmlContent(webview: vscode.Webview): Promise<string> {
-		const localPort = "5173"
+		// Try to read the port from the file
+		let localPort = "5173" // Default fallback
+		try {
+			const fs = require("fs")
+			const path = require("path")
+			const portFilePath = path.resolve(__dirname, "../.vite-port")
+
+			if (fs.existsSync(portFilePath)) {
+				localPort = fs.readFileSync(portFilePath, "utf8").trim()
+				console.log(`[ClineProvider:Vite] Using Vite server port from ${portFilePath}: ${localPort}`)
+			} else {
+				console.log(
+					`[ClineProvider:Vite] Port file not found at ${portFilePath}, using default port: ${localPort}`,
+				)
+			}
+		} catch (err) {
+			console.error("[ClineProvider:Vite] Failed to read Vite port file:", err)
+			// Continue with default port if file reading fails
+		}
+
 		const localServerUrl = `localhost:${localPort}`
 
 		// Check if local dev server is running.
@@ -1171,7 +1184,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			ttsSpeed,
 			diffEnabled,
 			enableCheckpoints,
-			checkpointStorage,
 			taskHistory,
 			soundVolume,
 			browserViewportSize,
@@ -1182,12 +1194,17 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			writeDelayMs,
 			terminalOutputLineLimit,
 			terminalShellIntegrationTimeout,
+			terminalCommandDelay,
+			terminalPowershellCounter,
+			terminalZshClearEolMark,
+			terminalZshOhMy,
+			terminalZshP10k,
+			terminalZdotdir,
 			fuzzyMatchThreshold,
 			mcpEnabled,
 			enableMcpServerCreation,
 			alwaysApproveResubmit,
 			requestDelaySeconds,
-			rateLimitSeconds,
 			currentApiConfigName,
 			listApiConfigMeta,
 			pinnedApiConfigs,
@@ -1203,6 +1220,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			telemetrySetting,
 			showRooIgnoredFiles,
 			language,
+			showGreeting,
 			maxReadFileLine,
 			packageManagerSources,
 		} = await this.getState()
@@ -1242,7 +1260,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			ttsSpeed: ttsSpeed ?? 1.0,
 			diffEnabled: diffEnabled ?? true,
 			enableCheckpoints: enableCheckpoints ?? true,
-			checkpointStorage: checkpointStorage ?? "task",
 			shouldShowAnnouncement:
 				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
 			allowedCommands,
@@ -1255,12 +1272,17 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			writeDelayMs: writeDelayMs ?? 1000,
 			terminalOutputLineLimit: terminalOutputLineLimit ?? 500,
 			terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? TERMINAL_SHELL_INTEGRATION_TIMEOUT,
+			terminalCommandDelay: terminalCommandDelay ?? 0,
+			terminalPowershellCounter: terminalPowershellCounter ?? false,
+			terminalZshClearEolMark: terminalZshClearEolMark ?? true,
+			terminalZshOhMy: terminalZshOhMy ?? false,
+			terminalZshP10k: terminalZshP10k ?? false,
+			terminalZdotdir: terminalZdotdir ?? false,
 			fuzzyMatchThreshold: fuzzyMatchThreshold ?? 1.0,
 			mcpEnabled: mcpEnabled ?? true,
 			enableMcpServerCreation: enableMcpServerCreation ?? true,
 			alwaysApproveResubmit: alwaysApproveResubmit ?? false,
 			requestDelaySeconds: requestDelaySeconds ?? 10,
-			rateLimitSeconds: rateLimitSeconds ?? 0,
 			currentApiConfigName: currentApiConfigName ?? "default",
 			listApiConfigMeta: listApiConfigMeta ?? [],
 			pinnedApiConfigs: pinnedApiConfigs ?? {},
@@ -1285,6 +1307,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			maxReadFileLine: maxReadFileLine ?? 500,
 			settingsImportedAt: this.settingsImportedAt,
 			packageManagerSources: packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
+			showGreeting: showGreeting ?? true, // Ensure showGreeting is included in the returned state
 		}
 	}
 
@@ -1315,6 +1338,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			apiConfiguration: providerSettings,
 			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
 			customInstructions: stateValues.customInstructions,
+			apiModelId: stateValues.apiModelId,
 			alwaysAllowReadOnly: stateValues.alwaysAllowReadOnly ?? false,
 			alwaysAllowReadOnlyOutsideWorkspace: stateValues.alwaysAllowReadOnlyOutsideWorkspace ?? false,
 			alwaysAllowWrite: stateValues.alwaysAllowWrite ?? false,
@@ -1331,7 +1355,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			ttsSpeed: stateValues.ttsSpeed ?? 1.0,
 			diffEnabled: stateValues.diffEnabled ?? true,
 			enableCheckpoints: stateValues.enableCheckpoints ?? true,
-			checkpointStorage: stateValues.checkpointStorage ?? "task",
 			soundVolume: stateValues.soundVolume,
 			browserViewportSize: stateValues.browserViewportSize ?? "900x600",
 			screenshotQuality: stateValues.screenshotQuality ?? 75,
@@ -1343,13 +1366,18 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			terminalOutputLineLimit: stateValues.terminalOutputLineLimit ?? 500,
 			terminalShellIntegrationTimeout:
 				stateValues.terminalShellIntegrationTimeout ?? TERMINAL_SHELL_INTEGRATION_TIMEOUT,
+			terminalCommandDelay: stateValues.terminalCommandDelay ?? 0,
+			terminalPowershellCounter: stateValues.terminalPowershellCounter ?? false,
+			terminalZshClearEolMark: stateValues.terminalZshClearEolMark ?? true,
+			terminalZshOhMy: stateValues.terminalZshOhMy ?? false,
+			terminalZshP10k: stateValues.terminalZshP10k ?? false,
+			terminalZdotdir: stateValues.terminalZdotdir ?? false,
 			mode: stateValues.mode ?? defaultModeSlug,
 			language: stateValues.language ?? formatLanguage(vscode.env.language),
 			mcpEnabled: stateValues.mcpEnabled ?? true,
 			enableMcpServerCreation: stateValues.enableMcpServerCreation ?? true,
 			alwaysApproveResubmit: stateValues.alwaysApproveResubmit ?? false,
 			requestDelaySeconds: Math.max(5, stateValues.requestDelaySeconds ?? 10),
-			rateLimitSeconds: stateValues.rateLimitSeconds ?? 0,
 			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
@@ -1368,6 +1396,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
 			packageManagerSources: stateValues.packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
+			showGreeting: stateValues.showGreeting ?? true, // Ensure showGreeting is returned by getState
 		}
 	}
 

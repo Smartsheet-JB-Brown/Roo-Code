@@ -38,3 +38,6 @@ logs
 .clinerules
 memory-bank/
 .roo/**
+
+# Vite development
+.vite-port

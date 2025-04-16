@@ -16,21 +16,16 @@ import { TokenUsage } from "../schemas"
 import { ApiHandler, buildApiHandler } from "../api"
 import { ApiStream } from "../api/transform/stream"
 import { DIFF_VIEW_URI_SCHEME, DiffViewProvider } from "../integrations/editor/DiffViewProvider"
-import {
-	CheckpointServiceOptions,
-	RepoPerTaskCheckpointService,
-	RepoPerWorkspaceCheckpointService,
-} from "../services/checkpoints"
+import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../services/checkpoints"
 import { findToolName, formatContentBlockToMarkdown } from "../integrations/misc/export-markdown"
 import { fetchInstructionsTool } from "./tools/fetchInstructionsTool"
 import { listFilesTool } from "./tools/listFilesTool"
 import { readFileTool } from "./tools/readFileTool"
-import { ExitCodeDetails } from "../integrations/terminal/TerminalProcess"
+import { ExitCodeDetails, TerminalProcess } from "../integrations/terminal/TerminalProcess"
 import { Terminal } from "../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../integrations/terminal/TerminalRegistry"
 import { UrlContentFetcher } from "../services/browser/UrlContentFetcher"
 import { listFiles } from "../services/glob/list-files"
-import { CheckpointStorage } from "../shared/checkpoints"
 import { ApiConfiguration } from "../shared/api"
 import { findLastIndex } from "../shared/array"
 import { combineApiRequests } from "../shared/combineApiRequests"
@@ -53,6 +48,7 @@ import { calculateApiCostAnthropic } from "../utils/cost"
 import { fileExistsAtPath } from "../utils/fs"
 import { arePathsEqual } from "../utils/path"
 import { parseMentions } from "./mentions"
+import { FileContextTracker } from "./context-tracking/FileContextTracker"
 import { RooIgnoreController } from "./ignore/RooIgnoreController"
 import { AssistantMessageContent, parseAssistantMessage, ToolParamName, ToolUseName } from "./assistant-message"
 import { formatResponse } from "./prompts/responses"
@@ -103,7 +99,6 @@ export type ClineOptions = {
 	customInstructions?: string
 	enableDiff?: boolean
 	enableCheckpoints?: boolean
-	checkpointStorage?: CheckpointStorage
 	fuzzyMatchThreshold?: number
 	consecutiveMistakeLimit?: number
 	task?: string
@@ -130,6 +125,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 	readonly apiConfiguration: ApiConfiguration
 	api: ApiHandler
+	private fileContextTracker: FileContextTracker
 	private urlContentFetcher: UrlContentFetcher
 	browserSession: BrowserSession
 	didEditFile: boolean = false
@@ -160,8 +156,8 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 	// checkpoints
 	private enableCheckpoints: boolean
-	private checkpointStorage: CheckpointStorage
-	private checkpointService?: RepoPerTaskCheckpointService | RepoPerWorkspaceCheckpointService
+	private checkpointService?: RepoPerTaskCheckpointService
+	private checkpointServiceInitializing = false
 
 	// streaming
 	isWaitingForFirstChunk = false
@@ -182,7 +178,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 		customInstructions,
 		enableDiff = false,
 		enableCheckpoints = true,
-		checkpointStorage = "task",
 		fuzzyMatchThreshold = 1.0,
 		consecutiveMistakeLimit = 3,
 		task,
@@ -201,14 +196,15 @@ export class Cline extends EventEmitter<ClineEvents> {
 			throw new Error("Either historyItem or task/images must be provided")
 		}
 
-		this.rooIgnoreController = new RooIgnoreController(this.cwd)
-		this.rooIgnoreController.initialize().catch((error) => {
-			console.error("Failed to initialize RooIgnoreController:", error)
-		})
-
 		this.taskId = historyItem ? historyItem.id : crypto.randomUUID()
 		this.instanceId = crypto.randomUUID().slice(0, 8)
 		this.taskNumber = -1
+
+		this.rooIgnoreController = new RooIgnoreController(this.cwd)
+		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
+		this.rooIgnoreController.initialize().catch((error) => {
+			console.error("Failed to initialize RooIgnoreController:", error)
+		})
 		this.apiConfiguration = apiConfiguration
 		this.api = buildApiHandler(apiConfiguration)
 		this.urlContentFetcher = new UrlContentFetcher(provider.context)
@@ -220,7 +216,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 		this.providerRef = new WeakRef(provider)
 		this.diffViewProvider = new DiffViewProvider(this.cwd)
 		this.enableCheckpoints = enableCheckpoints
-		this.checkpointStorage = checkpointStorage
 
 		this.rootTask = rootTask
 		this.parentTask = parentTask
@@ -612,7 +607,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		])
 	}
 
-	async resumePausedTask(lastMessage?: string) {
+	async resumePausedTask(lastMessage: string) {
 		// release this Cline instance from paused state
 		this.isPaused = false
 		this.emit("taskUnpaused")
@@ -620,14 +615,14 @@ export class Cline extends EventEmitter<ClineEvents> {
 		// fake an answer from the subtask that it has completed running and this is the result of what it has done
 		// add the message to the chat history and to the webview ui
 		try {
-			await this.say("text", `${lastMessage ?? "Please continue to the next task."}`)
+			await this.say("subtask_result", lastMessage)
 
 			await this.addToApiConversationHistory({
 				role: "user",
 				content: [
 					{
 						type: "text",
-						text: `[new_task completed] Result: ${lastMessage ?? "Please continue to the next task."}`,
+						text: `[new_task completed] Result: ${lastMessage}`,
 					},
 				],
 			})
@@ -845,7 +840,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		newUserContent.push({
 			type: "text",
 			text:
-				`[TASK RESUMPTION] This task was interrupted ${agoText}. It may or may not be complete, so please reassess the task context. Be aware that the project state may have changed since then. The current working directory is now '${this.cwd.toPosix()}'. If the task has not been completed, retry the last step before interruption and proceed with completing the task.\n\nNote: If you previously attempted a tool use that the user did not provide a result for, you should assume the tool use was not successful and assess whether you should retry. If the last tool was a browser_action, the browser has been closed and you must launch a new browser if needed.${
+				`[TASK RESUMPTION] This task was interrupted ${agoText}. It may or may not be complete, so please reassess the task context. Be aware that the project state may have changed since then. If the task has not been completed, retry the last step before interruption and proceed with completing the task.\n\nNote: If you previously attempted a tool use that the user did not provide a result for, you should assume the tool use was not successful and assess whether you should retry. If the last tool was a browser_action, the browser has been closed and you must launch a new browser if needed.${
 					wasRecent
 						? "\n\nIMPORTANT: If the last tool use was a write_to_file that was interrupted, the file was reverted back to its original state before the interrupted edit, and you do NOT need to re-read the file as you already have its up-to-date contents."
 						: ""
@@ -929,6 +924,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		this.urlContentFetcher.closeBrowser()
 		this.browserSession.closeBrowser()
 		this.rooIgnoreController?.dispose()
+		this.fileContextTracker.dispose()
 
 		// If we're not streaming then `abortStream` (which reverts the diff
 		// view changes) won't be called, so we need to revert the changes here.
@@ -965,11 +961,14 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 		const workingDirInfo = workingDir ? ` from '${workingDir.toPosix()}'` : ""
 		terminalInfo.terminal.show() // weird visual bug when creating new terminals (even manually) where there's an empty space at the top.
-		const process = terminalInfo.runCommand(command)
-
 		let userFeedback: { text?: string; images?: string[] } | undefined
 		let didContinue = false
-		const sendCommandOutput = async (line: string): Promise<void> => {
+		let completed = false
+		let result: string = ""
+		let exitDetails: ExitCodeDetails | undefined
+		const { terminalOutputLineLimit = 500 } = (await this.providerRef.deref()?.getState()) ?? {}
+
+		const sendCommandOutput = async (line: string, terminalProcess: TerminalProcess): Promise<void> => {
 			try {
 				const { response, text, images } = await this.ask("command_output", line)
 				if (response === "yesButtonClicked") {
@@ -978,37 +977,30 @@ export class Cline extends EventEmitter<ClineEvents> {
 					userFeedback = { text, images }
 				}
 				didContinue = true
-				process.continue() // continue past the await
+				terminalProcess.continue() // continue past the await
 			} catch {
 				// This can only happen if this ask promise was ignored, so ignore this error
 			}
 		}
 
-		const { terminalOutputLineLimit = 500 } = (await this.providerRef.deref()?.getState()) ?? {}
-
-		process.on("line", (line) => {
-			if (!didContinue) {
-				sendCommandOutput(Terminal.compressTerminalOutput(line, terminalOutputLineLimit))
-			} else {
-				this.say("command_output", Terminal.compressTerminalOutput(line, terminalOutputLineLimit))
-			}
-		})
-
-		let completed = false
-		let result: string = ""
-		let exitDetails: ExitCodeDetails | undefined
-		process.once("completed", (output?: string) => {
-			// Use provided output if available, otherwise keep existing result.
-			result = output ?? ""
-			completed = true
-		})
-
-		process.once("shell_execution_complete", (details: ExitCodeDetails) => {
-			exitDetails = details
-		})
-
-		process.once("no_shell_integration", async (message: string) => {
-			await this.say("shell_integration_warning", message)
+		const process = terminalInfo.runCommand(command, {
+			onLine: (line, process) => {
+				if (!didContinue) {
+					sendCommandOutput(Terminal.compressTerminalOutput(line, terminalOutputLineLimit), process)
+				} else {
+					this.say("command_output", Terminal.compressTerminalOutput(line, terminalOutputLineLimit))
+				}
+			},
+			onCompleted: (output) => {
+				result = output ?? ""
+				completed = true
+			},
+			onShellExecutionComplete: (details) => {
+				exitDetails = details
+			},
+			onNoShellIntegration: async (message) => {
+				await this.say("shell_integration_warning", message)
+			},
 		})
 
 		await process
@@ -1021,6 +1013,25 @@ export class Cline extends EventEmitter<ClineEvents> {
 		await delay(50)
 
 		result = Terminal.compressTerminalOutput(result, terminalOutputLineLimit)
+
+		// keep in case we need it to troubleshoot user issues, but this should be removed in the future
+		// if everything looks good:
+		console.debug(
+			"[execute_command status]",
+			JSON.stringify(
+				{
+					completed,
+					userFeedback,
+					hasResult: result.length > 0,
+					exitDetails,
+					terminalId: terminalInfo.id,
+					workingDir: workingDirInfo,
+					isTerminalBusy: terminalInfo.busy,
+				},
+				null,
+				2,
+			),
+		)
 
 		if (userFeedback) {
 			await this.say("user_feedback", userFeedback.text, userFeedback.images)
@@ -1059,7 +1070,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 			const newWorkingDir = terminalInfo.getCurrentWorkingDirectory()
 
 			if (newWorkingDir !== workingDir) {
-				workingDirInfo += `; command changed working directory for this terminal to '${newWorkingDir.toPosix()} so be aware that future commands will be executed from this directory`
+				workingDirInfo += `\nNOTICE: Your command changed the working directory for this terminal to '${newWorkingDir.toPosix()}' so you MUST adjust future commands accordingly because they will be executed in this directory`
 			}
 
 			const outputInfo = `\nOutput:\n${result}`
@@ -1080,7 +1091,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 	async *attemptApiRequest(previousApiReqIndex: number, retryAttempt: number = 0): ApiStream {
 		let mcpHub: McpHub | undefined
 
-		const { mcpEnabled, alwaysApproveResubmit, requestDelaySeconds, rateLimitSeconds } =
+		const { apiConfiguration, mcpEnabled, alwaysApproveResubmit, requestDelaySeconds } =
 			(await this.providerRef.deref()?.getState()) ?? {}
 
 		let rateLimitDelay = 0
@@ -1089,7 +1100,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		if (this.lastApiRequestTime) {
 			const now = Date.now()
 			const timeSinceLastRequest = now - this.lastApiRequestTime
-			const rateLimit = rateLimitSeconds || 0
+			const rateLimit = apiConfiguration?.rateLimitSeconds || 0
 			rateLimitDelay = Math.ceil(Math.max(0, rateLimit * 1000 - timeSinceLastRequest) / 1000)
 		}
 
@@ -1322,8 +1333,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 		const block = cloneDeep(this.assistantMessageContent[this.currentStreamingContentIndex]) // need to create copy bc while stream is updating the array, it could be updating the reference block properties too
 
-		let isCheckpointPossible = false
-
 		switch (block.type) {
 			case "text": {
 				if (this.didRejectTool || this.didAlreadyUseTool) {
@@ -1460,7 +1469,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 					// Flag a checkpoint as possible since we've used a tool
 					// which may have changed the file system.
-					isCheckpointPossible = true
 				}
 
 				const askApproval = async (
@@ -1495,8 +1503,6 @@ export class Cline extends EventEmitter<ClineEvents> {
 					// and return control to the parent task to continue running the rest of the sub-tasks
 					const toolMessage = JSON.stringify({
 						tool: "finishTask",
-						content:
-							"Subtask completed! You can review the results and suggest any corrections or next steps. If everything looks good, confirm to return the result to the parent task.",
 					})
 
 					return await askApproval("tool", toolMessage)
@@ -1585,6 +1591,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 						break
 					case "read_file":
 						await readFileTool(this, block, askApproval, handleError, pushToolResult, removeClosingTag)
+
 						break
 					case "fetch_instructions":
 						await fetchInstructionsTool(this, block, askApproval, handleError, pushToolResult)
@@ -1664,8 +1671,12 @@ export class Cline extends EventEmitter<ClineEvents> {
 				break
 		}
 
-		if (isCheckpointPossible) {
-			this.checkpointSave()
+		const recentlyModifiedFiles = this.fileContextTracker.getAndClearCheckpointPossibleFile()
+
+		if (recentlyModifiedFiles.length > 0) {
+			// TODO: We can track what file changes were made and only
+			// checkpoint those files, this will be save storage.
+			await this.checkpointSave()
 		}
 
 		/*
@@ -1741,6 +1752,9 @@ export class Cline extends EventEmitter<ClineEvents> {
 						...formatResponse.imageBlocks(images),
 					],
 				)
+
+				// Track consecutive mistake errors in telemetry
+				telemetryService.captureConsecutiveMistakeError(this.taskId)
 			}
 			this.consecutiveMistakeCount = 0
 		}
@@ -1785,18 +1799,17 @@ export class Cline extends EventEmitter<ClineEvents> {
 		)
 
 		const [parsedUserContent, environmentDetails] = await this.loadContext(userContent, includeFileDetails)
-		userContent = parsedUserContent
 		// add environment details as its own text block, separate from tool results
-		userContent.push({ type: "text", text: environmentDetails })
+		const finalUserContent = [...parsedUserContent, { type: "text", text: environmentDetails }] as UserContent
 
-		await this.addToApiConversationHistory({ role: "user", content: userContent })
+		await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 		telemetryService.captureConversationMessage(this.taskId, "user")
 
 		// since we sent off a placeholder api_req_started message to update the webview while waiting to actually start the API request (to load potential details for example), we need to update the text of that message
 		const lastApiReqIndex = findLastIndex(this.clineMessages, (m) => m.say === "api_req_started")
 
 		this.clineMessages[lastApiReqIndex].text = JSON.stringify({
-			request: userContent.map((block) => formatContentBlockToMarkdown(block)).join("\n\n"),
+			request: finalUserContent.map((block) => formatContentBlockToMarkdown(block)).join("\n\n"),
 		} satisfies ClineApiReqInfo)
 
 		await this.saveClineMessages()
@@ -2047,62 +2060,73 @@ export class Cline extends EventEmitter<ClineEvents> {
 	}
 
 	async loadContext(userContent: UserContent, includeFileDetails: boolean = false) {
-		return await Promise.all([
-			// Process userContent array, which contains various block types:
-			// TextBlockParam, ImageBlockParam, ToolUseBlockParam, and ToolResultBlockParam.
-			// We need to apply parseMentions() to:
-			// 1. All TextBlockParam's text (first user message with task)
-			// 2. ToolResultBlockParam's content/context text arrays if it contains "<feedback>" (see formatToolDeniedFeedback, attemptCompletion, executeCommand, and consecutiveMistakeCount >= 3) or "<answer>" (see askFollowupQuestion), we place all user generated content in these tags so they can effectively be used as markers for when we should parse mentions)
-			Promise.all(
-				userContent.map(async (block) => {
-					const shouldProcessMentions = (text: string) =>
-						text.includes("<task>") || text.includes("<feedback>")
+		// Process userContent array, which contains various block types:
+		// TextBlockParam, ImageBlockParam, ToolUseBlockParam, and ToolResultBlockParam.
+		// We need to apply parseMentions() to:
+		// 1. All TextBlockParam's text (first user message with task)
+		// 2. ToolResultBlockParam's content/context text arrays if it contains "<feedback>" (see formatToolDeniedFeedback, attemptCompletion, executeCommand, and consecutiveMistakeCount >= 3) or "<answer>" (see askFollowupQuestion), we place all user generated content in these tags so they can effectively be used as markers for when we should parse mentions)
+		const parsedUserContent = await Promise.all(
+			userContent.map(async (block) => {
+				const shouldProcessMentions = (text: string) => text.includes("<task>") || text.includes("<feedback>")
 
-					if (block.type === "text") {
-						if (shouldProcessMentions(block.text)) {
-							return {
-								...block,
-								text: await parseMentions(block.text, this.cwd, this.urlContentFetcher),
-							}
+				if (block.type === "text") {
+					if (shouldProcessMentions(block.text)) {
+						return {
+							...block,
+							text: await parseMentions(
+								block.text,
+								this.cwd,
+								this.urlContentFetcher,
+								this.fileContextTracker,
+							),
 						}
-						return block
-					} else if (block.type === "tool_result") {
-						if (typeof block.content === "string") {
-							if (shouldProcessMentions(block.content)) {
-								return {
-									...block,
-									content: await parseMentions(block.content, this.cwd, this.urlContentFetcher),
-								}
-							}
-							return block
-						} else if (Array.isArray(block.content)) {
-							const parsedContent = await Promise.all(
-								block.content.map(async (contentBlock) => {
-									if (contentBlock.type === "text" && shouldProcessMentions(contentBlock.text)) {
-										return {
-											...contentBlock,
-											text: await parseMentions(
-												contentBlock.text,
-												this.cwd,
-												this.urlContentFetcher,
-											),
-										}
-									}
-									return contentBlock
-								}),
-							)
-							return {
-								...block,
-								content: parsedContent,
-							}
-						}
-						return block
 					}
 					return block
-				}),
-			),
-			this.getEnvironmentDetails(includeFileDetails),
-		])
+				} else if (block.type === "tool_result") {
+					if (typeof block.content === "string") {
+						if (shouldProcessMentions(block.content)) {
+							return {
+								...block,
+								content: await parseMentions(
+									block.content,
+									this.cwd,
+									this.urlContentFetcher,
+									this.fileContextTracker,
+								),
+							}
+						}
+						return block
+					} else if (Array.isArray(block.content)) {
+						const parsedContent = await Promise.all(
+							block.content.map(async (contentBlock) => {
+								if (contentBlock.type === "text" && shouldProcessMentions(contentBlock.text)) {
+									return {
+										...contentBlock,
+										text: await parseMentions(
+											contentBlock.text,
+											this.cwd,
+											this.urlContentFetcher,
+											this.fileContextTracker,
+										),
+									}
+								}
+								return contentBlock
+							}),
+						)
+						return {
+							...block,
+							content: parsedContent,
+						}
+					}
+					return block
+				}
+				return block
+			}),
+		)
+
+		const environmentDetails = await this.getEnvironmentDetails(includeFileDetails)
+
+		return [parsedUserContent, environmentDetails]
 	}
 
 	async getEnvironmentDetails(includeFileDetails: boolean = false) {
@@ -2253,6 +2277,16 @@ export class Cline extends EventEmitter<ClineEvents> {
 		// 	details += "\n(No errors detected)"
 		// }
 
+		// Add recently modified files section
+		const recentlyModifiedFiles = this.fileContextTracker.getAndClearRecentlyModifiedFiles()
+		if (recentlyModifiedFiles.length > 0) {
+			details +=
+				"\n\n# Recently Modified Files\nThese files have been modified since you last accessed them (file was just edited so you may need to re-read it before editing):"
+			for (const filePath of recentlyModifiedFiles) {
+				details += `\n${filePath}`
+			}
+		}
+
 		if (terminalDetails) {
 			details += terminalDetails
 		}
@@ -2287,6 +2321,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		const {
 			mode,
 			customModes,
+			apiModelId,
 			customModePrompts,
 			experiments = {} as Record<ExperimentId, boolean>,
 			customInstructions: globalCustomInstructions,
@@ -2301,6 +2336,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		details += `\n\n# Current Mode\n`
 		details += `<slug>${currentMode}</slug>\n`
 		details += `<name>${modeDetails.name}</name>\n`
+		details += `<model>${apiModelId}</model>\n`
 		if (Experiments.isEnabled(experiments ?? {}, EXPERIMENT_IDS.POWER_STEERING)) {
 			details += `<role>${modeDetails.roleDefinition}</role>\n`
 			if (modeDetails.customInstructions) {
@@ -2321,7 +2357,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		}
 
 		if (includeFileDetails) {
-			details += `\n\n# Current Working Directory (${this.cwd.toPosix()}) Files\n`
+			details += `\n\n# Current Workspace Directory (${this.cwd.toPosix()}) Files\n`
 			const isDesktop = arePathsEqual(this.cwd, path.join(os.homedir(), "Desktop"))
 			if (isDesktop) {
 				// don't want to immediately access desktop since it would show permission popup
@@ -2355,6 +2391,11 @@ export class Cline extends EventEmitter<ClineEvents> {
 			return this.checkpointService
 		}
 
+		if (this.checkpointServiceInitializing) {
+			console.log("[Cline#getCheckpointService] checkpoint service is still initializing")
+			return undefined
+		}
+
 		const log = (message: string) => {
 			console.log(message)
 
@@ -2365,11 +2406,13 @@ export class Cline extends EventEmitter<ClineEvents> {
 			}
 		}
 
+		console.log("[Cline#getCheckpointService] initializing checkpoints service")
+
 		try {
 			const workspaceDir = getWorkspacePath()
 
 			if (!workspaceDir) {
-				log("[Cline#initializeCheckpoints] workspace folder not found, disabling checkpoints")
+				log("[Cline#getCheckpointService] workspace folder not found, disabling checkpoints")
 				this.enableCheckpoints = false
 				return undefined
 			}
@@ -2377,7 +2420,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 			const globalStorageDir = this.providerRef.deref()?.context.globalStorageUri.fsPath
 
 			if (!globalStorageDir) {
-				log("[Cline#initializeCheckpoints] globalStorageDir not found, disabling checkpoints")
+				log("[Cline#getCheckpointService] globalStorageDir not found, disabling checkpoints")
 				this.enableCheckpoints = false
 				return undefined
 			}
@@ -2389,28 +2432,26 @@ export class Cline extends EventEmitter<ClineEvents> {
 				log,
 			}
 
-			// Only `task` is supported at the moment until we figure out how
-			// to fully isolate the `workspace` variant.
-			// const service =
-			// 	this.checkpointStorage === "task"
-			// 		? RepoPerTaskCheckpointService.create(options)
-			// 		: RepoPerWorkspaceCheckpointService.create(options)
-
 			const service = RepoPerTaskCheckpointService.create(options)
 
+			this.checkpointServiceInitializing = true
+
 			service.on("initialize", () => {
+				log("[Cline#getCheckpointService] service initialized")
+
 				try {
 					const isCheckpointNeeded =
 						typeof this.clineMessages.find(({ say }) => say === "checkpoint_saved") === "undefined"
 
 					this.checkpointService = service
+					this.checkpointServiceInitializing = false
 
 					if (isCheckpointNeeded) {
-						log("[Cline#initializeCheckpoints] no checkpoints found, saving initial checkpoint")
+						log("[Cline#getCheckpointService] no checkpoints found, saving initial checkpoint")
 						this.checkpointSave()
 					}
 				} catch (err) {
-					log("[Cline#initializeCheckpoints] caught error in on('initialize'), disabling checkpoints")
+					log("[Cline#getCheckpointService] caught error in on('initialize'), disabling checkpoints")
 					this.enableCheckpoints = false
 				}
 			})
@@ -2420,21 +2461,23 @@ export class Cline extends EventEmitter<ClineEvents> {
 					this.providerRef.deref()?.postMessageToWebview({ type: "currentCheckpointUpdated", text: to })
 
 					this.say("checkpoint_saved", to, undefined, undefined, { isFirst, from, to }).catch((err) => {
-						log("[Cline#initializeCheckpoints] caught unexpected error in say('checkpoint_saved')")
+						log("[Cline#getCheckpointService] caught unexpected error in say('checkpoint_saved')")
 						console.error(err)
 					})
 				} catch (err) {
 					log(
-						"[Cline#initializeCheckpoints] caught unexpected error in on('checkpoint'), disabling checkpoints",
+						"[Cline#getCheckpointService] caught unexpected error in on('checkpoint'), disabling checkpoints",
 					)
 					console.error(err)
 					this.enableCheckpoints = false
 				}
 			})
 
+			log("[Cline#getCheckpointService] initializing shadow git")
+
 			service.initShadowGit().catch((err) => {
 				log(
-					`[Cline#initializeCheckpoints] caught unexpected error in initShadowGit, disabling checkpoints (${err.message})`,
+					`[Cline#getCheckpointService] caught unexpected error in initShadowGit, disabling checkpoints (${err.message})`,
 				)
 				console.error(err)
 				this.enableCheckpoints = false
@@ -2442,7 +2485,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 
 			return service
 		} catch (err) {
-			log("[Cline#initializeCheckpoints] caught unexpected error, disabling checkpoints")
+			log("[Cline#getCheckpointService] caught unexpected error, disabling checkpoints")
 			this.enableCheckpoints = false
 			return undefined
 		}
@@ -2466,6 +2509,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 				},
 				{ interval, timeout },
 			)
+
 			return service
 		} catch (err) {
 			return undefined
@@ -2527,7 +2571,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		}
 	}
 
-	public checkpointSave() {
+	public async checkpointSave() {
 		const service = this.getCheckpointService()
 
 		if (!service) {
@@ -2538,6 +2582,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 			this.providerRef
 				.deref()
 				?.log("[checkpointSave] checkpoints didn't initialize in time, disabling checkpoints for this task")
+
 			this.enableCheckpoints = false
 			return
 		}
@@ -2545,7 +2590,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 		telemetryService.captureCheckpointCreated(this.taskId)
 
 		// Start the checkpoint process in the background.
-		service.saveCheckpoint(`Task: ${this.taskId}, Time: ${Date.now()}`).catch((err) => {
+		return service.saveCheckpoint(`Task: ${this.taskId}, Time: ${Date.now()}`).catch((err) => {
 			console.error("[Cline#checkpointSave] caught unexpected error, disabling checkpoints", err)
 			this.enableCheckpoints = false
 		})
@@ -2620,5 +2665,10 @@ export class Cline extends EventEmitter<ClineEvents> {
 			this.providerRef.deref()?.log("[checkpointRestore] disabling checkpoints for this task")
 			this.enableCheckpoints = false
 		}
+	}
+
+	// Public accessor for fileContextTracker
+	public getFileContextTracker(): FileContextTracker {
+		return this.fileContextTracker
 	}
 }

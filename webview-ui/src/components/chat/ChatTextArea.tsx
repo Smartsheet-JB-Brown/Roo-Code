@@ -816,7 +816,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"leading-vscode-editor-line-height",
 									"py-2",
 									"px-[9px]",
-									"z-[1000]",
+									"z-10",
 								)}
 								style={{
 									color: "transparent",
@@ -1028,12 +1028,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								]}
 								onChange={(value) => {
 									if (value === "settingsButtonClicked") {
-										vscode.postMessage({ type: "loadApiConfiguration", text: value })
+										vscode.postMessage({
+											type: "loadApiConfiguration",
+											text: value,
+											values: { section: "providers" },
+										})
 									} else {
 										vscode.postMessage({ type: "loadApiConfigurationById", text: value })
 									}
 								}}
-								contentClassName="max-h-[300px] overflow-y-auto"
 								triggerClassName="w-full text-ellipsis overflow-hidden"
 								itemClassName="group"
 								renderItem={({ type, value, label, pinned }) => {

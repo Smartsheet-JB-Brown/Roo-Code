@@ -4,7 +4,7 @@ import pWaitFor from "p-wait-for"
 import * as vscode from "vscode"
 
 import { ClineProvider } from "./ClineProvider"
-import { CheckpointStorage, Language, ApiConfigMeta } from "../../schemas"
+import { Language, ApiConfigMeta } from "../../schemas"
 import { changeLanguage, t } from "../../i18n"
 import { ApiConfiguration } from "../../shared/api"
 import { supportPrompt } from "../../shared/support-prompt"
@@ -473,7 +473,11 @@ export const webviewMessageHandler = async (
 			break
 		case "refreshOpenAiModels":
 			if (message?.values?.baseUrl && message?.values?.apiKey) {
-				const openAiModels = await getOpenAiModels(message?.values?.baseUrl, message?.values?.apiKey)
+				const openAiModels = await getOpenAiModels(
+					message?.values?.baseUrl,
+					message?.values?.apiKey,
+					message?.values?.hostHeader,
+				)
 				provider.postMessageToWebview({ type: "openAiModels", openAiModels })
 			}
 
@@ -691,15 +695,14 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("diffEnabled", diffEnabled)
 			await provider.postStateToWebview()
 			break
+		case "showGreeting":
+			const showGreeting = message.bool ?? true
+			await updateGlobalState("showGreeting", showGreeting)
+			await provider.postStateToWebview()
+			break
 		case "enableCheckpoints":
 			const enableCheckpoints = message.bool ?? true
 			await updateGlobalState("enableCheckpoints", enableCheckpoints)
-			await provider.postStateToWebview()
-			break
-		case "checkpointStorage":
-			console.log(`[ClineProvider] checkpointStorage: ${message.text}`)
-			const checkpointStorage = message.text ?? "task"
-			await updateGlobalState("checkpointStorage", checkpointStorage as CheckpointStorage)
 			await provider.postStateToWebview()
 			break
 		case "browserViewportSize":
@@ -767,10 +770,6 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("requestDelaySeconds", message.value ?? 5)
 			await provider.postStateToWebview()
 			break
-		case "rateLimitSeconds":
-			await updateGlobalState("rateLimitSeconds", message.value ?? 0)
-			await provider.postStateToWebview()
-			break
 		case "writeDelayMs":
 			await updateGlobalState("writeDelayMs", message.value)
 			await provider.postStateToWebview()
@@ -784,6 +783,48 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			if (message.value !== undefined) {
 				Terminal.setShellIntegrationTimeout(message.value)
+			}
+			break
+		case "terminalCommandDelay":
+			await updateGlobalState("terminalCommandDelay", message.value)
+			await provider.postStateToWebview()
+			if (message.value !== undefined) {
+				Terminal.setCommandDelay(message.value)
+			}
+			break
+		case "terminalPowershellCounter":
+			await updateGlobalState("terminalPowershellCounter", message.bool)
+			await provider.postStateToWebview()
+			if (message.bool !== undefined) {
+				Terminal.setPowershellCounter(message.bool)
+			}
+			break
+		case "terminalZshClearEolMark":
+			await updateGlobalState("terminalZshClearEolMark", message.bool)
+			await provider.postStateToWebview()
+			if (message.bool !== undefined) {
+				Terminal.setTerminalZshClearEolMark(message.bool)
+			}
+			break
+		case "terminalZshOhMy":
+			await updateGlobalState("terminalZshOhMy", message.bool)
+			await provider.postStateToWebview()
+			if (message.bool !== undefined) {
+				Terminal.setTerminalZshOhMy(message.bool)
+			}
+			break
+		case "terminalZshP10k":
+			await updateGlobalState("terminalZshP10k", message.bool)
+			await provider.postStateToWebview()
+			if (message.bool !== undefined) {
+				Terminal.setTerminalZshP10k(message.bool)
+			}
+			break
+		case "terminalZdotdir":
+			await updateGlobalState("terminalZdotdir", message.bool)
+			await provider.postStateToWebview()
+			if (message.bool !== undefined) {
+				Terminal.setTerminalZdotdir(message.bool)
 			}
 			break
 		case "mode":
@@ -1022,6 +1063,10 @@ export const webviewMessageHandler = async (
 							customSupportPrompts,
 						),
 					)
+
+					// Capture telemetry for prompt enhancement
+					const currentCline = provider.getCurrentCline()
+					telemetryService.capturePromptEnhanced(currentCline?.taskId)
 
 					await provider.postMessageToWebview({
 						type: "enhancedPrompt",

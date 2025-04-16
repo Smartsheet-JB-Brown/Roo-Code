@@ -8,7 +8,7 @@ import TranslationProvider from "./i18n/TranslationContext"
 import { vscode } from "./utils/vscode"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
-import ChatView from "./components/chat/ChatView"
+import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
@@ -16,8 +16,6 @@ import McpView from "./components/mcp/McpView"
 import PackageManagerView from "./components/package-manager/PackageManagerView"
 import PromptsView from "./components/prompts/PromptsView"
 import { HumanRelayDialog } from "./components/human-relay/HumanRelayDialog"
-
-
 
 type Tab = "settings" | "history" | "mcp" | "prompts" | "chat" | "packageManager"
 
@@ -48,8 +46,11 @@ const App = () => {
 	})
 
 	const settingsRef = useRef<SettingsViewRef>(null)
+	const chatViewRef = useRef<ChatViewRef>(null)
 
 	const switchTab = useCallback((newTab: Tab) => {
+		setCurrentSection(undefined)
+
 		if (settingsRef.current?.checkUnsaveChanges) {
 			settingsRef.current.checkUnsaveChanges(() => setTab(newTab))
 		} else {
@@ -57,21 +58,29 @@ const App = () => {
 		}
 	}, [])
 
+	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
+
 	const onMessage = useCallback(
 		(e: MessageEvent) => {
 			const message: ExtensionMessage = e.data
 
 			if (message.type === "action" && message.action) {
 				const newTab = tabsByMessageAction[message.action]
+				const section = message.values?.section as string | undefined
 
 				if (newTab) {
 					switchTab(newTab)
+					setCurrentSection(section)
 				}
 			}
 
 			if (message.type === "showHumanRelayDialog" && message.requestId && message.promptText) {
 				const { requestId, promptText } = message
 				setHumanRelayDialogState({ isOpen: true, requestId, promptText })
+			}
+
+			if (message.type === "acceptInput") {
+				chatViewRef.current?.acceptInput()
 			}
 		},
 		[switchTab],
@@ -108,9 +117,12 @@ const App = () => {
 			{tab === "prompts" && <PromptsView onDone={() => switchTab("chat")} />}
 			{tab === "mcp" && <McpView onDone={() => switchTab("chat")} />}
 			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
-			{tab === "settings" && <SettingsView ref={settingsRef} onDone={() => setTab("chat")} />}
+			{tab === "settings" && (
+				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
+			)}
 			{tab === "packageManager" && <PackageManagerView onDone={() => switchTab("chat")} />}
 			<ChatView
+				ref={chatViewRef}
 				isHidden={tab !== "chat"}
 				showAnnouncement={showAnnouncement}
 				hideAnnouncement={() => setShowAnnouncement(false)}
