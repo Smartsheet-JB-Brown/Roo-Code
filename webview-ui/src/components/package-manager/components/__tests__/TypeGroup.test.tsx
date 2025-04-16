@@ -1,6 +1,7 @@
 import React from "react"
-import { render, screen } from "@testing-library/react"
+import { screen } from "@testing-library/react"
 import { TypeGroup } from "../TypeGroup"
+import { renderWithProviders } from "@/test/test-utils"
 
 describe("TypeGroup", () => {
 	const mockItems = [
@@ -17,8 +18,9 @@ describe("TypeGroup", () => {
 	]
 
 	it("should render type header and items", () => {
-		render(<TypeGroup type="mcp server" items={mockItems} />)
+		renderWithProviders(<TypeGroup type="mcp server" items={mockItems} />)
 
+		// Test using translation key
 		expect(screen.getByText("MCP Servers")).toBeInTheDocument()
 
 		// Check items using list roles and text content
@@ -39,7 +41,7 @@ describe("TypeGroup", () => {
 		]
 
 		types.forEach(({ input, expected }) => {
-			const { unmount } = render(<TypeGroup type={input} items={mockItems} />)
+			const { unmount } = renderWithProviders(<TypeGroup type={input} items={mockItems} />)
 			expect(screen.getByText(expected)).toBeInTheDocument()
 			unmount()
 		})
@@ -48,30 +50,30 @@ describe("TypeGroup", () => {
 	it("should handle items without descriptions", () => {
 		const itemsWithoutDesc = [{ name: "Test Item", path: "test/path" }]
 
-		render(<TypeGroup type="test" items={itemsWithoutDesc} />)
+		renderWithProviders(<TypeGroup type="test" items={itemsWithoutDesc} />)
 		expect(screen.getByText("Test Item")).toBeInTheDocument()
 	})
 
 	it("should not render when items array is empty", () => {
-		const { container } = render(<TypeGroup type="test" items={[]} />)
+		const { container } = renderWithProviders(<TypeGroup type="test" items={[]} />)
 		expect(container).toBeEmptyDOMElement()
 	})
 
 	it("should not render when items is undefined", () => {
-		const { container } = render(<TypeGroup type="test" items={undefined as any} />)
+		const { container } = renderWithProviders(<TypeGroup type="test" items={undefined as any} />)
 		expect(container).toBeEmptyDOMElement()
 	})
 
 	it("should apply custom className", () => {
 		const customClass = "custom-test-class"
-		render(<TypeGroup type="test" items={mockItems} className={customClass} />)
+		renderWithProviders(<TypeGroup type="test" items={mockItems} className={customClass} />)
 
 		const container = screen.getByRole("heading").parentElement
 		expect(container).toHaveClass(customClass)
 	})
 
 	it("should render items in a numbered list", () => {
-		render(<TypeGroup type="test" items={mockItems} />)
+		renderWithProviders(<TypeGroup type="test" items={mockItems} />)
 
 		const list = screen.getByRole("list")
 		expect(list).toHaveClass("list-decimal")
@@ -79,7 +81,7 @@ describe("TypeGroup", () => {
 	})
 
 	it("should show path as title attribute", () => {
-		render(<TypeGroup type="test" items={mockItems} />)
+		renderWithProviders(<TypeGroup type="test" items={mockItems} />)
 
 		const items = screen.getAllByRole("listitem")
 		expect(items[0]).toHaveAttribute("title", "test/path/1")

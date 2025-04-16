@@ -1,7 +1,8 @@
 import React from "react"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/react"
 import { PackageManagerItemCard } from "../PackageManagerItemCard"
 import { PackageManagerItem } from "../../../../../../src/services/package-manager/types"
+import { renderWithProviders } from "@/test/test-utils"
 
 // Mock vscode API
 const mockPostMessage = jest.fn()
@@ -59,7 +60,7 @@ describe("PackageManagerItemCard", () => {
 	})
 
 	it("should render basic item information", () => {
-		render(<PackageManagerItemCard {...defaultProps} />)
+		renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.getByText("A test package")).toBeInTheDocument()
@@ -68,7 +69,7 @@ describe("PackageManagerItemCard", () => {
 	})
 
 	it("should render tags", () => {
-		render(<PackageManagerItemCard {...defaultProps} />)
+		renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 		expect(screen.getByText("test")).toBeInTheDocument()
 		expect(screen.getByText("mock")).toBeInTheDocument()
@@ -76,7 +77,7 @@ describe("PackageManagerItemCard", () => {
 
 	it("should handle tag clicks", () => {
 		const setFilters = jest.fn()
-		render(<PackageManagerItemCard {...defaultProps} setFilters={setFilters} />)
+		renderWithProviders(<PackageManagerItemCard {...defaultProps} setFilters={setFilters} />)
 
 		fireEvent.click(screen.getByText("test"))
 		expect(setFilters).toHaveBeenCalledWith(
@@ -87,7 +88,7 @@ describe("PackageManagerItemCard", () => {
 	})
 
 	it("should render version and date information", () => {
-		render(<PackageManagerItemCard {...defaultProps} />)
+		renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 		expect(screen.getByText("1.0.0")).toBeInTheDocument()
 		// Use a regex to match the date since it depends on the timezone
@@ -95,9 +96,14 @@ describe("PackageManagerItemCard", () => {
 	})
 
 	it("should handle source URL click", () => {
-		render(<PackageManagerItemCard {...defaultProps} />)
+		renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
-		fireEvent.click(screen.getByText("Source"))
+		// Find the source button by its text content
+		const sourceButton = screen.getByRole("button", {
+			name: /Source/i,
+		})
+		fireEvent.click(sourceButton)
+
 		expect(mockPostMessage).toHaveBeenCalledWith({
 			type: "openExternal",
 			url: "test-url",
@@ -106,20 +112,20 @@ describe("PackageManagerItemCard", () => {
 
 	describe("Details section", () => {
 		it("should render expandable details section when item has subcomponents", () => {
-			render(<PackageManagerItemCard {...defaultProps} />)
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 			expect(screen.getByText("Component Details")).toBeInTheDocument()
 		})
 
 		it("should not render details section when item has no subcomponents", () => {
 			const itemWithoutItems = { ...mockItem, items: [] }
-			render(<PackageManagerItemCard {...defaultProps} item={itemWithoutItems} />)
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithoutItems} />)
 
 			expect(screen.queryByText("Component Details")).not.toBeInTheDocument()
 		})
 
 		it("should show grouped items when expanded", () => {
-			render(<PackageManagerItemCard {...defaultProps} />)
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 			fireEvent.click(screen.getByText("Component Details"))
 
@@ -135,7 +141,7 @@ describe("PackageManagerItemCard", () => {
 		})
 
 		it("should maintain proper order of items within groups", () => {
-			render(<PackageManagerItemCard {...defaultProps} />)
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
 			fireEvent.click(screen.getByText("Component Details"))
 
