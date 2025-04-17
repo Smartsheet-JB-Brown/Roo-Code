@@ -65,7 +65,7 @@ describe("PackageManagerItemCard", () => {
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.getByText("A test package")).toBeInTheDocument()
 		expect(screen.getByText("by Test Author")).toBeInTheDocument()
-		expect(screen.getByText("Package")).toBeInTheDocument()
+		expect(screen.getByText(/Package/i)).toBeInTheDocument() // Using case-insensitive regex since translations might vary in case
 	})
 
 	it("should render tags", () => {

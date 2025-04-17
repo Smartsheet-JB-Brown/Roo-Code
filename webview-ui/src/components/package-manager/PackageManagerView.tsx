@@ -6,12 +6,13 @@ import { PackageManagerSource } from "../../../../src/services/package-manager/t
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
 import { PackageManagerItemCard } from "./components/PackageManagerItemCard"
 import { useStateManager } from "./useStateManager"
+import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface PackageManagerViewProps {
 	onDone?: () => void
 }
-
 const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
+	const { t } = useAppTranslation()
 	const [state, manager] = useStateManager()
 
 	const [tagSearch, setTagSearch] = useState("")
@@ -31,7 +32,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 		<Tab>
 			<TabHeader className="flex justify-between items-center sticky top-0 z-10 bg-vscode-editor-background border-b border-vscode-panel-border">
 				<div className="flex items-center">
-					<h3 className="text-vscode-foreground m-0">Package Manager</h3>
+					<h3 className="text-vscode-foreground m-0">{t("package-manager:title")}</h3>
 				</div>
 				<div className="flex gap-2">
 					<Button
@@ -41,7 +42,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 								"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
 						)}
 						onClick={() => manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: "browse" } })}>
-						Browse
+						{t("package-manager:tabs.browse")}
 					</Button>
 					<Button
 						variant={state.activeTab === "sources" ? "default" : "secondary"}
@@ -50,7 +51,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 								"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
 						)}
 						onClick={() => manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: "sources" } })}>
-						Sources
+						{t("package-manager:tabs.sources")}
 					</Button>
 				</div>
 			</TabHeader>
@@ -61,7 +62,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 						<div className="mb-4">
 							<input
 								type="text"
-								placeholder="Search package manager items..."
+								placeholder={t("package-manager:filters.search.placeholder")}
 								value={state.filters.search}
 								onChange={(e) =>
 									manager.transition({
@@ -75,7 +76,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 								<div className="flex flex-wrap justify-between gap-2">
 									<div className="whitespace-nowrap">
 										<label htmlFor="type-filter" className="mr-2">
-											Filter by type:
+											{t("package-manager:filters.type.label")}
 										</label>
 										<select
 											id="type-filter"
@@ -87,16 +88,18 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 												})
 											}
 											className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded">
-											<option value="">All types</option>
-											<option value="mode">Mode</option>
-											<option value="mcp server">MCP Server</option>
-											<option value="prompt">Prompt</option>
-											<option value="package">Package</option>
+											<option value="">{t("package-manager:filters.type.all")}</option>
+											<option value="mode">{t("package-manager:filters.type.mode")}</option>
+											<option value="mcp server">
+												{t("package-manager:filters.type.mcp server")}
+											</option>
+											<option value="prompt">{t("package-manager:filters.type.prompt")}</option>
+											<option value="package">{t("package-manager:filters.type.package")}</option>
 										</select>
 									</div>
 
 									<div className="whitespace-nowrap">
-										<label className="mr-2">Sort by:</label>
+										<label className="mr-2">{t("package-manager:filters.sort.label")}</label>
 										<select
 											value={state.sortConfig.by}
 											onChange={(e) =>
@@ -106,8 +109,10 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 												})
 											}
 											className="p-1 bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border rounded mr-2">
-											<option value="name">Name</option>
-											<option value="lastUpdated">Last Updated</option>
+											<option value="name">{t("package-manager:filters.sort.name")}</option>
+											<option value="lastUpdated">
+												{t("package-manager:filters.sort.lastUpdated")}
+											</option>
 										</select>
 										<button
 											onClick={() =>
@@ -130,9 +135,13 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 									<div>
 										<div className="flex items-center justify-between mb-1">
 											<div className="flex items-center">
-												<label className="mr-2">Filter by tags:</label>
+												<label className="mr-2">
+													{t("package-manager:filters.tags.label")}
+												</label>
 												<span className="text-xs text-vscode-descriptionForeground">
-													({allTags.length} available)
+													{t("package-manager:filters.tags.available", {
+														count: allTags.length,
+													})}
 												</span>
 											</div>
 											{state.filters.tags.length > 0 && (
@@ -144,13 +153,15 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 														})
 													}
 													className="p-1 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground rounded text-xs">
-													Clear tags ({state.filters.tags.length})
+													{t("package-manager:filters.tags.clear", {
+														count: state.filters.tags.length,
+													})}
 												</button>
 											)}
 										</div>
 										<Command className="rounded-lg border border-vscode-dropdown-border">
 											<CommandInput
-												placeholder="Type to search and select tags..."
+												placeholder={t("package-manager:filters.tags.placeholder")}
 												value={tagSearch}
 												onValueChange={setTagSearch}
 												onFocus={() => setIsTagInputActive(true)}
@@ -164,7 +175,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 											{(isTagInputActive || tagSearch) && (
 												<CommandList className="max-h-[200px] overflow-y-auto bg-vscode-dropdown-background">
 													<CommandEmpty className="p-2 text-sm text-vscode-descriptionForeground">
-														No matching tags found
+														{t("package-manager:filters.tags.noResults")}
 													</CommandEmpty>
 													<CommandGroup>
 														{allTags
@@ -222,8 +233,10 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 										</Command>
 										<div className="text-xs text-vscode-descriptionForeground mt-1">
 											{state.filters.tags.length > 0
-												? `Showing items with any of the selected tags (${state.filters.tags.length} selected)`
-												: "Click tags to filter items"}
+												? t("package-manager:filters.tags.selected", {
+														count: state.filters.tags.length,
+													})
+												: t("package-manager:filters.tags.clickToFilter")}
 										</div>
 									</div>
 								)}
@@ -243,7 +256,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							) {
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
-										<p>Loading items...</p>
+										<p>{t("package-manager:items.refresh.refreshing")}</p>
 									</div>
 								)
 							}
@@ -252,7 +265,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							if (isEmpty) {
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
-										<p>No package manager items found</p>
+										<p>{t("package-manager:items.empty.noItems")}</p>
 									</div>
 								)
 							}
@@ -261,9 +274,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							return (
 								<div>
 									<p className="text-vscode-descriptionForeground mb-4">
-										{state.filters.type || state.filters.search || state.filters.tags.length > 0
-											? `${items.length} items found (filtered)`
-											: `${items.length} ${items.length === 1 ? "item" : "items"} total`}
+										{t("package-manager:items.count", { count: items.length })}
 									</p>
 									<div className="grid grid-cols-1 gap-4 pb-4">
 										{items.map((item) => (
@@ -313,48 +324,49 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 	onRefreshSource,
 	onSourcesChange,
 }) => {
+	const { t } = useAppTranslation()
 	const [newSourceUrl, setNewSourceUrl] = useState("")
 	const [newSourceName, setNewSourceName] = useState("")
 	const [error, setError] = useState("")
 
 	const handleAddSource = () => {
 		if (!newSourceUrl) {
-			setError("URL cannot be empty")
+			setError(t("package-manager:sources.errors.emptyUrl"))
 			return
 		}
 
 		try {
 			new URL(newSourceUrl)
 		} catch (e) {
-			setError("Invalid URL format")
+			setError(t("package-manager:sources.errors.invalidUrl"))
 			return
 		}
 
 		const nonVisibleCharRegex = /[^\S ]/
 		if (nonVisibleCharRegex.test(newSourceUrl)) {
-			setError("URL contains non-visible characters other than spaces")
+			setError(t("package-manager:sources.errors.nonVisibleChars"))
 			return
 		}
 
 		if (!isValidGitRepositoryUrl(newSourceUrl)) {
-			setError("URL must be a valid Git repository URL (e.g., https://github.com/username/repo)")
+			setError(t("package-manager:sources.errors.invalidGitUrl"))
 			return
 		}
 
 		const normalizedNewUrl = newSourceUrl.toLowerCase().replace(/\s+/g, "")
 		if (sources.some((source) => source.url.toLowerCase().replace(/\s+/g, "") === normalizedNewUrl)) {
-			setError("This URL is already in the list (case and whitespace insensitive match)")
+			setError(t("package-manager:sources.errors.duplicateUrl"))
 			return
 		}
 
 		if (newSourceName) {
 			if (newSourceName.length > 20) {
-				setError("Name must be 20 characters or less")
+				setError(t("package-manager:sources.errors.nameTooLong"))
 				return
 			}
 
 			if (nonVisibleCharRegex.test(newSourceName)) {
-				setError("Name contains non-visible characters other than spaces")
+				setError(t("package-manager:sources.errors.nonVisibleCharsName"))
 				return
 			}
 
@@ -364,14 +376,14 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 					(source) => source.name && source.name.toLowerCase().replace(/\s+/g, "") === normalizedNewName,
 				)
 			) {
-				setError("This name is already in use (case and whitespace insensitive match)")
+				setError(t("package-manager:sources.errors.duplicateName"))
 				return
 			}
 		}
 
 		const MAX_SOURCES = 10
 		if (sources.length >= MAX_SOURCES) {
-			setError(`Maximum of ${MAX_SOURCES} sources allowed`)
+			setError(t("package-manager:sources.errors.maxSources", { max: MAX_SOURCES }))
 			return
 		}
 
@@ -401,18 +413,15 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 
 	return (
 		<div>
-			<h4 className="text-vscode-foreground mb-2">Configure Package Manager Sources</h4>
-			<p className="text-vscode-descriptionForeground mb-4">
-				Add Git repositories that contain package manager items. These repositories will be fetched when
-				browsing the package manager.
-			</p>
+			<h4 className="text-vscode-foreground mb-2">{t("package-manager:sources.title")}</h4>
+			<p className="text-vscode-descriptionForeground mb-4">{t("package-manager:sources.description")}</p>
 
 			<div className="mb-6">
-				<h5 className="text-vscode-foreground mb-2">Add New Source</h5>
+				<h5 className="text-vscode-foreground mb-2">{t("package-manager:sources.add.title")}</h5>
 				<div className="flex flex-col gap-2 mb-2">
 					<input
 						type="text"
-						placeholder="Git repository URL (e.g., https://github.com/username/repo)"
+						placeholder={t("package-manager:sources.add.urlPlaceholder")}
 						value={newSourceUrl}
 						onChange={(e) => {
 							setNewSourceUrl(e.target.value)
@@ -421,12 +430,11 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 						className="p-2 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded"
 					/>
 					<p className="text-xs text-vscode-descriptionForeground mt-1 mb-2">
-						Supported formats: HTTPS (https://github.com/username/repo), SSH
-						(git@github.com:username/repo.git), or Git protocol (git://github.com/username/repo.git)
+						{t("package-manager:sources.add.urlFormats")}
 					</p>
 					<input
 						type="text"
-						placeholder="Display name (optional, max 20 chars)"
+						placeholder={t("package-manager:sources.add.namePlaceholder")}
 						value={newSourceName}
 						onChange={(e) => {
 							setNewSourceName(e.target.value.slice(0, 20))
@@ -439,15 +447,17 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 				{error && <p className="text-red-500 mb-2">{error}</p>}
 				<Button onClick={handleAddSource}>
 					<span className="codicon codicon-add mr-2"></span>
-					Add Source
+					{t("package-manager:sources.add.button")}
 				</Button>
 			</div>
 			<h5 className="text-vscode-foreground mb-2">
-				Current Sources{" "}
-				<span className="text-vscode-descriptionForeground text-sm">({sources.length}/10 max)</span>
+				{t("package-manager:sources.current.title")}{" "}
+				<span className="text-vscode-descriptionForeground text-sm">
+					{t("package-manager:sources.current.count", { current: sources.length, max: 10 })}
+				</span>
 			</h5>
 			{sources.length === 0 ? (
-				<p className="text-vscode-descriptionForeground">No sources configured. Add a source to get started.</p>
+				<p className="text-vscode-descriptionForeground">{t("package-manager:sources.current.empty")}</p>
 			) : (
 				<div className="grid grid-cols-1 gap-2">
 					{sources.map((source, index) => (
@@ -477,7 +487,7 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 									variant="ghost"
 									size="icon"
 									onClick={() => onRefreshSource(source.url)}
-									title="Refresh this source"
+									title={t("package-manager:sources.current.refresh")}
 									className="text-vscode-foreground"
 									disabled={refreshingUrls.includes(source.url)}>
 									<span
@@ -487,6 +497,7 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 									variant="ghost"
 									size="icon"
 									onClick={() => handleRemoveSource(index)}
+									title={t("package-manager:sources.current.remove")}
 									className="text-red-500">
 									<span className="codicon codicon-trash"></span>
 								</Button>

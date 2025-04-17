@@ -19,25 +19,25 @@ i18next.use(initReactI18next).init({
 	},
 	resources: {
 		en: {
-			package_manager: {
+			"package-manager": {
 				// Type group translations
-				"type_group.mcp_servers": "MCP Servers",
-				"type_group.modes": "Modes",
-				"type_group.prompts": "Prompts",
-				"type_group.packages": "Packages",
-				"type_group.match": "Match",
-				"type_group.generic_type": "{{type}}s",
+				"type-group.mcp-servers": "MCP Servers",
+				"type-group.modes": "Modes",
+				"type-group.prompts": "Prompts",
+				"type-group.packages": "Packages",
+				"type-group.match": "Match",
+				"type-group.generic-type": "{{type}}s",
 
 				// Item card translations
-				"item_card.by_author": "by {{author}}",
-				"item_card.type_package": "Package",
-				"item_card.type_mode": "Mode",
-				"item_card.type_mcp_server": "MCP Server",
-				"item_card.type_prompt": "Prompt",
-				"item_card.source": "Source",
-				"item_card.component_details": "Component Details",
-				"item_card.filter_by_tag": "Filter by tag",
-				"item_card.by": "by",
+				"item-card.by-author": "by {{author}}",
+				"item-card.type-package": "Package",
+				"item-card.type-mode": "Mode",
+				"item-card.type-mcp-server": "MCP Server",
+				"item-card.type-prompt": "Prompt",
+				"item-card.source": "Source",
+				"item-card.component-details": "Component Details",
+				"item-card.filter-by-tag": "Filter by tag",
+				"item-card.by": "by",
 			},
 		},
 	},

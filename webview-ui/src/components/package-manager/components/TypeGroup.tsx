@@ -22,15 +22,15 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className }) 
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case "mode":
-				return t("package_manager:type_group.modes")
+				return t("package-manager:type-group.modes")
 			case "mcp server":
-				return t("package_manager:type_group.mcp_servers")
+				return t("package-manager:type-group.mcp-servers")
 			case "prompt":
-				return t("package_manager:type_group.prompts")
+				return t("package-manager:type-group.prompts")
 			case "package":
-				return t("package_manager:type_group.packages")
+				return t("package-manager:type-group.packages")
 			default:
-				return t("package_manager:type_group.generic_type", {
+				return t("package-manager:type-group.generic-type", {
 					type: type.charAt(0).toUpperCase() + type.slice(1),
 				})
 		}
@@ -60,7 +60,7 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className }) 
 						)}
 						{item.matchInfo?.matched && (
 							<span className="ml-2 text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1 py-0.5 rounded">
-								{t("package_manager:type_group.match")}
+								{t("package-manager:type-group.match")}
 							</span>
 						)}
 					</li>

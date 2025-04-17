@@ -36,15 +36,15 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 	const getTypeLabel = (type: string) => {
 		switch (type) {
 			case "mode":
-				return t("package_manager:item_card.type_mode")
+				return t("package-manager:filters.type.mode")
 			case "mcp server":
-				return t("package_manager:item_card.type_mcp_server")
+				return t("package-manager:filters.type.mcp server")
 			case "prompt":
-				return t("package_manager:item_card.type_prompt")
+				return t("package-manager:filters.type.prompt")
 			case "package":
-				return t("package_manager:item_card.type_package")
+				return t("package-manager:filters.type.package")
 			default:
-				return t("package_manager:item_card.type_other")
+				return t("package-manager:filters.type.all")
 		}
 	}
 
@@ -113,7 +113,7 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 											url: item.authorUrl,
 										})
 									}}>
-									{t("package_manager:item_card.by_author", { author: item.author })}
+									{t("package-manager:items.card.by", { author: item.author })}
 								</button>
 							) : (
 								<button
@@ -125,13 +125,13 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 											url: item.authorUrl,
 										})
 									}}>
-									{t("package_manager:item_card.authors_profile")}
+									{t("package-manager:items.card.viewSource")}
 								</button>
 							)}
 						</p>
 					) : item.author ? (
 						<p className="text-sm text-vscode-descriptionForeground">
-							{t("package_manager:item_card.by_author", { author: item.author })}
+							{t("package-manager:items.card.by", { author: item.author })}
 						</p>
 					) : null}
 				</div>
@@ -168,8 +168,8 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 							}}
 							title={
 								filters.tags.includes(tag)
-									? t("package_manager:item_card.remove_tag_filter", { tag })
-									: t("package_manager:item_card.filter_by_tag", { tag })
+									? t("package-manager:filters.tags.clear", { count: tag })
+									: t("package-manager:filters.tags.clickToFilter")
 							}>
 							{tag}
 						</button>
@@ -202,23 +202,21 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 					aria-label={
 						item.sourceUrl && isValidUrl(item.sourceUrl)
 							? ""
-							: item.sourceName || t("package_manager:item_card.source")
+							: item.sourceName || t("package-manager:items.card.viewSource")
 					}>
 					<span
 						className={`codicon codicon-link-external${!item.sourceUrl || !isValidUrl(item.sourceUrl) ? " mr-2" : ""}`}></span>
 					{(!item.sourceUrl || !isValidUrl(item.sourceUrl)) &&
-						(item.sourceName || t("package_manager:item_card.source"))}
+						(item.sourceName || t("package-manager:items.card.viewSource"))}
 				</Button>
 			</div>
 
 			{groupedItems && (
 				<ExpandableSection
-					title={t("package_manager:item_card.component_details")}
+					title={t("package-manager:items.card.externalComponents", { count: 0 })}
 					badge={(() => {
 						const matchCount = item.items?.filter((subItem) => subItem.matchInfo?.matched).length ?? 0
-						return matchCount > 0
-							? t("package_manager:item_card.match_count", { count: matchCount })
-							: undefined
+						return matchCount > 0 ? t("package-manager:items.count", { count: matchCount }) : undefined
 					})()}
 					defaultExpanded={item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false}>
 					<div className="space-y-4">
