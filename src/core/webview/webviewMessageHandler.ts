@@ -695,11 +695,6 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("diffEnabled", diffEnabled)
 			await provider.postStateToWebview()
 			break
-		case "showGreeting":
-			const showGreeting = message.bool ?? true
-			await updateGlobalState("showGreeting", showGreeting)
-			await provider.postStateToWebview()
-			break
 		case "enableCheckpoints":
 			const enableCheckpoints = message.bool ?? true
 			await updateGlobalState("enableCheckpoints", enableCheckpoints)

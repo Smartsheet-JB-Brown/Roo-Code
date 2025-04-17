@@ -133,7 +133,6 @@ export interface WebviewMessage {
 		| "refreshPackageManagerSource"
 		| "repositoryRefreshComplete"
 		| "openExternal"
-		| "showGreeting"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse

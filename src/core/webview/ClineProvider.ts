@@ -658,7 +658,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 					<link rel="stylesheet" type="text/css" href="${stylesUri}">
 					<link href="${codiconsUri}" rel="stylesheet" />
 					<script nonce="${nonce}">
-						window.IMAGES_BASE_URI = "${imagesUri}"
+						window.IMAGES_BASE_URI = "${imagesUri}"					
 					</script>
 					<title>Roo Code</title>
 				</head>
@@ -1220,7 +1220,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			telemetrySetting,
 			showRooIgnoredFiles,
 			language,
-			showGreeting,
 			maxReadFileLine,
 			packageManagerSources,
 		} = await this.getState()
@@ -1236,6 +1235,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			packageManagerItems,
+			packageManagerSources: packageManagerSources ?? [],
 			apiConfiguration,
 			customInstructions,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
@@ -1306,8 +1306,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			renderContext: this.renderContext,
 			maxReadFileLine: maxReadFileLine ?? 500,
 			settingsImportedAt: this.settingsImportedAt,
-			packageManagerSources: packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
-			showGreeting: showGreeting ?? true, // Ensure showGreeting is included in the returned state
 		}
 	}
 
@@ -1396,7 +1394,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
 			packageManagerSources: stateValues.packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
-			showGreeting: stateValues.showGreeting ?? true, // Ensure showGreeting is returned by getState
 		}
 	}
 
