@@ -82,10 +82,15 @@ describe("GitFetcher", () => {
 		// Reset fs mock defaults
 		;(fs.mkdir as jest.Mock).mockResolvedValue(undefined)
 		;(fs.rm as jest.Mock).mockImplementation((path: string, options?: any) => {
-			if (path === testRepoDir && options?.recursive && options?.force) {
+			// Always require recursive and force options
+			if (!options?.recursive || !options?.force) {
+				return Promise.reject(new Error("Invalid rm call: missing recursive or force options"))
+			}
+			// Allow any path under package-manager-cache directory
+			if (path.includes("package-manager-cache/")) {
 				return Promise.resolve(undefined)
 			}
-			return Promise.reject(new Error("Invalid rm call"))
+			return Promise.reject(new Error("Invalid rm call: path not in package-manager-cache"))
 		})
 
 		// Setup fs.stat mock for repository structure validation
@@ -354,10 +359,7 @@ describe("GitFetcher", () => {
 				return Promise.reject(new Error("ENOENT"))
 			})
 
-			// Reset fs.rm mock to default behavior
-			;(fs.rm as jest.Mock).mockImplementation((path: string, options?: any) => {
-				return Promise.resolve(undefined)
-			})
+			// No need to reset fs.rm mock here as it's handled in beforeEach
 		})
 
 		it("should handle paths with spaces when cloning", async () => {
