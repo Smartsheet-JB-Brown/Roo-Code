@@ -44,24 +44,7 @@ describe("MetadataScanner", () => {
 	})
 
 	describe("Basic Metadata Scanning", () => {
-		it("should discover components with English metadata and sourceUrl", async () => {
-			// Mock directory structure
-			const mockDirents = [
-				{
-					name: "component1",
-					isDirectory: () => true,
-					isFile: () => false,
-				},
-				{
-					name: "metadata.en.yml",
-					isDirectory: () => false,
-					isFile: () => true,
-				},
-			] as Dirent[]
-
-			// For subdirectories, return empty to prevent infinite recursion
-			const mockEmptyDirents = [] as Dirent[]
-
+		it("should discover components with English metadata", async () => {
 			// Setup mock implementations
 			const mockStats = {
 				isDirectory: () => true,
@@ -72,14 +55,39 @@ describe("MetadataScanner", () => {
 			// Mock fs.promises methods using type assertions
 			const mockedFs = jest.mocked(fs)
 			mockedFs.stat.mockResolvedValue(mockStats)
-			;(mockedFs.readdir as any).mockImplementation(async (path: any, options?: any) => {
-				// Return empty array for nested component1 directories to prevent recursion
-				if (path.toString().includes("/component1/")) {
-					return options?.withFileTypes ? mockEmptyDirents : []
+
+			// Define specific Dirent objects
+			const componentDirDirent: Dirent = {
+				name: "component1",
+				isDirectory: () => true,
+				isFile: () => false,
+			} as Dirent
+			const metadataFileDirent: Dirent = {
+				name: "metadata.en.yml",
+				isDirectory: () => false,
+				isFile: () => true,
+			} as Dirent
+
+			// Refined mock implementation for fs.readdir
+			;(mockedFs.readdir as any).mockImplementation(async (p: string, options?: any) => {
+				const normalizedP = normalizePath(p)
+				const normalizedBasePath = normalizePath(mockBasePath)
+				const normalizedComponentPath = normalizePath(path.join(mockBasePath, "component1"))
+
+				if (normalizedP === normalizedBasePath) {
+					// For the base path, return only the component directory
+					const baseDirents = [componentDirDirent]
+					return options?.withFileTypes ? baseDirents : baseDirents.map((d) => d.name)
+				} else if (normalizedP === normalizedComponentPath) {
+					// For the component1 directory, return only the metadata file
+					const componentDirents = [metadataFileDirent]
+					return options?.withFileTypes ? componentDirents : componentDirents.map((d) => d.name)
+				} else {
+					// For any other path (deeper recursion), return empty
+					return options?.withFileTypes ? [] : []
 				}
-				// Return full directory listing for base component1 directory
-				return options?.withFileTypes ? mockDirents : mockDirents.map((d) => d.name)
 			})
+
 			mockedFs.readFile.mockResolvedValue(
 				Buffer.from(`
 name: Test Component
