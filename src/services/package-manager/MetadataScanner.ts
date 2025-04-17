@@ -249,6 +249,7 @@ export class MetadataScanner {
 			items: [], // Initialize empty items array for all components
 			author: metadata.author,
 			authorUrl: metadata.authorUrl,
+			sourceUrl: metadata.sourceUrl,
 		}
 	}
 

@@ -95,18 +95,66 @@ describe("PackageManagerItemCard", () => {
 		expect(screen.getByText(/Apr \d{1,2}, 2025/)).toBeInTheDocument()
 	})
 
-	it("should handle source URL click", () => {
-		renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
+	describe("URL handling", () => {
+		it("should use sourceUrl directly when present and valid", () => {
+			const itemWithSourceUrl = {
+				...mockItem,
+				sourceUrl: "https://example.com/direct-link",
+				defaultBranch: "main",
+				path: "some/path",
+			}
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithSourceUrl} />)
 
-		// Find the source button by its text content
-		const sourceButton = screen.getByRole("button", {
-			name: /Source/i,
+			const button = screen.getByRole("button", { name: /^$/ }) // Button with no text, only icon
+			fireEvent.click(button)
+
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "openExternal",
+				url: "https://example.com/direct-link",
+			})
 		})
-		fireEvent.click(sourceButton)
 
-		expect(mockPostMessage).toHaveBeenCalledWith({
-			type: "openExternal",
-			url: "test-url",
+		it("should use repoUrl with git path when sourceUrl is not present", () => {
+			const itemWithGitPath = {
+				...mockItem,
+				defaultBranch: "main",
+				path: "some/path",
+			}
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithGitPath} />)
+
+			const button = screen.getByRole("button", { name: /Source/i })
+			fireEvent.click(button)
+
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "openExternal",
+				url: "test-url/tree/main/some/path",
+			})
+		})
+
+		it("should show only icon when sourceUrl is present and valid", () => {
+			const itemWithSourceUrl = {
+				...mockItem,
+				sourceUrl: "https://example.com/direct-link",
+			}
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithSourceUrl} />)
+
+			// Find the source button by its empty aria-label
+			const button = screen.getByRole("button", {
+				name: "", // Empty aria-label when sourceUrl is present
+			})
+			expect(button.querySelector(".codicon-link-external")).toBeInTheDocument()
+			expect(button.textContent).toBe("") // Verify no text content
+		})
+
+		it("should show text label when sourceUrl is not present", () => {
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
+
+			// Find the source button by its aria-label
+			const button = screen.getByRole("button", {
+				name: "Source",
+			})
+			expect(button.querySelector(".codicon-link-external")).toBeInTheDocument()
+			expect(button).toHaveTextContent(/Source/i)
 		})
 	})
 

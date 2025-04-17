@@ -44,7 +44,7 @@ describe("MetadataScanner", () => {
 	})
 
 	describe("Basic Metadata Scanning", () => {
-		it("should discover components with English metadata", async () => {
+		it("should discover components with English metadata and sourceUrl", async () => {
 			// Mock directory structure
 			const mockDirents = [
 				{
@@ -86,6 +86,7 @@ name: Test Component
 description: A test component
 type: mcp server
 version: 1.0.0
+sourceUrl: https://example.com/component1
 `),
 			)
 
@@ -96,6 +97,54 @@ version: 1.0.0
 			expect(items[0].type).toBe("mcp server")
 			expect(items[0].url).toBe("https://example.com/repo/tree/main/component1")
 			expect(items[0].path).toBe("component1")
+			expect(items[0].sourceUrl).toBe("https://example.com/component1")
+		})
+		it("should handle missing sourceUrl in metadata", async () => {
+			const mockDirents = [
+				{
+					name: "component2",
+					isDirectory: () => true,
+					isFile: () => false,
+				},
+				{
+					name: "metadata.en.yml",
+					isDirectory: () => false,
+					isFile: () => true,
+				},
+			] as Dirent[]
+
+			const mockEmptyDirents = [] as Dirent[]
+			const mockStats = {
+				isDirectory: () => true,
+				isFile: () => true,
+				mtime: new Date(),
+			} as Stats
+
+			const mockedFs = jest.mocked(fs)
+			mockedFs.stat.mockResolvedValue(mockStats)
+			;(mockedFs.readdir as any).mockImplementation(async (path: any, options?: any) => {
+				if (path.toString().includes("/component2/")) {
+					return options?.withFileTypes ? mockEmptyDirents : []
+				}
+				return options?.withFileTypes ? mockDirents : mockDirents.map((d) => d.name)
+			})
+			mockedFs.readFile.mockResolvedValue(
+				Buffer.from(`
+name: Test Component 2
+description: A test component without sourceUrl
+type: mcp server
+version: 1.0.0
+`),
+			)
+
+			const items = await metadataScanner.scanDirectory(mockBasePath, mockRepoUrl)
+
+			expect(items).toHaveLength(1)
+			expect(items[0].name).toBe("Test Component 2")
+			expect(items[0].type).toBe("mcp server")
+			expect(items[0].url).toBe("https://example.com/repo/tree/main/component2")
+			expect(items[0].path).toBe("component2")
+			expect(items[0].sourceUrl).toBeUndefined()
 		})
 	})
 })

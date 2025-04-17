@@ -64,14 +64,19 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 	}
 
 	const handleOpenUrl = () => {
-		let urlToOpen = item.sourceUrl && isValidUrl(item.sourceUrl) ? item.sourceUrl : item.repoUrl
+		// If sourceUrl is present and valid, use it directly without modifications
+		if (item.sourceUrl && isValidUrl(item.sourceUrl)) {
+			return vscode.postMessage({
+				type: "openExternal",
+				url: item.sourceUrl,
+			})
+		}
 
-		// If we have a defaultBranch, append it to the URL
+		// Otherwise use repoUrl with git path information
+		let urlToOpen = item.repoUrl
 		if (item.defaultBranch) {
 			urlToOpen = `${urlToOpen}/tree/${item.defaultBranch}`
-			// If we also have a path, append it
 			if (item.path) {
-				// Ensure path uses forward slashes and doesn't start with one
 				const normalizedPath = item.path.replace(/\\/g, "/").replace(/^\/+/, "")
 				urlToOpen = `${urlToOpen}/${normalizedPath}`
 			}
@@ -192,11 +197,17 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 					)}
 				</div>
 
-				<Button onClick={handleOpenUrl}>
-					<span className="codicon codicon-link-external mr-2"></span>
-					{item.sourceUrl
-						? t("package_manager:item_card.view")
-						: item.sourceName || t("package_manager:item_card.source")}
+				<Button
+					onClick={handleOpenUrl}
+					aria-label={
+						item.sourceUrl && isValidUrl(item.sourceUrl)
+							? ""
+							: item.sourceName || t("package_manager:item_card.source")
+					}>
+					<span
+						className={`codicon codicon-link-external${!item.sourceUrl || !isValidUrl(item.sourceUrl) ? " mr-2" : ""}`}></span>
+					{(!item.sourceUrl || !isValidUrl(item.sourceUrl)) &&
+						(item.sourceName || t("package_manager:item_card.source"))}
 				</Button>
 			</div>
 

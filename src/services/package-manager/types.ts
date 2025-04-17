@@ -27,6 +27,7 @@ export interface BaseMetadata {
 	tags?: string[]
 	author?: string
 	authorUrl?: string
+	sourceUrl?: string
 }
 
 /**

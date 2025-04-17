@@ -11,6 +11,7 @@ export const baseMetadataSchema = z.object({
 	tags: z.array(z.string()).optional(),
 	author: z.string().optional(),
 	authorUrl: z.string().url("Author URL must be a valid URL").optional(),
+	sourceUrl: z.string().url("Source URL must be a valid URL").optional(),
 })
 
 /**
