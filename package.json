@@ -402,7 +402,7 @@
 		"pretest": "npm run compile",
 		"dev": "cd webview-ui && npm run dev",
 		"test": "node scripts/run-tests.js",
-		"test:extension": "jest -w=40%",
+		"test:extension": "node --max-old-space-size=8192 ./node_modules/.bin/jest -w=40%",
 		"test:webview": "cd webview-ui && npm run test",
 		"prepare": "husky",
 		"publish:marketplace": "vsce publish && ovsx publish",
