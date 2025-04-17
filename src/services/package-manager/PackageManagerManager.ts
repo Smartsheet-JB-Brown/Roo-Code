@@ -160,19 +160,26 @@ export class PackageManagerManager {
 			const fetchPromise = this.gitFetcher.fetchRepository(url, forceRefresh, sourceName)
 
 			// Create a timeout promise
+			let timeoutId: NodeJS.Timeout | undefined
 			const timeoutPromise = new Promise<PackageManagerRepository>((_, reject) => {
-				setTimeout(() => {
+				timeoutId = setTimeout(() => {
 					reject(new Error(`Repository fetch timed out after 30 seconds: ${url}`))
 				}, 30000) // 30 second timeout
 			})
 
-			// Race the fetch against the timeout
-			const data = await Promise.race([fetchPromise, timeoutPromise])
+			try {
+				// Race the fetch against the timeout
+				const result = await Promise.race([fetchPromise, timeoutPromise])
 
-			// Cache the result
-			this.cache.set(url, { data, timestamp: Date.now() })
+				// Cache the result
+				this.cache.set(url, { data: result, timestamp: Date.now() })
 
-			return data
+				return result
+			} finally {
+				if (timeoutId) {
+					clearTimeout(timeoutId)
+				}
+			}
 		} catch (error) {
 			console.error(`PackageManagerManager: Error fetching repository data for ${url}:`, error)
 

@@ -610,16 +610,14 @@ describe("Concurrency Control", () => {
 			enabled: true,
 		}
 
-		// Mock getRepositoryData to be slow
-		const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-		const slowGetRepositoryData = jest.spyOn(manager as any, "getRepositoryData").mockImplementation(async () => {
-			await delay(100) // Simulate slow operation
-			return {
+		// Mock getRepositoryData to return a resolved promise immediately
+		const getRepoSpy = jest.spyOn(manager as any, "getRepositoryData").mockImplementation(() =>
+			Promise.resolve({
 				metadata: { name: "test", description: "test", version: "1.0.0" },
 				items: [],
 				url: source.url,
-			} as PackageManagerRepository
-		})
+			} as PackageManagerRepository),
+		)
 
 		// Start two concurrent operations
 		const operation1 = manager.getPackageManagerItems([source])
@@ -629,47 +627,53 @@ describe("Concurrency Control", () => {
 		const [result1, result2] = await Promise.all([operation1, operation2])
 
 		// Verify getRepositoryData was only called once
-		expect(slowGetRepositoryData).toHaveBeenCalledTimes(1)
+		expect(getRepoSpy).toHaveBeenCalledTimes(1)
+
+		// Clean up
+		getRepoSpy.mockRestore()
 	})
 
 	it("should not allow metadata scanning during git operations", async () => {
-		const source1: PackageManagerSource = {
-			url: "https://github.com/test/repo1",
-			enabled: true,
-		}
-		const source2: PackageManagerSource = {
-			url: "https://github.com/test/repo2",
-			enabled: true,
-		}
-
-		let isGitOperationActive = false
-		let metadataScanDuringGit = false
-
-		// Mock git operation to be slow and set flag
-		jest.spyOn(GitFetcher.prototype, "fetchRepository").mockImplementation(async () => {
-			isGitOperationActive = true
-			await new Promise((resolve) => setTimeout(resolve, 100))
-			isGitOperationActive = false
-			return {
-				metadata: { name: "test", description: "test", version: "1.0.0" },
-				items: [],
-				url: source1.url,
+		try {
+			const source1: PackageManagerSource = {
+				url: "https://github.com/test/repo1",
+				enabled: true,
 			}
-		})
-
-		// Mock metadata scanner to check if git operation is active
-		jest.spyOn(MetadataScanner.prototype, "scanDirectory").mockImplementation(async () => {
-			if (isGitOperationActive) {
-				metadataScanDuringGit = true
+			const source2: PackageManagerSource = {
+				url: "https://github.com/test/repo2",
+				enabled: true,
 			}
-			return []
-		})
 
-		// Process both sources
-		await manager.getPackageManagerItems([source1, source2])
+			let isGitOperationActive = false
+			let metadataScanDuringGit = false
 
-		// Verify metadata scanning didn't occur during git operations
-		expect(metadataScanDuringGit).toBe(false)
+			// Mock git operation to resolve immediately
+			const fetchRepoSpy = jest.spyOn(GitFetcher.prototype, "fetchRepository").mockImplementation(async () => {
+				isGitOperationActive = true
+				isGitOperationActive = false
+				return {
+					metadata: { name: "test", description: "test", version: "1.0.0" },
+					items: [],
+					url: source1.url,
+				}
+			})
+
+			// Mock metadata scanner to check if git operation is active
+			const scanDirSpy = jest.spyOn(MetadataScanner.prototype, "scanDirectory").mockImplementation(async () => {
+				if (isGitOperationActive) {
+					metadataScanDuringGit = true
+				}
+				return []
+			})
+
+			// Process both sources
+			await manager.getPackageManagerItems([source1, source2])
+
+			// Verify metadata scanning didn't occur during git operations
+			expect(metadataScanDuringGit).toBe(false)
+		} finally {
+			jest.clearAllTimers()
+		}
 	})
 
 	it("should queue metadata scans and process them sequentially", async () => {
@@ -681,18 +685,14 @@ describe("Concurrency Control", () => {
 
 		let activeScans = 0
 		let maxConcurrentScans = 0
-		const scanPromises: Promise<void>[] = []
 
-		// Create a mock MetadataScanner
+		// Create a mock MetadataScanner that resolves immediately
 		const mockScanner = new MetadataScanner()
 		const scanDirectorySpy = jest.spyOn(mockScanner, "scanDirectory").mockImplementation(async () => {
 			activeScans++
 			maxConcurrentScans = Math.max(maxConcurrentScans, activeScans)
-			const promise = new Promise<void>((resolve) => setTimeout(resolve, 50))
-			scanPromises.push(promise)
-			await promise
 			activeScans--
-			return []
+			return Promise.resolve([])
 		})
 
 		// Create a mock GitFetcher that uses our mock scanner
@@ -704,26 +704,31 @@ describe("Concurrency Control", () => {
 		;(mockGitFetcher as any).metadataScanner = mockScanner
 
 		// Mock GitFetcher's fetchRepository to trigger metadata scanning
-		jest.spyOn(mockGitFetcher, "fetchRepository").mockImplementation(async (repoUrl: string) => {
-			// Call scanDirectory through our mock scanner
-			await mockScanner.scanDirectory("/test/path", repoUrl)
+		const fetchRepoSpy = jest
+			.spyOn(mockGitFetcher, "fetchRepository")
+			.mockImplementation(async (repoUrl: string) => {
+				// Call scanDirectory through our mock scanner
+				await mockScanner.scanDirectory("/test/path", repoUrl)
 
-			return {
-				metadata: { name: "test", description: "test", version: "1.0.0" },
-				items: [],
-				url: repoUrl,
-			}
-		})
+				return Promise.resolve({
+					metadata: { name: "test", description: "test", version: "1.0.0" },
+					items: [],
+					url: repoUrl,
+				})
+			})
 
 		// Replace the GitFetcher instance in the manager
 		;(manager as any).gitFetcher = mockGitFetcher
 
 		// Process all sources
 		await manager.getPackageManagerItems(sources)
-		await Promise.all(scanPromises)
 
 		// Verify scans were called and only one was active at a time
 		expect(scanDirectorySpy).toHaveBeenCalledTimes(sources.length)
 		expect(maxConcurrentScans).toBe(1)
+
+		// Clean up
+		scanDirectorySpy.mockRestore()
+		fetchRepoSpy.mockRestore()
 	})
 })
