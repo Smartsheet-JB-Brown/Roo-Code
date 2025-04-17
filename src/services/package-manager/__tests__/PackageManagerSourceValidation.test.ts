@@ -12,23 +12,31 @@ import { PackageManagerSource } from "../types"
 describe("PackageManagerSourceValidation", () => {
 	describe("isValidGitRepositoryUrl", () => {
 		const validUrls = [
+			// Public Git hosting services
 			"https://github.com/username/repo",
-			"https://github.com/username/repo.git",
 			"https://gitlab.com/username/repo",
 			"https://bitbucket.org/username/repo",
-			"git@github.com:username/repo.git",
-			"git@gitlab.com:username/repo.git",
-			"git://github.com/username/repo.git",
+
+			// Custom/self-hosted domains
+			"https://git.company.com/username/repo",
+			"https://git.internal.dev/username/repo.git",
+			"git@git.company.com:username/repo.git",
+			"git://git.internal.dev/username/repo.git",
+
+			// Subdomains and longer TLDs
+			"https://git.dev.company.co.uk/username/repo",
+			"git@git.dev.internal.company.com:username/repo.git",
 		]
 
 		const invalidUrls = [
 			"",
 			" ",
 			"not-a-url",
-			"http://invalid-domain.com/repo",
-			"https://github.com", // Missing username/repo
-			"git@github.com", // Missing repo
-			"git://invalid-domain.com/repo.git",
+			"https://example.com", // Missing username/repo parts
+			"git@example.com", // Missing repo part
+			"https://git.company.com/repo", // Missing username part
+			"git://example.com/repo", // Missing username part
+			"https://git.company.com/", // Missing both username and repo
 		]
 
 		test.each(validUrls)("should accept valid URL: %s", (url) => {
@@ -78,7 +86,7 @@ describe("PackageManagerSourceValidation", () => {
 			expect(errors).toHaveLength(1)
 			expect(errors[0]).toEqual({
 				field: "url",
-				message: "URL must be a valid Git repository URL (e.g., https://github.com/username/repo)",
+				message: "URL must be a valid Git repository URL (e.g., https://git.example.com/username/repo)",
 			})
 		})
 	})
@@ -115,13 +123,13 @@ describe("PackageManagerSourceValidation", () => {
 
 	describe("validateSourceDuplicates", () => {
 		const existingSources: PackageManagerSource[] = [
-			{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true },
-			{ url: "https://github.com/user2/repo2", name: "Source 2", enabled: true },
+			{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true },
+			{ url: "https://git.company.com/user2/repo2", name: "Source 2", enabled: true },
 		]
 
 		test("should accept unique sources", () => {
 			const newSource: PackageManagerSource = {
-				url: "https://github.com/user3/repo3",
+				url: "https://git.company.com/user3/repo3",
 				name: "Source 3",
 				enabled: true,
 			}
@@ -131,7 +139,7 @@ describe("PackageManagerSourceValidation", () => {
 
 		test("should reject duplicate URLs (case insensitive)", () => {
 			const newSource: PackageManagerSource = {
-				url: "HTTPS://GITHUB.COM/USER1/REPO1",
+				url: "HTTPS://GIT.COMPANY.COM/USER1/REPO1",
 				name: "Different Name",
 				enabled: true,
 			}
@@ -143,7 +151,7 @@ describe("PackageManagerSourceValidation", () => {
 
 		test("should reject duplicate names (case insensitive)", () => {
 			const newSource: PackageManagerSource = {
-				url: "https://github.com/user3/repo3",
+				url: "https://git.company.com/user3/repo3",
 				name: "SOURCE 1",
 				enabled: true,
 			}
@@ -155,9 +163,9 @@ describe("PackageManagerSourceValidation", () => {
 
 		test("should detect duplicates within source list", () => {
 			const sourcesWithDuplicates: PackageManagerSource[] = [
-				{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true },
-				{ url: "https://github.com/user1/repo1", name: "Source 2", enabled: true }, // Duplicate URL
-				{ url: "https://github.com/user3/repo3", name: "Source 1", enabled: true }, // Duplicate name
+				{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true },
+				{ url: "https://git.company.com/user1/repo1", name: "Source 2", enabled: true }, // Duplicate URL
+				{ url: "https://git.company.com/user3/repo3", name: "Source 1", enabled: true }, // Duplicate name
 			]
 			const errors = validateSourceDuplicates(sourcesWithDuplicates)
 			expect(errors).toHaveLength(4) // Two URL duplicates (bidirectional) and two name duplicates (bidirectional)
@@ -178,12 +186,12 @@ describe("PackageManagerSourceValidation", () => {
 
 	describe("validateSource", () => {
 		const existingSources: PackageManagerSource[] = [
-			{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true },
+			{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true },
 		]
 
 		test("should accept valid source", () => {
 			const source: PackageManagerSource = {
-				url: "https://github.com/user2/repo2",
+				url: "https://git.company.com/user2/repo2",
 				name: "Source 2",
 				enabled: true,
 			}
@@ -193,7 +201,7 @@ describe("PackageManagerSourceValidation", () => {
 
 		test("should accumulate multiple validation errors", () => {
 			const source: PackageManagerSource = {
-				url: "https://github.com/user1/repo1", // Duplicate URL
+				url: "https://git.company.com/user1/repo1", // Duplicate URL
 				name: "This name is way too long to be valid\t", // Too long and has tab
 				enabled: true,
 			}
@@ -205,8 +213,8 @@ describe("PackageManagerSourceValidation", () => {
 	describe("validateSources", () => {
 		test("should accept valid source list", () => {
 			const sources: PackageManagerSource[] = [
-				{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true },
-				{ url: "https://github.com/user2/repo2", name: "Source 2", enabled: true },
+				{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true },
+				{ url: "https://git.company.com/user2/repo2", name: "Source 2", enabled: true },
 			]
 			const errors = validateSources(sources)
 			expect(errors).toHaveLength(0)
@@ -214,8 +222,8 @@ describe("PackageManagerSourceValidation", () => {
 
 		test("should detect multiple issues across sources", () => {
 			const sources: PackageManagerSource[] = [
-				{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true },
-				{ url: "https://github.com/user1/repo1", name: "Source 1", enabled: true }, // Duplicate URL and name
+				{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true },
+				{ url: "https://git.company.com/user1/repo1", name: "Source 1", enabled: true }, // Duplicate URL and name
 				{ url: "invalid-url", name: "This name is way too long\t", enabled: true }, // Invalid URL and name
 			]
 			const errors = validateSources(sources)

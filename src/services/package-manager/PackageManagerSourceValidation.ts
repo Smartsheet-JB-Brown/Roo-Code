@@ -32,19 +32,18 @@ export function isValidGitRepositoryUrl(url: string): boolean {
 	// - https://gitlab.com/username/repo
 	// - https://bitbucket.org/username/repo
 	const httpsPattern =
-		/^https?:\/\/(github\.com|gitlab\.com|bitbucket\.org|dev\.azure\.com)\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\/.+)*(\.git)?$/
+		/^https?:\/\/[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\/.+)*(\.git)?$/
 
 	// SSH pattern
 	// Examples:
 	// - git@github.com:username/repo.git
 	// - git@gitlab.com:username/repo.git
-	const sshPattern = /^git@(github\.com|gitlab\.com|bitbucket\.org):([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(\.git)?$/
+	const sshPattern = /^git@[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*:([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(\.git)?$/
 
 	// Git protocol pattern
 	// Examples:
 	// - git://github.com/username/repo.git
-	const gitProtocolPattern =
-		/^git:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\.git)?$/
+	const gitProtocolPattern = /^git:\/\/[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\.git)?$/
 
 	return httpsPattern.test(trimmedUrl) || sshPattern.test(trimmedUrl) || gitProtocolPattern.test(trimmedUrl)
 }
@@ -85,7 +84,7 @@ export function validateSourceUrl(url: string): ValidationError[] {
 	if (!isValidGitRepositoryUrl(url)) {
 		errors.push({
 			field: "url",
-			message: "URL must be a valid Git repository URL (e.g., https://github.com/username/repo)",
+			message: "URL must be a valid Git repository URL (e.g., https://git.example.com/username/repo)",
 		})
 	}
 
