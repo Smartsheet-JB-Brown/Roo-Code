@@ -9,7 +9,7 @@
 			"placeholder": "パッケージマネージャーのアイテムを検索..."
 		},
 		"type": {
-			"label": "タイプで絞り込み：",
+			"label": "タイプでフィルター:",
 			"all": "すべてのタイプ",
 			"mode": "モード",
 			"mcp server": "MCPサーバー",
@@ -17,19 +17,19 @@
 			"package": "パッケージ"
 		},
 		"sort": {
-			"label": "並び替え：",
+			"label": "並び替え:",
 			"name": "名前",
-			"author": "作成者",
+			"author": "作者",
 			"lastUpdated": "最終更新"
 		},
 		"tags": {
-			"label": "タグで絞り込み：",
+			"label": "タグでフィルター:",
 			"available": "{{count}}個利用可能",
-			"clear": "タグをクリア（{{count}}個）",
+			"clear": "タグをクリア ({{count}})",
 			"placeholder": "タグを検索して選択...",
 			"noResults": "一致するタグが見つかりません",
-			"selected": "選択したタグのいずれかを含むアイテムを表示中（{{count}}個選択）",
-			"clickToFilter": "タグをクリックしてアイテムを絞り込む"
+			"selected": "選択したタグのいずれかを含むアイテムを表示中 ({{count}}個選択)",
+			"clickToFilter": "タグをクリックしてアイテムをフィルター"
 		}
 	},
 	"items": {
@@ -44,40 +44,41 @@
 			"refreshing": "更新中..."
 		},
 		"card": {
-			"by": "作成者：{{author}}",
-			"from": "ソース：{{source}}",
-			"externalComponents": "外部コンポーネント{{count}}個を含む",
+			"by": "作者: {{author}}",
+			"from": "ソース: {{source}}",
+			"externalComponents": "{{count}}個の外部コンポーネントを含む",
+			"externalComponents_plural": "{{count}}個の外部コンポーネントを含む",
 			"viewSource": "表示",
 			"viewOnSource": "{{source}}で表示"
 		}
 	},
 	"sources": {
-		"title": "パッケージマネージャーのソース設定",
-		"description": "パッケージマネージャーのアイテムを含むGitリポジトリを追加します。これらのリポジトリはパッケージマネージャーの閲覧時に取得されます。",
+		"title": "パッケージマネージャーのソースを設定",
+		"description": "パッケージマネージャーのアイテムを含むGitリポジトリを追加します。これらのリポジトリはパッケージマネージャーのブラウズ時に取得されます。",
 		"add": {
-			"title": "新規ソースの追加",
-			"urlPlaceholder": "GitリポジトリのURL（例：https://github.com/username/repo）",
-			"urlFormats": "対応フォーマット：HTTPS（https://github.com/username/repo）、SSH（git@github.com:username/repo.git）、またはGitプロトコル（git://github.com/username/repo.git）",
-			"namePlaceholder": "表示名（オプション、最大20文字）",
+			"title": "新しいソースを追加",
+			"urlPlaceholder": "GitリポジトリのURL (例: https://github.com/username/repo)",
+			"urlFormats": "サポートされている形式: HTTPS (https://github.com/username/repo)、SSH (git@github.com:username/repo.git)、またはGitプロトコル (git://github.com/username/repo.git)",
+			"namePlaceholder": "表示名 (オプション、最大20文字)",
 			"button": "ソースを追加"
 		},
 		"current": {
 			"title": "現在のソース",
-			"count": "{{current}}/{{max}}個（最大）",
-			"empty": "ソースが設定されていません。ソースを追加して始めてください。",
+			"count": "{{current}}/{{max}}個まで",
+			"empty": "ソースが設定されていません。ソースを追加して始めましょう。",
 			"refresh": "このソースを更新",
 			"remove": "ソースを削除"
 		},
 		"errors": {
 			"emptyUrl": "URLを入力してください",
-			"invalidUrl": "URLの形式が無効です",
-			"nonVisibleChars": "URLに空白以外の不可視文字が含まれています",
-			"invalidGitUrl": "有効なGitリポジトリのURLを入力してください（例：https://github.com/username/repo）",
-			"duplicateUrl": "このURLは既にリストに存在します（大文字小文字と空白を区別しない一致）",
+			"invalidUrl": "無効なURL形式です",
+			"nonVisibleChars": "URLにスペース以外の非表示文字が含まれています",
+			"invalidGitUrl": "有効なGitリポジトリのURLを入力してください (例: https://github.com/username/repo)",
+			"duplicateUrl": "このURLは既にリストに存在します (大文字小文字とスペースを区別しない一致)",
 			"nameTooLong": "名前は20文字以内にしてください",
-			"nonVisibleCharsName": "名前に空白以外の不可視文字が含まれています",
-			"duplicateName": "この名前は既に使用されています（大文字小文字と空白を区別しない一致）",
-			"maxSources": "ソースは最大{{max}}個まで追加できます"
+			"nonVisibleCharsName": "名前にスペース以外の非表示文字が含まれています",
+			"duplicateName": "この名前は既に使用されています (大文字小文字とスペースを区別しない一致)",
+			"maxSources": "最大{{max}}個までしかソースを追加できません"
 		}
 	}
 }

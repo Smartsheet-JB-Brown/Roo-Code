@@ -1,7 +1,7 @@
 {
 	"title": "Paket Yöneticisi",
 	"tabs": {
-		"browse": "Gözat",
+		"browse": "Göz At",
 		"sources": "Kaynaklar"
 	},
 	"filters": {
@@ -17,14 +17,14 @@
 			"package": "Paket"
 		},
 		"sort": {
-			"label": "Sıralama ölçütü:",
-			"name": "Ad",
+			"label": "Sıralama:",
+			"name": "İsim",
 			"author": "Yazar",
-			"lastUpdated": "Son güncelleme"
+			"lastUpdated": "Son Güncelleme"
 		},
 		"tags": {
 			"label": "Etiketlere göre filtrele:",
-			"available": "{{count}} etiket mevcut",
+			"available": "{{count}} mevcut",
 			"clear": "Etiketleri temizle ({{count}})",
 			"placeholder": "Etiket aramak ve seçmek için yazın...",
 			"noResults": "Eşleşen etiket bulunamadı",
@@ -47,35 +47,36 @@
 			"by": "yazar: {{author}}",
 			"from": "kaynak: {{source}}",
 			"externalComponents": "{{count}} harici bileşen içeriyor",
+			"externalComponents_plural": "{{count}} harici bileşen içeriyor",
 			"viewSource": "Görüntüle",
 			"viewOnSource": "{{source}} üzerinde görüntüle"
 		}
 	},
 	"sources": {
 		"title": "Paket Yöneticisi Kaynaklarını Yapılandır",
-		"description": "Paket yöneticisi öğeleri içeren Git depolarını ekleyin. Bu depolar, paket yöneticisinde gezinirken alınacaktır.",
+		"description": "Paket yöneticisi öğeleri içeren Git depolarını ekleyin. Bu depolar, paket yöneticisine göz atarken getirilecektir.",
 		"add": {
 			"title": "Yeni Kaynak Ekle",
 			"urlPlaceholder": "Git deposu URL'si (örn. https://github.com/username/repo)",
-			"urlFormats": "Desteklenen biçimler: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) veya Git protokolü (git://github.com/username/repo.git)",
+			"urlFormats": "Desteklenen formatlar: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) veya Git protokolü (git://github.com/username/repo.git)",
 			"namePlaceholder": "Görünen ad (isteğe bağlı, en fazla 20 karakter)",
 			"button": "Kaynak Ekle"
 		},
 		"current": {
 			"title": "Mevcut Kaynaklar",
-			"count": "{{current}}/{{max}} en fazla",
+			"count": "{{current}}/{{max}} maksimum",
 			"empty": "Yapılandırılmış kaynak yok. Başlamak için bir kaynak ekleyin.",
 			"refresh": "Bu kaynağı yenile",
 			"remove": "Kaynağı kaldır"
 		},
 		"errors": {
 			"emptyUrl": "URL boş olamaz",
-			"invalidUrl": "Geçersiz URL biçimi",
-			"nonVisibleChars": "URL boşluk dışında görünmez karakterler içeriyor",
+			"invalidUrl": "Geçersiz URL formatı",
+			"nonVisibleChars": "URL boşluk dışında görünmeyen karakterler içeriyor",
 			"invalidGitUrl": "URL geçerli bir Git deposu URL'si olmalıdır (örn. https://github.com/username/repo)",
 			"duplicateUrl": "Bu URL zaten listede mevcut (büyük/küçük harf ve boşluk duyarsız eşleşme)",
-			"nameTooLong": "Ad en fazla 20 karakter olmalıdır",
-			"nonVisibleCharsName": "Ad boşluk dışında görünmez karakterler içeriyor",
+			"nameTooLong": "Ad 20 karakterden uzun olamaz",
+			"nonVisibleCharsName": "Ad boşluk dışında görünmeyen karakterler içeriyor",
 			"duplicateName": "Bu ad zaten kullanımda (büyük/küçük harf ve boşluk duyarsız eşleşme)",
 			"maxSources": "En fazla {{max}} kaynak eklenebilir"
 		}

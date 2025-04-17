@@ -9,7 +9,7 @@
 			"placeholder": "搜尋套件管理器項目..."
 		},
 		"type": {
-			"label": "按類型篩選：",
+			"label": "依類型篩選：",
 			"all": "所有類型",
 			"mode": "模式",
 			"mcp server": "MCP伺服器",
@@ -23,37 +23,38 @@
 			"lastUpdated": "最後更新"
 		},
 		"tags": {
-			"label": "按標籤篩選：",
+			"label": "依標籤篩選：",
 			"available": "可用{{count}}個",
 			"clear": "清除標籤（{{count}}個）",
 			"placeholder": "輸入以搜尋和選擇標籤...",
 			"noResults": "未找到符合的標籤",
-			"selected": "顯示包含任一所選標籤的項目（已選擇{{count}}個）",
+			"selected": "顯示包含任一所選標籤的項目（已選{{count}}個）",
 			"clickToFilter": "點擊標籤以篩選項目"
 		}
 	},
 	"items": {
 		"empty": {
 			"noItems": "未找到套件管理器項目",
-			"withFilters": "請嘗試調整篩選條件",
-			"noSources": "請嘗試在來源分頁中新增來源"
+			"withFilters": "嘗試調整篩選條件",
+			"noSources": "嘗試在來源分頁中新增來源"
 		},
 		"count": "找到{{count}}個項目",
 		"refresh": {
 			"button": "重新整理",
-			"refreshing": "重新整理中..."
+			"refreshing": "正在重新整理..."
 		},
 		"card": {
 			"by": "作者：{{author}}",
 			"from": "來源：{{source}}",
 			"externalComponents": "包含{{count}}個外部元件",
+			"externalComponents_plural": "包含{{count}}個外部元件",
 			"viewSource": "檢視",
 			"viewOnSource": "在{{source}}上檢視"
 		}
 	},
 	"sources": {
 		"title": "設定套件管理器來源",
-		"description": "新增包含套件管理器項目的Git儲存庫。瀏覽套件管理器時將取得這些儲存庫。",
+		"description": "新增包含套件管理器項目的Git儲存庫。瀏覽套件管理器時將擷取這些儲存庫。",
 		"add": {
 			"title": "新增來源",
 			"urlPlaceholder": "Git儲存庫URL（例如：https://github.com/username/repo）",
@@ -63,8 +64,8 @@
 		},
 		"current": {
 			"title": "目前來源",
-			"count": "{{current}}/{{max}}個（最多）",
-			"empty": "未設定來源。新增來源以開始使用。",
+			"count": "{{current}}/{{max}}個上限",
+			"empty": "未設定任何來源。新增一個來源以開始。",
 			"refresh": "重新整理此來源",
 			"remove": "移除來源"
 		},

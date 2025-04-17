@@ -28,25 +28,26 @@
 			"clear": "清除标签（{{count}}个）",
 			"placeholder": "输入以搜索和选择标签...",
 			"noResults": "未找到匹配的标签",
-			"selected": "显示包含任一所选标签的项目（已选择{{count}}个）",
+			"selected": "显示包含任一所选标签的项目（已选{{count}}个）",
 			"clickToFilter": "点击标签以筛选项目"
 		}
 	},
 	"items": {
 		"empty": {
 			"noItems": "未找到包管理器项目",
-			"withFilters": "请尝试调整筛选条件",
-			"noSources": "请尝试在源标签页中添加源"
+			"withFilters": "尝试调整筛选条件",
+			"noSources": "尝试在源标签页中添加源"
 		},
 		"count": "找到{{count}}个项目",
 		"refresh": {
 			"button": "刷新",
-			"refreshing": "刷新中..."
+			"refreshing": "正在刷新..."
 		},
 		"card": {
 			"by": "作者：{{author}}",
 			"from": "来源：{{source}}",
 			"externalComponents": "包含{{count}}个外部组件",
+			"externalComponents_plural": "包含{{count}}个外部组件",
 			"viewSource": "查看",
 			"viewOnSource": "在{{source}}上查看"
 		}
@@ -63,10 +64,10 @@
 		},
 		"current": {
 			"title": "当前源",
-			"count": "{{current}}/{{max}}个（最多）",
-			"empty": "未配置源。添加源以开始使用。",
+			"count": "{{current}}/{{max}}个上限",
+			"empty": "未配置任何源。添加一个源以开始。",
 			"refresh": "刷新此源",
-			"remove": "删除源"
+			"remove": "移除源"
 		},
 		"errors": {
 			"emptyUrl": "URL不能为空",
