@@ -169,31 +169,73 @@ export function sortItems(
 
 ## State Management Integration
 
-The filtering system integrates with the state management:
+The filtering system integrates with the state management through state transitions:
 
 ```typescript
 export class PackageManagerViewStateManager {
-	private items: PackageManagerItem[] = []
-	private sortBy: "name" | "lastUpdated" = "name"
-	private sortOrder: "asc" | "desc" = "asc"
-	private filters: Filters = { type: "", search: "", tags: [] }
+	private state: ViewState
+	private stateChangeHandlers: Set<StateChangeHandler>
 
 	/**
-	 * Get filtered and sorted items
+	 * Process state transitions
 	 */
-	getFilteredAndSortedItems(): PackageManagerItem[] {
-		const filtered = filterItems(this.items, this.filters)
-		return sortItems(filtered, this.sortBy, this.sortOrder)
+	public async transition(transition: ViewStateTransition): Promise<void> {
+		switch (transition.type) {
+			case "UPDATE_FILTERS": {
+				const { filters = {} } = transition.payload || {}
+
+				// Update filters while preserving existing ones
+				const updatedFilters = {
+					type: filters.type ?? this.state.filters.type,
+					search: filters.search ?? this.state.filters.search,
+					tags: filters.tags ?? this.state.filters.tags,
+				}
+
+				// Update state
+				this.state = {
+					...this.state,
+					filters: updatedFilters,
+				}
+
+				// Notify subscribers
+				this.notifyStateChange()
+
+				// Request filtered items from backend
+				vscode.postMessage({
+					type: "filterPackageManagerItems",
+					filters: updatedFilters,
+				})
+				break
+			}
+
+			case "FETCH_COMPLETE": {
+				const { items } = transition.payload as { items: PackageManagerItem[] }
+
+				// Update both all items and display items
+				this.state = {
+					...this.state,
+					allItems: items,
+					displayItems: items,
+					isFetching: false,
+				}
+
+				this.notifyStateChange()
+				break
+			}
+		}
 	}
 
 	/**
-	 * Update filters with optimistic updates
+	 * Subscribe to state changes
 	 */
-	setFilters(newFilters: Partial<Filters>): void {
-		this.filters = { ...this.filters, ...newFilters }
+	public onStateChange(handler: StateChangeHandler): () => void {
+		this.stateChangeHandlers.add(handler)
+		return () => this.stateChangeHandlers.delete(handler)
 	}
 }
 ```
+
+````
 
 ## Performance Optimizations
 
@@ -230,7 +272,7 @@ export class PackageManagerManager {
 		}
 	}
 }
-```
+````
 
 ### Filter Optimizations
 
@@ -247,9 +289,12 @@ export class PackageManagerManager {
     - Avoids regex for simple matches
 
 3. **State Management**:
-    - Optimistic updates
-    - Batched filter changes
-    - Efficient re-renders
+    - State transitions for predictable updates
+    - Subscriber pattern for state changes
+    - Separation of all items and display items
+    - Backend-driven filtering
+    - Optimistic UI updates
+    - Efficient state synchronization
 
 ## Testing Strategy
 
@@ -294,9 +339,12 @@ The system includes robust error handling:
     - Type mismatches
 
 3. **State Errors**:
-    - Concurrent updates
     - Invalid state transitions
-    - Cache inconsistencies
+    - Message handling errors
+    - State synchronization issues
+    - Timeout handling
+    - Source modification tracking
+    - Filter validation errors
 
 ---
 

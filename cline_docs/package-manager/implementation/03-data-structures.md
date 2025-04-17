@@ -109,6 +109,23 @@ Enhanced match tracking:
 
 ## State Management Structures
 
+### ValidationError
+
+```typescript
+/**
+ * Error type for package manager source validation
+ */
+export interface ValidationError {
+	field: string
+	message: string
+}
+```
+
+Used for structured validation errors:
+
+- **field**: The field that failed validation (e.g., "url", "name")
+- **message**: Human-readable error message
+
 ### ViewState
 
 ```typescript
@@ -116,18 +133,64 @@ Enhanced match tracking:
  * View-level state management
  */
 interface ViewState {
-	items: PackageManagerItem[]
-	sortBy: "name" | "lastUpdated"
-	sortOrder: "asc" | "desc"
+	allItems: PackageManagerItem[]
+	displayItems?: PackageManagerItem[]
+	isFetching: boolean
+	activeTab: "browse" | "sources"
+	refreshingUrls: string[]
+	sources: PackageManagerSource[]
 	filters: Filters
+	sortConfig: {
+		by: "name" | "author" | "lastUpdated"
+		order: "asc" | "desc"
+	}
 }
 ```
 
 Manages UI state:
 
-- Current items
-- Sort configuration
-- Filter state
+- **allItems**: All available items
+- **displayItems**: Currently filtered/displayed items
+- **isFetching**: Loading state indicator
+- **activeTab**: Current view tab
+- **refreshingUrls**: Sources being refreshed
+- **sources**: Package manager sources
+- **filters**: Active filters
+- **sortConfig**: Sort configuration
+
+### ViewStateTransition
+
+```typescript
+/**
+ * State transition types and payloads
+ */
+type ViewStateTransition = {
+	type:
+		| "FETCH_ITEMS"
+		| "FETCH_COMPLETE"
+		| "FETCH_ERROR"
+		| "SET_ACTIVE_TAB"
+		| "UPDATE_FILTERS"
+		| "UPDATE_SORT"
+		| "REFRESH_SOURCE"
+		| "REFRESH_SOURCE_COMPLETE"
+		| "UPDATE_SOURCES"
+	payload?: {
+		items?: PackageManagerItem[]
+		tab?: "browse" | "sources"
+		filters?: Partial<Filters>
+		sortConfig?: Partial<SortConfig>
+		url?: string
+		sources?: PackageManagerSource[]
+	}
+}
+```
+
+Defines state transitions:
+
+- Operation types
+- Optional payloads
+- Type-safe transitions
 
 ### Filters
 
@@ -364,13 +427,27 @@ function validateMetadata(metadata: unknown): metadata is ComponentMetadata {
 /**
  * Validate Git repository URL
  */
-function isValidGitUrl(url: string): boolean {
-	if (!url) return false
+function isValidGitRepositoryUrl(url: string): boolean {
+	// HTTPS pattern (any domain)
+	const httpsPattern =
+		/^https?:\/\/[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\/.+)*(\.git)?$/
 
-	// Support common Git URL formats
-	return /^(https?:\/\/|git@)/.test(url) && /\.git$/.test(url)
+	// SSH pattern (any domain)
+	const sshPattern = /^git@[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*:([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(\.git)?$/
+
+	// Git protocol pattern (any domain)
+	const gitProtocolPattern = /^git:\/\/[a-zA-Z0-9_.-]+(\.[a-zA-Z0-9_.-]+)*\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\.git)?$/
+
+	return httpsPattern.test(url) || sshPattern.test(url) || gitProtocolPattern.test(url)
 }
 ```
+
+Supports:
+
+- Any valid domain name
+- Multiple Git protocols
+- Optional .git suffix
+- Subpath components
 
 ## Data Flow
 

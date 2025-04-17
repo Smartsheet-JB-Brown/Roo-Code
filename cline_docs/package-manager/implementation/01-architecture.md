@@ -13,6 +13,7 @@ graph TD
     User[User] -->|Interacts with| UI[Package Manager UI]
     UI -->|Sends messages| MH[Message Handler]
     MH -->|Processes requests| PM[PackageManagerManager]
+    PM -->|Validates sources| PSV[PackageManagerSourceValidation]
     PM -->|Fetches repos| GF[GitFetcher]
     GF -->|Scans metadata| MS[MetadataScanner]
     MS -->|Reads| FS[File System / Git Repositories]
@@ -171,6 +172,16 @@ classDiagram
         +sortItems(sortBy, order): PackageManagerItem[]
         +refreshRepository(url): void
         -queueOperation(operation): void
+        -validateSources(sources): ValidationError[]
+    }
+
+    class PackageManagerSourceValidation {
+        +validateSourceUrl(url): ValidationError[]
+        +validateSourceName(name): ValidationError[]
+        +validateSourceDuplicates(sources): ValidationError[]
+        +validateSource(source): ValidationError[]
+        +validateSources(sources): ValidationError[]
+        -isValidGitRepositoryUrl(url): boolean
     }
 
     class GitFetcher {
@@ -190,16 +201,25 @@ classDiagram
     }
 
     class PackageManagerViewStateManager {
-        -items: PackageManagerItem[]
-        -filters: Filters
-        -sortBy: string
-        -sortOrder: string
-        +setFilters(filters): void
-        +getFilteredAndSortedItems(): PackageManagerItem[]
-        -itemMatchesFilters(item): boolean
+        -state: ViewState
+        -stateChangeHandlers: Set
+        -fetchTimeoutId: NodeJS.Timeout
+        -sourcesModified: boolean
+        +initialize(): void
+        +onStateChange(handler): () => void
+        +cleanup(): void
+        +getState(): ViewState
+        +transition(transition): Promise<void>
+        -notifyStateChange(): void
+        -clearFetchTimeout(): void
+        -isFilterActive(): boolean
+        -filterItems(items): PackageManagerItem[]
+        -sortItems(items): PackageManagerItem[]
+        +handleMessage(message): Promise<void>
     }
 
     PackageManagerManager --> GitFetcher: uses
+    PackageManagerManager --> PackageManagerSourceValidation: uses
     GitFetcher --> MetadataScanner: uses
     PackageManagerManager --> PackageManagerViewStateManager: updates
 ```
@@ -239,26 +259,37 @@ classDiagram
 
 1. **PackageManagerViewStateManager**
 
-    - Manages view-level state
-    - Handles filtering and sorting
-    - Maintains UI preferences
+    - Manages frontend state and backend synchronization
+    - Handles state transitions and message processing
+    - Manages filtering, sorting, and view preferences
     - Coordinates with backend state
+    - Handles timeout protection for operations
+    - Manages source modification tracking
+    - Provides state change subscriptions
 
-2. **PackageManagerItemCard**
+2. **PackageManagerSourceValidation**
+
+    - Validates Git repository URLs for any domain
+    - Validates source names and configurations
+    - Detects duplicate sources (case-insensitive)
+    - Provides structured validation errors
+    - Supports multiple Git protocols (HTTPS, SSH, Git)
+
+3. **PackageManagerItemCard**
 
     - Displays package information
     - Handles tag interactions
     - Manages expandable sections
     - Shows match highlights
 
-3. **ExpandableSection**
+4. **ExpandableSection**
 
     - Provides collapsible sections
     - Manages expand/collapse state
     - Handles animations
     - Shows section metadata
 
-4. **TypeGroup**
+5. **TypeGroup**
     - Groups items by type
     - Formats item lists
     - Highlights search matches

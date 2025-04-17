@@ -2,6 +2,105 @@
 
 This document details the design and implementation of the Package Manager's UI components, including their structure, styling, interactions, and accessibility features.
 
+## PackageManagerView
+
+The PackageManagerView is the main container component that manages the overall package manager interface.
+
+### Component Structure
+
+```tsx
+const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
+	const [state, manager] = useStateManager()
+	const [tagSearch, setTagSearch] = useState("")
+	const [isTagInputActive, setIsTagInputActive] = useState(false)
+
+	// Fetch items on mount
+	useEffect(() => {
+		manager.transition({ type: "FETCH_ITEMS" })
+	}, [manager])
+
+	return (
+		<Tab>
+			<TabHeader>
+				<div className="flex justify-between items-center">
+					<h3>Package Manager</h3>
+					<div className="flex gap-2">
+						<Button
+							variant={state.activeTab === "browse" ? "default" : "secondary"}
+							onClick={() =>
+								manager.transition({
+									type: "SET_ACTIVE_TAB",
+									payload: { tab: "browse" },
+								})
+							}>
+							Browse
+						</Button>
+						<Button
+							variant={state.activeTab === "sources" ? "default" : "secondary"}
+							onClick={() =>
+								manager.transition({
+									type: "SET_ACTIVE_TAB",
+									payload: { tab: "sources" },
+								})
+							}>
+							Sources
+						</Button>
+					</div>
+				</div>
+			</TabHeader>
+
+			<TabContent>
+				{state.activeTab === "browse" ? (
+					<BrowseView
+						items={state.displayItems || []}
+						filters={state.filters}
+						onUpdateFilters={(filters) =>
+							manager.transition({
+								type: "UPDATE_FILTERS",
+								payload: { filters },
+							})
+						}
+					/>
+				) : (
+					<SourcesView
+						sources={state.sources}
+						refreshingUrls={state.refreshingUrls}
+						onRefreshSource={(url) =>
+							manager.transition({
+								type: "REFRESH_SOURCE",
+								payload: { url },
+							})
+						}
+						onSourcesChange={(sources) =>
+							manager.transition({
+								type: "UPDATE_SOURCES",
+								payload: { sources },
+							})
+						}
+					/>
+				)}
+			</TabContent>
+		</Tab>
+	)
+}
+```
+
+### State Management Integration
+
+The component uses the PackageManagerViewStateManager through the useStateManager hook:
+
+```tsx
+const [state, manager] = useStateManager()
+```
+
+Key features:
+
+- Manages tab state (browse/sources)
+- Handles source configuration
+- Coordinates filtering and sorting
+- Manages loading states
+- Handles source validation
+
 ## PackageManagerItemCard
 
 The PackageManagerItemCard is the primary component for displaying package information in the UI.
@@ -397,9 +496,103 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className, se
     - Avoids rendering empty containers
     - Prevents unnecessary UI elements
 
+## Source Configuration Components
+
+The Package Manager includes components for managing package sources.
+
+### SourcesView
+
+```tsx
+const SourcesView: React.FC<SourcesViewProps> = ({ sources, refreshingUrls, onRefreshSource, onSourcesChange }) => {
+	const [newSourceUrl, setNewSourceUrl] = useState("")
+	const [newSourceName, setNewSourceName] = useState("")
+	const [error, setError] = useState("")
+
+	const handleAddSource = () => {
+		// Validate source URL and name
+		const errors = [
+			...validateSourceUrl(newSourceUrl),
+			...validateSourceName(newSourceName),
+			...validateSourceDuplicates(sources, {
+				url: newSourceUrl,
+				name: newSourceName,
+				enabled: true,
+			}),
+		]
+
+		if (errors.length > 0) {
+			setError(errors[0].message)
+			return
+		}
+
+		// Add new source
+		onSourcesChange([
+			...sources,
+			{
+				url: newSourceUrl,
+				name: newSourceName || undefined,
+				enabled: true,
+			},
+		])
+
+		// Clear form
+		setNewSourceUrl("")
+		setNewSourceName("")
+		setError("")
+	}
+
+	return (
+		<div>
+			<h4>Configure Package Manager Sources</h4>
+			<p>Add Git repositories containing package manager items.</p>
+
+			{/* Source form */}
+			<div>
+				<input
+					type="text"
+					placeholder="Git repository URL"
+					value={newSourceUrl}
+					onChange={(e) => setNewSourceUrl(e.target.value)}
+				/>
+				<input
+					type="text"
+					placeholder="Display name (optional)"
+					value={newSourceName}
+					onChange={(e) => setNewSourceName(e.target.value)}
+				/>
+				{error && <p className="text-red-500">{error}</p>}
+				<Button onClick={handleAddSource}>Add Source</Button>
+			</div>
+
+			{/* Source list */}
+			<div>
+				{sources.map((source) => (
+					<SourceItem
+						key={source.url}
+						source={source}
+						isRefreshing={refreshingUrls.includes(source.url)}
+						onRefresh={() => onRefreshSource(source.url)}
+						onToggle={() => {
+							const updatedSources = sources.map((s) =>
+								s.url === source.url ? { ...s, enabled: !s.enabled } : s,
+							)
+							onSourcesChange(updatedSources)
+						}}
+						onRemove={() => {
+							const updatedSources = sources.filter((s) => s.url !== source.url)
+							onSourcesChange(updatedSources)
+						}}
+					/>
+				))}
+			</div>
+		</div>
+	)
+}
+```
+
 ## Filter Components
 
-The Package Manager includes several components for filtering and searching.
+The Package Manager includes components for filtering and searching.
 
 ### SearchInput
 

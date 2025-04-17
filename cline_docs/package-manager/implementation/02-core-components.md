@@ -234,37 +234,129 @@ The filtering system provides rich functionality:
     - Support highlighting
     - Maintain match context
 
-## PackageManagerViewStateManager
+## PackageManagerSourceValidation
 
-The PackageManagerViewStateManager handles UI state and view-level operations.
+The PackageManagerSourceValidation component handles validation of package manager sources and their configurations.
 
 ### Responsibilities
 
-- Managing view-level state
-- Handling UI filters
-- Coordinating sorting
-- Managing item visibility
+- Validating Git repository URLs for any domain
+- Validating source names and configurations
+- Detecting duplicate sources
+- Providing structured validation errors
+- Supporting multiple Git protocols
+
+### Implementation Details
+
+```typescript
+export class PackageManagerSourceValidation {
+	/**
+	 * Validates a package manager source URL
+	 */
+	public static validateSourceUrl(url: string): ValidationError[] {
+		// Implementation details
+	}
+
+	/**
+	 * Validates a package manager source name
+	 */
+	public static validateSourceName(name?: string): ValidationError[] {
+		// Implementation details
+	}
+
+	/**
+	 * Validates sources for duplicates
+	 */
+	public static validateSourceDuplicates(
+		sources: PackageManagerSource[],
+		newSource?: PackageManagerSource,
+	): ValidationError[] {
+		// Implementation details
+	}
+
+	/**
+	 * Checks if a URL is a valid Git repository URL
+	 */
+	private static isValidGitRepositoryUrl(url: string): boolean {
+		// Implementation details
+	}
+}
+```
+
+### Key Algorithms
+
+#### URL Validation
+
+The URL validation system supports:
+
+1. **Protocol Validation**:
+
+    - HTTPS URLs
+    - SSH URLs
+    - Git protocol URLs
+    - Custom domains and ports
+
+2. **Domain Validation**:
+
+    - Any valid domain name
+    - IP addresses
+    - Localhost for testing
+    - Internal company domains
+
+3. **Path Validation**:
+    - Username/organization
+    - Repository name
+    - Optional .git suffix
+    - Subpath support
+
+## PackageManagerViewStateManager
+
+The PackageManagerViewStateManager manages frontend state and synchronization with the backend.
+
+### Responsibilities
+
+- Managing frontend state transitions
+- Handling message processing
+- Managing timeouts and retries
+- Coordinating with backend state
+- Providing state change subscriptions
+- Managing source modification tracking
+- Handling filtering and sorting
 
 ### Implementation Details
 
 ```typescript
 class PackageManagerViewStateManager {
-	private items: PackageManagerItem[] = []
-	private sortBy: "name" | "lastUpdated" = "name"
-	private sortOrder: "asc" | "desc" = "asc"
-	private filters: Filters = { type: "", search: "", tags: [] }
+	private state: ViewState
+	private stateChangeHandlers: Set<StateChangeHandler>
+	private fetchTimeoutId?: NodeJS.Timeout
+	private sourcesModified: boolean
 
 	/**
-	 * Get filtered and sorted items
+	 * Initialize state manager
 	 */
-	public getFilteredAndSortedItems(): PackageManagerItem[] {
+	public initialize(): void {
 		// Implementation details
 	}
 
 	/**
-	 * Check if item matches current filters
+	 * Subscribe to state changes
 	 */
-	private itemMatchesFilters(item: PackageManagerItem | Subcomponent): boolean {
+	public onStateChange(handler: StateChangeHandler): () => void {
+		// Implementation details
+	}
+
+	/**
+	 * Process state transitions
+	 */
+	public async transition(transition: ViewStateTransition): Promise<void> {
+		// Implementation details
+	}
+
+	/**
+	 * Handle incoming messages
+	 */
+	public async handleMessage(message: any): Promise<void> {
 		// Implementation details
 	}
 }
@@ -278,6 +370,7 @@ The components work together through well-defined interfaces:
 
 1. **Repository Operations**:
 
+    - PackageManagerManager validates sources with PackageManagerSourceValidation
     - PackageManagerManager coordinates with GitFetcher
     - GitFetcher manages repository state
     - MetadataScanner processes repository content
@@ -286,9 +379,11 @@ The components work together through well-defined interfaces:
 2. **State Management**:
 
     - PackageManagerManager maintains backend state
-    - ViewStateManager handles UI state
-    - State changes trigger UI updates
+    - ViewStateManager handles UI state transitions
+    - ViewStateManager processes messages
+    - State changes notify subscribers
     - Components react to state changes
+    - Timeout protection ensures responsiveness
 
 3. **User Interactions**:
     - UI events trigger state updates
