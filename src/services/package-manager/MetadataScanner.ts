@@ -45,9 +45,6 @@ export class MetadataScanner {
 	): Promise<PackageManagerItem[]> {
 		const items: PackageManagerItem[] = []
 
-		console.log("scanDirectory called with rootDir:", rootDir)
-		console.log("scanDirectory called with repoUrl:", repoUrl)
-
 		// Only set originalRootDir on the first call, not recursive calls
 		if (!isRecursiveCall && !this.originalRootDir) {
 			this.originalRootDir = rootDir
@@ -60,19 +57,11 @@ export class MetadataScanner {
 				if (!entry.isDirectory()) continue
 
 				const componentDir = path.join(rootDir, entry.name)
-				console.log("scanDirectory - entry.name:", entry.name)
-				console.log("scanDirectory - rootDir:", rootDir)
-				console.log("scanDirectory - componentDir:", componentDir)
 				// Always calculate paths relative to the original root directory
 				const relativePath = path.relative(this.originalRootDir || rootDir, componentDir).replace(/\\/g, "/")
-				console.log("scanDirectory - relativePath:", relativePath)
-				console.log("Checking directory:", componentDir)
 				const metadata = await this.loadComponentMetadata(componentDir)
-				console.log("Found metadata:", metadata)
-
 				// If no metadata found, or metadata validation fails, try recursing
 				if (!metadata || !this.getLocalizedMetadata(metadata)) {
-					console.log("No valid metadata found, recursing into:", componentDir)
 					// Pass the current directory as the root for this recursive call
 					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName, true)
 					items.push(...subItems)
@@ -132,14 +121,7 @@ export class MetadataScanner {
 
 				// Recursively scan subdirectories only if not in a package
 				if (!metadata || !this.isPackageMetadata(localizedMetadata)) {
-					console.log("Recursing into directory:", componentDir)
-					console.log("Current relativePath:", relativePath)
-					console.log("Current rootDir:", rootDir)
 					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName, true)
-					console.log("Received subItems:", subItems)
-					// No need to modify paths for recursive items
-					// They are already correctly calculated relative to the original root
-					console.log("Found sub items:", subItems)
 					items.push(...subItems)
 				}
 			}
@@ -179,14 +161,8 @@ export class MetadataScanner {
 	 */
 	private async loadComponentMetadata(componentDir: string): Promise<LocalizedMetadata<ComponentMetadata> | null> {
 		const metadata: LocalizedMetadata<ComponentMetadata> = {}
-		console.log("Loading metadata from directory:", componentDir)
-
 		try {
 			const entries = await fs.readdir(componentDir, { withFileTypes: true })
-			console.log(
-				"Directory entries:",
-				entries.map((e) => e.name),
-			)
 
 			// Look for metadata.{locale}.yml files
 			for (const entry of entries) {
@@ -200,9 +176,7 @@ export class MetadataScanner {
 
 				try {
 					const content = await fs.readFile(metadataPath, "utf-8")
-					console.log("Metadata content:", content)
 					const parsed = yaml.load(content) as Record<string, any>
-					console.log("Parsed metadata:", parsed)
 
 					// Add type field if missing but has a parent directory indicating type
 					if (!parsed.type) {
@@ -255,18 +229,11 @@ export class MetadataScanner {
 		const effectiveRootDir = this.originalRootDir || rootDir
 		// Always calculate path relative to the original root directory
 		const fullPath = path.relative(effectiveRootDir, componentDir).replace(/\\/g, "/")
-		console.log("createPackageManagerItem - componentDir:", componentDir)
-		console.log("createPackageManagerItem - effectiveRootDir:", effectiveRootDir)
-		console.log("createPackageManagerItem - fullPath:", fullPath)
-		console.log("createPackageManagerItem - path parts:", fullPath.split("/"))
-
 		// Don't encode spaces in URL to match test expectations
 		const urlPath = fullPath
 			.split("/")
 			.map((part) => encodeURIComponent(part))
 			.join("/")
-		console.log("createPackageManagerItem - urlPath:", urlPath)
-
 		// Create the item with the correct path and URL
 		return {
 			name: metadata.name,
@@ -329,7 +296,6 @@ export class MetadataScanner {
 		packageItem: PackageManagerItem,
 		parentPath: string = "",
 	): Promise<void> {
-		console.log(`Scanning directory: ${packageDir}`)
 		const entries = await fs.readdir(packageDir, { withFileTypes: true })
 
 		for (const entry of entries) {
@@ -338,7 +304,6 @@ export class MetadataScanner {
 			const subPath = path.join(packageDir, entry.name)
 			// Normalize path to use forward slashes
 			const relativePath = parentPath ? `${parentPath}/${entry.name}` : entry.name
-			console.log(`Found directory: ${entry.name}, relative path: ${relativePath}`)
 
 			// Try to load metadata directly
 			const subMetadata = await this.loadComponentMetadata(subPath)
@@ -347,10 +312,7 @@ export class MetadataScanner {
 				// Get localized metadata with fallback
 				const localizedSubMetadata = this.getLocalizedMetadata(subMetadata)
 				if (localizedSubMetadata) {
-					console.log(`Metadata for ${entry.name}:`, localizedSubMetadata)
-
 					const isListed = packageItem.items?.some((i) => i.path === relativePath)
-					console.log(`${entry.name} is ${isListed ? "already listed" : "not listed"}`)
 
 					if (!isListed) {
 						const subItem = {
@@ -361,7 +323,6 @@ export class MetadataScanner {
 						}
 						packageItem.items = packageItem.items || []
 						packageItem.items.push(subItem)
-						console.log(`Added ${entry.name} to items`)
 					}
 				}
 			}

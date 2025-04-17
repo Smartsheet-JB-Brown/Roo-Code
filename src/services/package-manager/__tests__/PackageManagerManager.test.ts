@@ -556,8 +556,6 @@ describe("PackageManagerManager", () => {
 
 		// Test 1: Search for "data validator" (lowercase)
 		const filtered1 = manager.filterItems(items, { search: "data validator" })
-		console.log("Test 1 - Search for 'data validator'")
-		console.log("Filtered items count:", filtered1.length)
 
 		// Verify we find the Data Validator component
 		expect(filtered1.length).toBeGreaterThan(0)
@@ -578,24 +576,18 @@ describe("PackageManagerManager", () => {
 
 		// Test 2: Search for "DATA VALIDATOR" (uppercase)
 		const filtered2 = manager.filterItems(items, { search: "DATA VALIDATOR" })
-		console.log("\nTest 2 - Search for 'DATA VALIDATOR'")
-		console.log("Filtered items count:", filtered2.length)
 
 		// Verify we find the Data Validator component
 		expect(filtered2.length).toBeGreaterThan(0)
 
 		// Test 3: Search for "validator" (partial match)
 		const filtered3 = manager.filterItems(items, { search: "validator" })
-		console.log("\nTest 3 - Search for 'validator'")
-		console.log("Filtered items count:", filtered3.length)
 
 		// Verify we find the Data Validator component
 		expect(filtered3.length).toBeGreaterThan(0)
 
 		// Test 4: Search for "data valid" (partial match)
 		const filtered4 = manager.filterItems(items, { search: "data valid" })
-		console.log("\nTest 4 - Search for 'data valid'")
-		console.log("Filtered items count:", filtered4.length)
 
 		// Verify we find the Data Validator component
 		expect(filtered4.length).toBeGreaterThan(0)

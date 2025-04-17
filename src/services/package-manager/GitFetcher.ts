@@ -199,7 +199,6 @@ export class GitFetcher {
 			// Get current branch
 			const git = simpleGit(repoDir)
 			const branch = await git.revparse(["--abbrev-ref", "HEAD"])
-			console.log(`Repository cloned/pulled successfully on branch ${branch}`)
 		} catch (error) {
 			throw new Error(
 				`Failed to clone/pull repository: ${error instanceof Error ? error.message : String(error)}`,

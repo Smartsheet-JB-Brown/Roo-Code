@@ -18,16 +18,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 	const [isTagInputActive, setIsTagInputActive] = useState(false)
 
 	// Debug logging for state changes
-	useEffect(() => {
-		console.log("State updated:", {
-			allItems: state.allItems,
-			displayItems: state.displayItems,
-			itemsLength: state.allItems.length,
-			displayItemsLength: state.displayItems?.length,
-			showingEmptyState: (state.displayItems || state.allItems).length === 0,
-			filters: state.filters,
-		})
-	}, [state.allItems, state.displayItems, state.filters])
 
 	// Fetch items on mount
 	useEffect(() => {
@@ -245,23 +235,12 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							const items = state.displayItems || []
 							const isEmpty = items.length === 0
 							const isLoading = state.isFetching
-							console.log("=== Rendering PackageManagerView ===")
-							console.log("Component state:", {
-								allItems: items,
-								itemCount: items.length,
-								isEmpty,
-								isLoading,
-								activeTab: state.activeTab,
-								filters: state.filters,
-							})
-
 							// Show loading state if fetching and not filtering
 							// Only show loading state if we're fetching and not filtering
 							if (
 								isLoading &&
 								!(state.filters.type || state.filters.search || state.filters.tags.length > 0)
 							) {
-								console.log("Rendering loading state due to isFetching=true")
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
 										<p>Loading items...</p>
@@ -271,7 +250,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 
 							// Show empty state if no items
 							if (isEmpty) {
-								console.log("Showing empty state")
 								return (
 									<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground">
 										<p>No package manager items found</p>
@@ -280,7 +258,6 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 							}
 
 							// Show items view
-							console.log("Showing items view with items:", items)
 							return (
 								<div>
 									<p className="text-vscode-descriptionForeground mb-4">

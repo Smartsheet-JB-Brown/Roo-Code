@@ -86,59 +86,25 @@ export class PackageManagerViewStateManager {
 	}
 
 	public getState(): ViewState {
-		console.log("getState called, returning:", this.state)
 		// Create a deep copy to ensure React sees changes
 		return JSON.parse(JSON.stringify(this.state))
 	}
 
 	private notifyStateChange(): void {
-		console.log("=== State Change Notification ===")
-		console.log("Current state:", {
-			allItems: this.state.allItems,
-			displayItems: this.state.displayItems,
-			itemsLength: this.state.allItems.length,
-			displayItemsLength: this.state.displayItems?.length,
-			isFetching: this.state.isFetching,
-			activeTab: this.state.activeTab,
-			filters: this.state.filters,
-		})
-
 		// Create a deep copy to ensure React sees changes
 		const newState = JSON.parse(JSON.stringify(this.state))
 
-		console.log("Notifying handlers with state:", {
-			allItems: newState.allItems,
-			displayItems: newState.displayItems,
-			itemsLength: newState.allItems.length,
-			displayItemsLength: newState.displayItems?.length,
-			isFetching: newState.isFetching,
-			activeTab: newState.activeTab,
-			filters: newState.filters,
-		})
-
 		this.stateChangeHandlers.forEach((handler) => {
-			console.log("Calling state change handler")
 			handler(newState)
 		})
-
-		console.log("=== End State Change Notification ===")
 	}
 
 	public async transition(transition: ViewStateTransition): Promise<void> {
-		console.log(`ViewStateManager: Processing transition ${transition.type}`)
-
 		switch (transition.type) {
 			case "FETCH_ITEMS": {
 				if (this.state.isFetching) {
-					console.log("ViewStateManager: Fetch already in progress, skipping")
 					return
 				}
-
-				console.log("=== Starting Fetch ===")
-				console.log("Before setting isFetching:", {
-					isFetching: this.state.isFetching,
-					allItems: this.state.allItems.length,
-				})
 
 				// Create a new state object to ensure React sees the change
 				const newState = {
@@ -164,19 +130,11 @@ export class PackageManagerViewStateManager {
 					bool: true,
 				} as WebviewMessage)
 
-				console.log("=== Fetch Started ===")
 				break
 			}
 
 			case "FETCH_COMPLETE": {
 				const { items } = transition.payload as TransitionPayloads["FETCH_COMPLETE"]
-				console.log("=== FETCH_COMPLETE Started ===")
-				console.log("Before state update:", {
-					isFetching: this.state.isFetching,
-					currentItems: this.state.allItems.length,
-					receivedItems: items.length,
-				})
-
 				// Clear any existing timeout
 				this.clearFetchTimeout()
 
@@ -196,14 +154,7 @@ export class PackageManagerViewStateManager {
 				// Update state and notify
 				this.state = newState
 
-				console.log("After state update:", {
-					isFetching: this.state.isFetching,
-					allItems: this.state.allItems.length,
-					firstItem: this.state.allItems[0],
-				})
-
 				this.notifyStateChange()
-				console.log("=== FETCH_COMPLETE Finished ===")
 				break
 			}
 
@@ -261,11 +212,6 @@ export class PackageManagerViewStateManager {
 
 			case "UPDATE_FILTERS": {
 				const { filters = {} } = (transition.payload as TransitionPayloads["UPDATE_FILTERS"]) || {}
-				console.log("=== UPDATE_FILTERS Started ===", {
-					currentFilters: this.state.filters,
-					newFilters: filters,
-				})
-
 				// Create new filters object, preserving existing filters unless explicitly changed
 				const updatedFilters = {
 					type: filters.type ?? this.state.filters.type,
@@ -286,7 +232,6 @@ export class PackageManagerViewStateManager {
 					filters: updatedFilters,
 				} as WebviewMessage)
 
-				console.log("=== UPDATE_FILTERS Finished ===")
 				break
 			}
 
@@ -421,30 +366,8 @@ export class PackageManagerViewStateManager {
 	}
 
 	public async handleMessage(message: any): Promise<void> {
-		console.log("=== Handling Message ===", {
-			messageType: message.type,
-			hasPackageManagerItems: !!message.state?.packageManagerItems,
-			itemsLength: message.state?.packageManagerItems?.length,
-			currentState: {
-				isFetching: this.state.isFetching,
-				itemCount: this.state.allItems.length,
-			},
-		})
-
 		// Handle state updates from extension
 		if (message.type === "state") {
-			console.log("Processing state update:", {
-				isFetching: message.state?.isFetching,
-				itemCount: message.state?.packageManagerItems?.length,
-				firstItem: message.state?.packageManagerItems?.[0],
-				sources: message.state?.sources,
-				currentState: {
-					isFetching: this.state.isFetching,
-					itemCount: this.state.allItems.length,
-					sources: this.state.sources,
-				},
-			})
-
 			// Update sources from either sources or packageManagerSources in state
 			if (message.state?.sources || message.state?.packageManagerSources) {
 				const sources = message.state.packageManagerSources || message.state.sources
@@ -453,7 +376,6 @@ export class PackageManagerViewStateManager {
 			}
 
 			if (message.state?.packageManagerItems) {
-				console.log("State includes items, transitioning to FETCH_COMPLETE")
 				void this.transition({
 					type: "FETCH_COMPLETE",
 					payload: { items: message.state.packageManagerItems },

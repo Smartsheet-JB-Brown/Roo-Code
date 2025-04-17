@@ -71,34 +71,27 @@ export class PackageManagerManager {
 	async getPackageManagerItems(
 		sources: PackageManagerSource[],
 	): Promise<{ items: PackageManagerItem[]; errors?: string[] }> {
-		console.log(`PackageManagerManager: Getting items from ${sources.length} sources`)
 		const items: PackageManagerItem[] = []
 		const errors: string[] = []
 
 		// Filter enabled sources
 		const enabledSources = sources.filter((s) => s.enabled)
-		console.log(`PackageManagerManager: ${enabledSources.length} enabled sources`)
 
 		// Process sources sequentially with locking
 		for (const source of enabledSources) {
 			if (this.isSourceLocked(source.url)) {
-				console.log(`PackageManagerManager: Source ${source.url} is locked, skipping`)
 				continue
 			}
 
 			try {
 				this.lockSource(source.url)
-				console.log(`PackageManagerManager: Processing source ${source.url}`)
 
 				// Queue metadata scanning operation
 				await this.queueOperation(async () => {
 					const repo = await this.getRepositoryData(source.url, false, source.name)
 
 					if (repo.items && repo.items.length > 0) {
-						console.log(`PackageManagerManager: Found ${repo.items.length} items in ${source.url}`)
 						items.push(...repo.items)
-					} else {
-						console.log(`PackageManagerManager: No items found in ${source.url}`)
 					}
 				})
 			} catch (error) {
@@ -119,7 +112,6 @@ export class PackageManagerManager {
 			...(errors.length > 0 && { errors }),
 		}
 
-		console.log(`PackageManagerManager: Returning ${items.length} total items`)
 		return result
 	}
 
@@ -157,23 +149,12 @@ export class PackageManagerManager {
 		sourceName?: string,
 	): Promise<PackageManagerRepository> {
 		try {
-			console.log(`PackageManagerManager: Getting repository data for ${url}`)
-
 			// Check cache first (unless force refresh is requested)
 			const cached = this.cache.get(url)
 
 			if (!forceRefresh && cached && Date.now() - cached.timestamp < PackageManagerManager.CACHE_EXPIRY_MS) {
-				console.log(
-					`PackageManagerManager: Using cached data for ${url} (age: ${Date.now() - cached.timestamp}ms)`,
-				)
 				return cached.data
 			}
-
-			if (forceRefresh) {
-				console.log(`PackageManagerManager: Force refresh requested for ${url}, bypassing cache`)
-			}
-
-			console.log(`PackageManagerManager: Cache miss or expired for ${url}, fetching fresh data`)
 
 			// Fetch fresh data with timeout protection
 			const fetchPromise = this.gitFetcher.fetchRepository(url, forceRefresh, sourceName)
@@ -190,7 +171,6 @@ export class PackageManagerManager {
 
 			// Cache the result
 			this.cache.set(url, { data, timestamp: Date.now() })
-			console.log(`PackageManagerManager: Successfully fetched and cached data for ${url}`)
 
 			return data
 		} catch (error) {
@@ -216,12 +196,9 @@ export class PackageManagerManager {
 	 * @returns The refreshed repository data
 	 */
 	async refreshRepository(url: string, sourceName?: string): Promise<PackageManagerRepository> {
-		console.log(`PackageManagerManager: Refreshing repository ${url}`)
-
 		try {
 			// Force a refresh by bypassing the cache
 			const data = await this.getRepositoryData(url, true, sourceName)
-			console.log(`PackageManagerManager: Repository ${url} refreshed successfully`)
 			return data
 		} catch (error) {
 			console.error(`PackageManagerManager: Failed to refresh repository ${url}:`, error)
@@ -258,7 +235,6 @@ export class PackageManagerManager {
 			try {
 				await fs.stat(cacheDir)
 			} catch (error) {
-				console.log("PackageManagerManager: Cache directory doesn't exist yet, nothing to clean up")
 				return
 			}
 
@@ -266,29 +242,21 @@ export class PackageManagerManager {
 			const entries = await fs.readdir(cacheDir, { withFileTypes: true })
 			const cachedRepoDirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
 
-			console.log(`PackageManagerManager: Found ${cachedRepoDirs.length} cached repositories`)
-
 			// Get the list of repository names from current sources
 			const currentRepoNames = currentSources.map((source) => this.getRepoNameFromUrl(source.url))
 
 			// Find directories to delete
 			const dirsToDelete = cachedRepoDirs.filter((dir) => !currentRepoNames.includes(dir))
 
-			console.log(`PackageManagerManager: Found ${dirsToDelete.length} repositories to delete`)
-
 			// Delete each directory that's no longer in the sources
 			for (const dirName of dirsToDelete) {
 				try {
 					const dirPath = path.join(cacheDir, dirName)
-					console.log(`PackageManagerManager: Deleting cache directory ${dirPath}`)
 					await fs.rm(dirPath, { recursive: true, force: true })
-					console.log(`PackageManagerManager: Successfully deleted ${dirPath}`)
 				} catch (error) {
 					console.error(`PackageManagerManager: Failed to delete directory ${dirName}:`, error)
 				}
 			}
-
-			console.log(`PackageManagerManager: Cache cleanup completed, deleted ${dirsToDelete.length} directories`)
 		} catch (error) {
 			console.error("PackageManagerManager: Error cleaning up cache directories:", error)
 		}
@@ -316,15 +284,6 @@ export class PackageManagerManager {
 		items: PackageManagerItem[],
 		filters: { type?: ComponentType; search?: string; tags?: string[] },
 	): PackageManagerItem[] {
-		console.log("DEBUG: Starting filterItems", {
-			itemCount: items.length,
-			filters: {
-				type: filters.type,
-				search: filters.search,
-				tags: filters.tags,
-			},
-		})
-
 		// Helper function to normalize text for case/whitespace-insensitive comparison
 		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
 
@@ -339,8 +298,6 @@ export class PackageManagerManager {
 
 		// Create a deep clone of all items
 		const clonedItems = items.map((originalItem) => JSON.parse(JSON.stringify(originalItem)) as PackageManagerItem)
-
-		console.log("Initial items:", JSON.stringify(clonedItems))
 
 		// Apply filters
 		const filteredItems = clonedItems.filter((item) => {
@@ -387,11 +344,6 @@ export class PackageManagerManager {
 			return parentMatchesAll || isPackageWithMatchingSubcomponent
 		})
 
-		console.log("Filtered items:", {
-			before: clonedItems.length,
-			after: filteredItems.length,
-			filters,
-		})
 		// Add match info to filtered items
 		return filteredItems.map((item) => {
 			// Calculate parent item matches

@@ -28,15 +28,11 @@ export async function handlePackageManagerMessages(
 	switch (message.type) {
 		case "webviewDidLaunch": {
 			// For webviewDidLaunch, we don't do anything - package manager items will be loaded by explicit fetchPackageManagerItems
-			console.log(
-				"Package Manager: webviewDidLaunch received, but skipping fetch (will be triggered by explicit fetchPackageManagerItems)",
-			)
 			return true
 		}
 		case "fetchPackageManagerItems": {
 			// Prevent multiple simultaneous fetches
 			if (packageManagerManager.isFetching) {
-				console.log("Package Manager: Fetch already in progress, skipping")
 				await provider.postMessageToWebview({
 					type: "state",
 					text: "Fetch already in progress",
@@ -47,10 +43,7 @@ export async function handlePackageManagerMessages(
 
 			// Check if we need to force refresh using type assertion
 			const forceRefresh = (message as any).forceRefresh === true
-			console.log(`Package Manager: Fetch requested with forceRefresh=${forceRefresh}`)
 			try {
-				console.log("Package Manager: Received request to fetch package manager items")
-				console.log("DEBUG: Processing package manager request")
 				packageManagerManager.isFetching = true
 
 				// Wrap the entire initialization in a try-catch block
@@ -61,26 +54,19 @@ export async function handlePackageManagerMessages(
 						[]
 
 					if (!sources || sources.length === 0) {
-						console.log("Package Manager: No sources found, initializing default sources")
 						sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
 
 						// Save the default sources
 						await provider.contextProxy.setValue("packageManagerSources", sources)
-						console.log("Package Manager: Default sources initialized")
 					}
-
-					console.log(`Package Manager: Fetching items from ${sources.length} sources`)
-					console.log(`DEBUG: PackageManagerManager instance: ${packageManagerManager ? "exists" : "null"}`)
 
 					// Add timing information
 					const startTime = Date.now()
 
 					// Fetch items from all enabled sources
-					console.log("DEBUG: Starting to fetch items from sources")
 					const enabledSources = sources.filter((s) => s.enabled)
 
 					if (enabledSources.length === 0) {
-						console.log("DEBUG: No enabled sources found")
 						vscode.window.showInformationMessage(
 							"No enabled sources configured. Add and enable sources to view items.",
 						)
@@ -88,7 +74,6 @@ export async function handlePackageManagerMessages(
 						return true
 					}
 
-					console.log(`Package Manager: Fetching items from ${enabledSources.length} sources`)
 					const result = await packageManagerManager.getPackageManagerItems(enabledSources)
 
 					// If there are errors but also items, show warning
@@ -108,19 +93,13 @@ export async function handlePackageManagerMessages(
 						packageManagerManager.isFetching = false
 					}
 
-					console.log("DEBUG: Successfully fetched items:", result.items.length)
-
-					console.log("DEBUG: Fetch completed, preparing to send items to webview")
 					const endTime = Date.now()
 
-					console.log(`Package Manager: Found ${result.items.length} items in ${endTime - startTime}ms`)
-					console.log(`Package Manager: First item:`, result.items.length > 0 ? result.items[0] : "No items")
 					// The items are already stored in PackageManagerManager's currentItems
 					// No need to store in global state
 
 					// Send state to webview
 					await provider.postStateToWebview()
-					console.log("Package Manager: State sent to webview")
 				} catch (initError) {
 					const errorMessage = `Package manager initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`
 					console.error("Error in package manager initialization:", initError)
@@ -166,8 +145,6 @@ export async function handlePackageManagerMessages(
 
 				// Filter out invalid sources
 				if (validationErrors.length > 0) {
-					console.log("Package Manager: Validation errors found in sources", validationErrors)
-
 					// Create a map of invalid indices
 					const invalidIndices = new Set<number>()
 					validationErrors.forEach((error: ValidationError) => {
@@ -195,9 +172,7 @@ export async function handlePackageManagerMessages(
 
 				// Clean up cache directories for repositories that are no longer in the sources list
 				try {
-					console.log("Package Manager: Cleaning up cache directories for removed sources")
 					await packageManagerManager.cleanupCacheDirectories(updatedSources)
-					console.log("Package Manager: Cache cleanup completed")
 				} catch (error) {
 					console.error("Package Manager: Error during cache cleanup:", error)
 				}
@@ -209,10 +184,8 @@ export async function handlePackageManagerMessages(
 		}
 		case "openExternal": {
 			if (message.url) {
-				console.log(`Package Manager: Opening external URL: ${message.url}`)
 				try {
 					vscode.env.openExternal(vscode.Uri.parse(message.url))
-					console.log(`Package Manager: Successfully opened URL: ${message.url}`)
 				} catch (error) {
 					console.error(
 						`Package Manager: Failed to open URL: ${error instanceof Error ? error.message : String(error)}`,
@@ -228,26 +201,15 @@ export async function handlePackageManagerMessages(
 		}
 
 		case "filterPackageManagerItems": {
-			console.log("DEBUG: Handling filterPackageManagerItems message", {
-				filters: message.filters,
-				hasItems: packageManagerManager.getCurrentItems().length > 0,
-			})
 			if (message.filters) {
 				try {
 					// Get current items from the manager
 					const items = packageManagerManager.getCurrentItems()
-					console.log("DEBUG: Current items before filtering:", items.length)
-
 					// Apply filters using the manager's filtering logic
 					const filteredItems = packageManagerManager.filterItems(items, {
 						type: message.filters.type as ComponentType | undefined,
 						search: message.filters.search,
 						tags: message.filters.tags,
-					})
-					console.log("DEBUG: Filtered items:", {
-						beforeCount: items.length,
-						afterCount: filteredItems.length,
-						filters: message.filters,
 					})
 					// Get current state and merge filtered items
 					const currentState = await provider.getStateToPostToWebview()
@@ -258,8 +220,6 @@ export async function handlePackageManagerMessages(
 							packageManagerItems: filteredItems,
 						},
 					})
-					console.log("DEBUG: State update sent with filtered items:", filteredItems.length)
-					console.log("DEBUG: State update sent with filtered items:", filteredItems.length)
 				} catch (error) {
 					console.error("Package Manager: Error filtering items:", error)
 					vscode.window.showErrorMessage("Failed to filter package manager items")
@@ -271,8 +231,6 @@ export async function handlePackageManagerMessages(
 		case "refreshPackageManagerSource": {
 			if (message.url) {
 				try {
-					console.log(`Package Manager: Received request to refresh source ${message.url}`)
-
 					// Get the current sources
 					const sources =
 						((await provider.contextProxy.getValue("packageManagerSources")) as PackageManagerSource[]) ||
@@ -300,7 +258,6 @@ export async function handlePackageManagerMessages(
 							await provider.postStateToWebview()
 						} finally {
 							// Always notify the webview that the refresh is complete, even if it failed
-							console.log(`Package Manager: Sending repositoryRefreshComplete message for ${message.url}`)
 							await provider.postMessageToWebview({
 								type: "repositoryRefreshComplete",
 								url: message.url,
