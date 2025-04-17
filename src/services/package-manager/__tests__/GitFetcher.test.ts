@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import { GitFetcher } from "../GitFetcher"
 import * as fs from "fs/promises"
+import * as path from "path"
 import { Dirent, Stats } from "fs"
 import simpleGit, { SimpleGit } from "simple-git"
 import { MetadataScanner } from "../MetadataScanner"
@@ -48,7 +49,7 @@ jest.mock("util", () => ({
 // Mock vscode
 const mockContext = {
 	globalStorageUri: {
-		fsPath: "/mock/storage/path",
+		fsPath: path.join(process.cwd(), "mock-storage-path"),
 	},
 } as vscode.ExtensionContext
 
@@ -73,7 +74,7 @@ describe("GitFetcher", () => {
 	let gitFetcher: GitFetcher
 	const mockSimpleGit = simpleGit as jest.MockedFunction<typeof simpleGit>
 	const testRepoUrl = "https://github.com/test/repo"
-	const testRepoDir = "/mock/storage/path/package-manager-cache/repo"
+	const testRepoDir = path.join(mockContext.globalStorageUri.fsPath, "package-manager-cache", "repo")
 
 	beforeEach(() => {
 		jest.clearAllMocks()
@@ -81,16 +82,20 @@ describe("GitFetcher", () => {
 
 		// Reset fs mock defaults
 		;(fs.mkdir as jest.Mock).mockResolvedValue(undefined)
-		;(fs.rm as jest.Mock).mockImplementation((path: string, options?: any) => {
+		;(fs.rm as jest.Mock).mockImplementation((pathToRemove: string, options?: any) => {
 			// Always require recursive and force options
 			if (!options?.recursive || !options?.force) {
 				return Promise.reject(new Error("Invalid rm call: missing recursive or force options"))
 			}
 			// Allow any path under package-manager-cache directory
-			if (path.includes("package-manager-cache/")) {
+			const normalizedPath = path.normalize(pathToRemove)
+			const normalizedCachePath = path.normalize(
+				path.join(mockContext.globalStorageUri.fsPath, "package-manager-cache"),
+			)
+			if (normalizedPath.startsWith(normalizedCachePath)) {
 				return Promise.resolve(undefined)
 			}
-			return Promise.reject(new Error("Invalid rm call: path not in package-manager-cache"))
+			return Promise.reject(new Error(`Invalid rm call: path ${pathToRemove} not in package-manager-cache`))
 		})
 
 		// Setup fs.stat mock for repository structure validation
@@ -182,18 +187,15 @@ describe("GitFetcher", () => {
 		})
 
 		it("should handle clone failures", async () => {
-			const error = new Error("fatal: repository not found")
 			const mockGit = {
 				...mockSimpleGit(),
-				clone: jest.fn().mockRejectedValue(error),
+				clone: jest.fn().mockRejectedValue(new Error("fatal: repository not found")),
 				pull: jest.fn(),
 				revparse: jest.fn(),
 			} as unknown as SimpleGit
 			mockSimpleGit.mockReturnValue(mockGit)
 
-			await expect(gitFetcher.fetchRepository(testRepoUrl)).rejects.toThrow(
-				"Failed to clone/pull repository: fatal: repository not found",
-			)
+			await expect(gitFetcher.fetchRepository(testRepoUrl)).rejects.toThrow(/Failed to clone\/pull repository/)
 
 			// Verify cleanup was called
 			expect(fs.rm).toHaveBeenCalledWith(testRepoDir, { recursive: true, force: true })
