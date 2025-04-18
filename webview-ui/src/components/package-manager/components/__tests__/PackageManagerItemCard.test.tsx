@@ -70,7 +70,12 @@ describe("PackageManagerItemCard", () => {
 				return element?.textContent === "by Test Author"
 			}),
 		).toBeInTheDocument()
-		expect(screen.getByText(/Package/i)).toBeInTheDocument() // Using case-insensitive regex since translations might vary in case
+		// Check for the type label specifically
+		expect(
+			screen.getByText((content, element) => {
+				return Boolean(element?.className.includes("rounded-full") && content === "Package")
+			}),
+		).toBeInTheDocument()
 	})
 
 	it("should render tags", () => {
@@ -126,8 +131,7 @@ describe("PackageManagerItemCard", () => {
 				path: "some/path",
 			}
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithGitPath} />)
-
-			const button = screen.getByRole("button", { name: /Source/i })
+			const button = screen.getByRole("button", { name: /View/i })
 			fireEvent.click(button)
 
 			expect(mockPostMessage).toHaveBeenCalledWith({
@@ -156,7 +160,7 @@ describe("PackageManagerItemCard", () => {
 
 			// Find the source button by its aria-label
 			const button = screen.getByRole("button", {
-				name: "Source",
+				name: "View",
 			})
 			expect(button.querySelector(".codicon-link-external")).toBeInTheDocument()
 			expect(button).toHaveTextContent(/Source/i)
@@ -185,7 +189,6 @@ describe("PackageManagerItemCard", () => {
 			// These use the type-group translations
 			expect(screen.getByText((content, element) => element?.textContent === "MCP Servers")).toBeInTheDocument()
 			expect(screen.getByText((content, element) => element?.textContent === "Modes")).toBeInTheDocument()
-			expect(screen.getByText("Modes")).toBeInTheDocument()
 
 			// Check for items using getByRole and textContent
 			const items = screen.getAllByRole("listitem")

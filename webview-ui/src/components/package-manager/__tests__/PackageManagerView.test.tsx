@@ -127,7 +127,7 @@ describe("PackageManagerView", () => {
 		})
 
 		// Should show items
-		expect(screen.getByText("2 items total")).toBeInTheDocument()
+		expect(screen.getByText("2 items found")).toBeInTheDocument()
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.getByText("Another Package")).toBeInTheDocument()
 	})
@@ -175,7 +175,7 @@ describe("PackageManagerView", () => {
 		})
 
 		// Verify initial items are shown
-		expect(screen.getByText("3 items total")).toBeInTheDocument()
+		expect(screen.getByText("3 items found")).toBeInTheDocument()
 		expect(screen.getByText("MCP Server 1")).toBeInTheDocument()
 		expect(screen.getByText("Mode 1")).toBeInTheDocument()
 		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()
