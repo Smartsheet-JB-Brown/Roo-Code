@@ -86,13 +86,11 @@ export class PackageManagerViewStateManager {
 	}
 
 	public getState(): ViewState {
-		// Create a deep copy to ensure React sees changes
-		return JSON.parse(JSON.stringify(this.state))
+		return { ...this.state }
 	}
 
 	private notifyStateChange(): void {
-		// Create a deep copy to ensure React sees changes
-		const newState = JSON.parse(JSON.stringify(this.state))
+		const newState = { ...this.state }
 
 		this.stateChangeHandlers.forEach((handler) => {
 			handler(newState)
