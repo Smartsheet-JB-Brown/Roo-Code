@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { cn } from "@/lib/utils"
 import { PackageManagerSource } from "../../../../src/services/package-manager/types"
+import { PackageManagerViewStateManager } from "./PackageManagerViewStateManager"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk"
 import { PackageManagerItemCard } from "./components/PackageManagerItemCard"
 import { useStateManager } from "./useStateManager"
@@ -10,20 +11,21 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface PackageManagerViewProps {
 	onDone?: () => void
+	stateManager: PackageManagerViewStateManager
 }
-const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
+const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone, stateManager }) => {
 	const { t } = useAppTranslation()
-	const [state, manager] = useStateManager()
+	const [state, manager] = useStateManager(stateManager)
 
 	const [tagSearch, setTagSearch] = useState("")
 	const [isTagInputActive, setIsTagInputActive] = useState(false)
 
-	// Debug logging for state changes
-
-	// Fetch items on mount
+	// Fetch items only on first mount or when no items exist
 	useEffect(() => {
-		manager.transition({ type: "FETCH_ITEMS" })
-	}, [manager])
+		if (state.allItems.length === 0 && !state.isFetching) {
+			manager.transition({ type: "FETCH_ITEMS" })
+		}
+	}, [manager, state.allItems.length, state.isFetching])
 
 	// Memoize all available tags
 	const allTags = useMemo(

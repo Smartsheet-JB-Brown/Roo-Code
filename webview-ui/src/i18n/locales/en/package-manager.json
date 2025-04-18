@@ -1,12 +1,12 @@
 {
-	"title": "Package Manager",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Browse",
 		"sources": "Sources"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Search package manager items..."
+			"placeholder": "Search marketplace items..."
 		},
 		"type": {
 			"label": "Filter by type:",
@@ -32,9 +32,17 @@
 			"clickToFilter": "Click tags to filter items"
 		}
 	},
+	"type-group": {
+		"match": "Match",
+		"modes": "Modes",
+		"mcp-servers": "MCP Servers",
+		"prompts": "Prompts",
+		"packages": "Packages",
+		"generic-type": "{{type}}"
+	},
 	"items": {
 		"empty": {
-			"noItems": "No package manager items found",
+			"noItems": "No marketplace items found",
 			"withFilters": "Try adjusting your filters",
 			"noSources": "Try adding a source in the Sources tab"
 		},
@@ -52,13 +60,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configure Package Manager Sources",
-		"description": "Add Git repositories that contain package manager items. These repositories will be fetched when browsing the package manager.",
+		"title": "Configure Marketplace Sources",
+		"description": "Add Git repositories that contain marketplace items. These repositories will be fetched when browsing the marketplace.",
 		"add": {
 			"title": "Add New Source",
 			"urlPlaceholder": "Git repository URL (e.g., https://github.com/username/repo)",
 			"urlFormats": "Supported formats: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), or Git protocol (git://github.com/username/repo.git)",
-			"namePlaceholder": "Display name (optional, max 20 chars)",
+			"namePlaceholder": "Display name (max 20 chars)",
 			"button": "Add Source"
 		},
 		"current": {

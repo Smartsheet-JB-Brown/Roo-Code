@@ -1,12 +1,12 @@
 {
-	"title": "套件管理器",
+	"title": "市集",
 	"tabs": {
 		"browse": "瀏覽",
 		"sources": "來源"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "搜尋套件管理器項目..."
+			"placeholder": "搜尋市集項目..."
 		},
 		"type": {
 			"label": "依類型篩選：",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "未找到套件管理器項目",
+			"noItems": "未找到市集項目",
 			"withFilters": "嘗試調整篩選條件",
 			"noSources": "嘗試在來源分頁中新增來源"
 		},
@@ -52,13 +52,13 @@
 		}
 	},
 	"sources": {
-		"title": "設定套件管理器來源",
-		"description": "新增包含套件管理器項目的Git儲存庫。瀏覽套件管理器時將擷取這些儲存庫。",
+		"title": "設定市集來源",
+		"description": "新增包含市集項目的Git儲存庫。瀏覽市集時將擷取這些儲存庫。",
 		"add": {
 			"title": "新增來源",
 			"urlPlaceholder": "Git儲存庫URL（例如：https://github.com/username/repo）",
 			"urlFormats": "支援的格式：HTTPS（https://github.com/username/repo）、SSH（git@github.com:username/repo.git）或Git協定（git://github.com/username/repo.git）",
-			"namePlaceholder": "顯示名稱（選填，最多20個字元）",
+			"namePlaceholder": "顯示名稱（最多20個字元）",
 			"button": "新增來源"
 		},
 		"current": {

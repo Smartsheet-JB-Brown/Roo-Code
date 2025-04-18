@@ -1,12 +1,12 @@
 {
-	"title": "패키지 관리자",
+	"title": "마켓플레이스",
 	"tabs": {
 		"browse": "찾아보기",
 		"sources": "소스"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "패키지 관리자 항목 검색..."
+			"placeholder": "마켓플레이스 항목 검색..."
 		},
 		"type": {
 			"label": "유형별 필터:",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "패키지 관리자 항목을 찾을 수 없습니다",
+			"noItems": "마켓플레이스 항목을 찾을 수 없습니다",
 			"withFilters": "필터를 조정해 보세요",
 			"noSources": "소스 탭에서 소스를 추가해 보세요"
 		},
@@ -52,13 +52,13 @@
 		}
 	},
 	"sources": {
-		"title": "패키지 관리자 소스 구성",
-		"description": "패키지 관리자 항목이 포함된 Git 저장소를 추가합니다. 패키지 관리자를 탐색할 때 이러한 저장소를 가져옵니다.",
+		"title": "마켓플레이스 소스 구성",
+		"description": "마켓플레이스 항목이 포함된 Git 저장소를 추가합니다. 마켓플레이스를 탐색할 때 이러한 저장소를 가져옵니다.",
 		"add": {
 			"title": "새 소스 추가",
 			"urlPlaceholder": "Git 저장소 URL (예: https://github.com/username/repo)",
 			"urlFormats": "지원되는 형식: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), 또는 Git 프로토콜 (git://github.com/username/repo.git)",
-			"namePlaceholder": "표시 이름 (선택 사항, 최대 20자)",
+			"namePlaceholder": "표시 이름 (최대 20자)",
 			"button": "소스 추가"
 		},
 		"current": {

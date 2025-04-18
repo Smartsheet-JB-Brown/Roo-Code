@@ -1,10 +1,10 @@
 # Data Structures
 
-This document details the key data structures used in the Package Manager, including their definitions, relationships, and usage patterns.
+This document details the key data structures used in the Marketplace, including their definitions, relationships, and usage patterns.
 
 ## Package and Component Types
 
-The Package Manager uses a type system to categorize different kinds of components:
+The Marketplace uses a type system to categorize different kinds of components:
 
 ### ComponentType Enumeration
 
@@ -15,7 +15,7 @@ The Package Manager uses a type system to categorize different kinds of componen
 export type ComponentType = "mode" | "prompt" | "package" | "mcp server"
 ```
 
-These types represent the different kinds of components that can be managed by the Package Manager:
+These types represent the different kinds of components that can be managed by the Marketplace:
 
 1. **mode**: AI assistant personalities with specialized capabilities
 2. **prompt**: Pre-configured instructions for specific tasks
@@ -451,7 +451,7 @@ Supports:
 
 ## Data Flow
 
-The Package Manager transforms data through several stages:
+The Marketplace transforms data through several stages:
 
 1. **Repository Level**:
 

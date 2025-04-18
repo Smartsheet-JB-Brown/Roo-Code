@@ -1,10 +1,10 @@
 # Search and Filter Implementation
 
-This document details the implementation of search and filtering functionality in the Package Manager, including algorithms, optimization techniques, and performance considerations.
+This document details the implementation of search and filtering functionality in the Marketplace, including algorithms, optimization techniques, and performance considerations.
 
 ## Core Filter System
 
-The Package Manager implements a comprehensive filtering system that handles multiple filter types, concurrent operations, and detailed match tracking.
+The Marketplace implements a comprehensive filtering system that handles multiple filter types, concurrent operations, and detailed match tracking.
 
 ### Filter Implementation
 
@@ -133,7 +133,7 @@ function addMatchInfo(item: PackageManagerItem, filters: Filters): PackageManage
 
 ## Sort System
 
-The Package Manager implements flexible sorting with subcomponent support:
+The Marketplace implements flexible sorting with subcomponent support:
 
 ```typescript
 /**

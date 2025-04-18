@@ -1,10 +1,10 @@
 # Working with Package Details
 
-Package Manager items often contain multiple components organized in a hierarchical structure. This guide explains how to work with the details section of package cards to explore and understand the components within each package.
+Marketplace items often contain multiple items organized in a hierarchical structure; these items are referred to as "packages" and must have a type of package. The items organized within a package are referred to as "subcomponents" and have all the same metadata properties of regular items. This guide explains how to work with the details section of package cards to explore and understand the elements within each package.
 
 ## Expanding Package Details
 
-Most packages in the Package Manager contain subcomponents that are hidden by default to keep the interface clean. You can expand these details to see what's inside each package:
+Most packages in the Marketplace contain subcomponents that are hidden by default to keep the interface clean. You can expand these details to see what's inside each package:
 
 ### How to Expand Details
 
@@ -94,12 +94,12 @@ Each subcomponent in the list displays:
 
 ## Matching Search Terms in Subcomponents
 
-One of the most powerful features of the Package Manager is the ability to search within subcomponents:
+One of the most powerful features of the Marketplace is the ability to search within subcomponents:
 
 ### How Subcomponent Matching Works
 
 1. Enter a search term in the search box
-2. The Package Manager searches through all subcomponent names and descriptions
+2. The Marketplace searches through all subcomponent names and descriptions
 3. Packages with matching subcomponents remain visible in the results
 4. The details section automatically expands for packages with matches
 5. Matching subcomponents are highlighted and marked with a "match" badge

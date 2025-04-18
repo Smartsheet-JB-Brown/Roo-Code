@@ -1,12 +1,12 @@
 {
-	"title": "パッケージマネージャー",
+	"title": "マーケットプレイス",
 	"tabs": {
 		"browse": "ブラウズ",
 		"sources": "ソース"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "パッケージマネージャーのアイテムを検索..."
+			"placeholder": "マーケットプレイスのアイテムを検索..."
 		},
 		"type": {
 			"label": "タイプでフィルター:",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "パッケージマネージャーのアイテムが見つかりません",
+			"noItems": "マーケットプレイスのアイテムが見つかりません",
 			"withFilters": "フィルターを調整してみてください",
 			"noSources": "ソースタブでソースを追加してみてください"
 		},
@@ -52,13 +52,13 @@
 		}
 	},
 	"sources": {
-		"title": "パッケージマネージャーのソースを設定",
-		"description": "パッケージマネージャーのアイテムを含むGitリポジトリを追加します。これらのリポジトリはパッケージマネージャーのブラウズ時に取得されます。",
+		"title": "マーケットプレイスのソースを設定",
+		"description": "マーケットプレイスのアイテムを含むGitリポジトリを追加します。これらのリポジトリはマーケットプレイスのブラウズ時に取得されます。",
 		"add": {
 			"title": "新しいソースを追加",
 			"urlPlaceholder": "GitリポジトリのURL (例: https://github.com/username/repo)",
 			"urlFormats": "サポートされている形式: HTTPS (https://github.com/username/repo)、SSH (git@github.com:username/repo.git)、またはGitプロトコル (git://github.com/username/repo.git)",
-			"namePlaceholder": "表示名 (オプション、最大20文字)",
+			"namePlaceholder": "表示名 (最大20文字)",
 			"button": "ソースを追加"
 		},
 		"current": {

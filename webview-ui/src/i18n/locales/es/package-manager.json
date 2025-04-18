@@ -1,12 +1,12 @@
 {
-	"title": "Gestor de Paquetes",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Explorar",
 		"sources": "Fuentes"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Buscar elementos del gestor de paquetes..."
+			"placeholder": "Buscar elementos del marketplace..."
 		},
 		"type": {
 			"label": "Filtrar por tipo:",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "No se encontraron elementos del gestor de paquetes",
+			"noItems": "No se encontraron elementos del marketplace",
 			"withFilters": "Intente ajustar sus filtros",
 			"noSources": "Intente agregar una fuente en la pestaña Fuentes"
 		},
@@ -55,13 +55,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configurar Fuentes del Gestor de Paquetes",
-		"description": "Agregue repositorios Git que contengan elementos del gestor de paquetes. Estos repositorios se recuperarán al explorar el gestor de paquetes.",
+		"title": "Configurar Fuentes del Marketplace",
+		"description": "Agregue repositorios Git que contengan elementos del marketplace. Estos repositorios se recuperarán al explorar el marketplace.",
 		"add": {
 			"title": "Agregar Nueva Fuente",
 			"urlPlaceholder": "URL del repositorio Git (ej., https://github.com/username/repo)",
 			"urlFormats": "Formatos admitidos: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), o protocolo Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nombre para mostrar (opcional, máx. 20 caracteres)",
+			"namePlaceholder": "Nombre para mostrar (máx. 20 caracteres)",
 			"button": "Agregar Fuente"
 		},
 		"current": {

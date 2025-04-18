@@ -1,12 +1,12 @@
 {
-	"title": "包管理器",
+	"title": "市场",
 	"tabs": {
 		"browse": "浏览",
 		"sources": "源"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "搜索包管理器项目..."
+			"placeholder": "搜索市场项目..."
 		},
 		"type": {
 			"label": "按类型筛选：",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "未找到包管理器项目",
+			"noItems": "未找到市场项目",
 			"withFilters": "尝试调整筛选条件",
 			"noSources": "尝试在源标签页中添加源"
 		},
@@ -52,13 +52,13 @@
 		}
 	},
 	"sources": {
-		"title": "配置包管理器源",
-		"description": "添加包含包管理器项目的Git仓库。浏览包管理器时将获取这些仓库。",
+		"title": "配置市场源",
+		"description": "添加包含市场项目的Git仓库。浏览市场时将获取这些仓库。",
 		"add": {
 			"title": "添加新源",
 			"urlPlaceholder": "Git仓库URL（例如：https://github.com/username/repo）",
 			"urlFormats": "支持的格式：HTTPS（https://github.com/username/repo）、SSH（git@github.com:username/repo.git）或Git协议（git://github.com/username/repo.git）",
-			"namePlaceholder": "显示名称（可选，最多20个字符）",
+			"namePlaceholder": "显示名称（最多20个字符）",
 			"button": "添加源"
 		},
 		"current": {

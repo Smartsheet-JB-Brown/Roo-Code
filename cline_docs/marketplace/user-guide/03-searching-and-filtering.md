@@ -1,6 +1,6 @@
 # Searching and Filtering
 
-The Package Manager provides powerful search and filtering capabilities to help you quickly find the components you need. This guide explains how to effectively use these features to narrow down your search results.
+The Marketplace provides powerful search and filtering capabilities to help you quickly find the components you need. This guide explains how to effectively use these features to narrow down your search results.
 
 ## Using the Search Functionality
 
@@ -8,11 +8,11 @@ The search box allows you to find components by matching text in various fields:
 
 ### What Gets Searched
 
-When you enter a search term, the Package Manager looks for matches in:
+When you enter a search term, the Marketplace looks for matches in:
 
-1. **Component Name**: The primary identifier of the component
-2. **Description**: The detailed explanation of the component's purpose
-3. **Subcomponent Names and Descriptions**: Text within nested components
+1. **Item Name**: The primary identifier of the item
+2. **Description**: The detailed explanation of the item's purpose
+3. **Subcomponent Names and Descriptions**: Text within nested items
 
 ### Search Features
 
@@ -39,28 +39,28 @@ The search uses a simple string contains match that is case and whitespace insen
 
 ### Example Searches
 
-| Search Term        | Will Find                                                                        |
-| ------------------ | -------------------------------------------------------------------------------- |
-| "data"             | Components with "data" in their name, description, or subcomponents              |
-| "validator"        | Components that include validation functionality or have validator subcomponents |
-| "machine learning" | Components related to machine learning technology                                |
+| Search Term        | Will Find                                                                   |
+| ------------------ | --------------------------------------------------------------------------- |
+| "data"             | Items with "data" in their name, description, or subcomponents              |
+| "validator"        | Items that include validation functionality or have validator subcomponents |
+| "machine learning" | Items related to machine learning technology                                |
 
-## Filtering by Package Type
+## Filtering by Item Type
 
-The type filter allows you to focus on specific categories of components:
+The type filter allows you to focus on specific categories of items:
 
 ### Available Type Filters
 
 - **Mode**: AI assistant personalities with specialized capabilities
 - **MCP Server**: Model Context Protocol servers that provide additional functionality
-- **Package**: Collections of related components
+- **Package**: Collections of related items
 - **Prompt**: Pre-configured instructions for specific tasks
 
 ### Using Type Filters
 
-1. Click on a type checkbox to show only components of that type
-2. Select multiple types to show components that match any of the selected types
-3. Clear all type filters to show all components again
+1. Click on a type checkbox to show only items of that type
+2. Select multiple types to show items that match any of the selected types
+3. Clear all type filters to show all items again
 
 When filtering by type, packages are handled specially:
 
@@ -70,27 +70,27 @@ When filtering by type, packages are handled specially:
 
 ### Type Filter Behavior
 
-- Type filters apply to both the primary component type and subcomponents
+- Type filters apply to both the primary item type and it's subcomponents
 - Packages are included if they contain subcomponents matching the selected type
-- The type is displayed as a badge on each package card
+- The type is displayed as a badge on each item card
 - Type filtering can be combined with search terms and tag filters
 
 ## Using Tags for Filtering
 
-Tags provide a way to filter components by category, technology, or purpose:
+Tags provide a way to filter items by category, technology, or purpose:
 
 ### Tag Functionality
 
-- Tags appear as clickable buttons on package cards
+- Tags appear as clickable buttons on item cards
 - Clicking a tag activates it as a filter
 - Active tag filters are highlighted
-- Components must have at least one of the selected tags to be displayed
+- Items must have at least one of the selected tags to be displayed
 
 ### Finding and Using Tags
 
-1. Browse through package cards to discover available tags
-2. Click on a tag to filter for components with that tag
-3. Click on additional tags to expand your filter (components with any of the selected tags will be shown)
+1. Browse through item cards to discover available tags
+2. Click on a tag to filter for items with that tag
+3. Click on additional tags to expand your filter (items with any of the selected tags will be shown)
 4. Click on an active tag to deactivate it
 
 ### Common Tags
@@ -106,8 +106,8 @@ For the most precise results, you can combine search terms, type filters, and ta
 
 ### How Combined Filtering Works
 
-1. **AND Logic Between Filter Types**: Components must match the search term AND the selected types AND have at least one of the selected tags
-2. **OR Logic Within Tag Filters**: Components must have at least one of the selected tags
+1. **AND Logic Between Filter Types**: Items must match the search term AND the selected types AND have at least one of the selected tags
+2. **OR Logic Within Tag Filters**: Items must have at least one of the selected tags
 
 ### Combined Filter Examples
 
@@ -128,7 +128,7 @@ To reset your search and start over:
 
 ### Filter Status Indicators
 
-The Package Manager provides visual feedback about your current filters:
+The Marketplace provides visual feedback about your current filters:
 
 - Active type filters are checked
 - Active tag filters are highlighted

@@ -1,16 +1,16 @@
-# Package Manager Architecture
+# Marketplace Architecture
 
-This document provides a comprehensive overview of the Package Manager's architecture, including its components, interactions, and data flow.
+This document provides a comprehensive overview of the Marketplace's architecture, including its components, interactions, and data flow.
 
 ## System Overview
 
-The Package Manager is built on a modular architecture that separates concerns between data management, UI rendering, and user interactions. The system consists of several key components that work together to provide a seamless experience for discovering, browsing, and managing packages.
+The Marketplace is built on a modular architecture that separates concerns between data management, UI rendering, and user interactions. The system consists of several key components that work together to provide a seamless experience for discovering, browsing, and managing packages.
 
 ### High-Level Architecture
 
 ```mermaid
 graph TD
-    User[User] -->|Interacts with| UI[Package Manager UI]
+    User[User] -->|Interacts with| UI[Marketplace UI]
     UI -->|Sends messages| MH[Message Handler]
     MH -->|Processes requests| PM[PackageManagerManager]
     PM -->|Validates sources| PSV[PackageManagerSourceValidation]
@@ -31,7 +31,7 @@ The architecture follows a message-based pattern where:
 
 ## Component Interactions
 
-The Package Manager components interact through a well-defined message flow:
+The Marketplace components interact through a well-defined message flow:
 
 ### Core Interaction Patterns
 
@@ -57,7 +57,7 @@ The Package Manager components interact through a well-defined message flow:
 
 ## Data Flow Diagram
 
-The following diagram illustrates the data flow through the Package Manager system:
+The following diagram illustrates the data flow through the Marketplace system:
 
 ```mermaid
 graph LR
@@ -106,7 +106,7 @@ sequenceDiagram
     participant MS as MetadataScanner
     participant FS as File System/Git
 
-    User->>UI: Open Package Manager
+    User->>UI: Open Marketplace
     UI->>MH: Send init message
     MH->>PM: Initialize
     PM->>GF: Request repository data
@@ -158,7 +158,7 @@ sequenceDiagram
 
 ### Core Classes
 
-The following class diagram shows the main classes in the Package Manager system:
+The following class diagram shows the main classes in the Marketplace system:
 
 ```mermaid
 classDiagram
@@ -297,7 +297,7 @@ classDiagram
 
 ## Performance Considerations
 
-The Package Manager architecture addresses several performance challenges:
+The Marketplace architecture addresses several performance challenges:
 
 1. **Concurrency Control**:
 
@@ -345,7 +345,7 @@ The architecture includes robust error handling:
 
 ## Extensibility Points
 
-The Package Manager architecture is designed for extensibility:
+The Marketplace architecture is designed for extensibility:
 
 1. **Repository Sources**:
 

@@ -1,10 +1,10 @@
-# Adding Packages
+# Adding Packages to the Marketplace
 
-This guide explains how to create and contribute your own packages to the Roo Code Package Manager. By following these steps, you can share your components with the community and help expand the ecosystem.
+This guide explains how to create and contribute your own packages to the Roo Code Marketplace. By following these steps, you can share your work with the community and help expand the ecosystem.
 
-## Package Structure and Metadata
+## Item Structure and Metadata
 
-Each package in the Package Manager requires specific metadata files and follows a consistent directory structure.
+Each item in the Marketplace requires specific metadata files and follows a consistent directory structure.
 
 ### Directory Structure
 
@@ -41,6 +41,8 @@ tags:
 items: # Only for packages AND when a subcomponent isn't located in the packages directory tree
     - type: "prompt"
       path: "../shared-prompts/data-analysis" # Reference to component outside package directory
+author: "your name" # optional
+authorUrl: "http://your.profile.url/" #optional
 ```
 
 ### Package Example in Source Tree
@@ -72,7 +74,11 @@ Roo-Code-Packages/
 - **version**: Semantic version number (e.g., "1.0.0")
 - **type**: Component type (one of: "package", "mode", "mcp server", "prompt")
 - **tags**: (Optional) Array of relevant tags for filtering
-- **items**: (Only for packages) Array of subcomponents with their type and path - when the path is not in the packages directory tree
+- **items**: (Only for packages) Array of subcomponents with their type and path - when the path is not in the packages directory
+  tree
+- **author**: Your name
+- **authorUrl**: A proile Url that you want people to see. GitHub profile, or linked-in profile for example
+- **sourceUrl**: optional destination Url to your item's source if you haven't included it directly in the Marketplace.
 
 ### The Items Array and External References
 
@@ -110,7 +116,7 @@ This allows you to:
 #### How It Works
 
 - The `path` is relative to the package's directory
-- The Package Manager resolves these paths when loading the package
+- The Marketplace resolves these paths when loading the package
 - Components referenced this way appear as part of the package in the UI
 - The same component can be included in multiple packages
 
@@ -121,7 +127,7 @@ You can provide metadata in multiple languages by using locale-specific files:
 **Important Notes on Localization:**
 
 - Only files with the pattern `metadata.{locale}.yml` are supported
-- The Package Manager will display metadata in the user's locale if available
+- The Marketplace will display metadata in the user's locale if available
 - If the user's locale is not available, it will fall back to English
 - The English locale (`metadata.en.yml`) is required as a fallback
 - Files without a locale code (e.g., just `metadata.yml`) are not supported
@@ -132,7 +138,7 @@ To contribute your package to the official repository, follow these steps:
 
 ### 1. Fork the Repository
 
-1. Visit the official Roo Code Packages repository: [https://github.com/RooVetGit/Roo-Code-Packages](https://github.com/RooVetGit/Roo-Code-Packages)
+1. Visit the official Roo Code Packages repository: [https://github.com/RooVetGit/Roo-Code-Marketplace](https://github.com/RooVetGit/Roo-Code-Marketplace)
 2. Click the "Fork" button in the top-right corner
 3. This creates your own copy of the repository where you can make changes
 
@@ -141,8 +147,8 @@ To contribute your package to the official repository, follow these steps:
 Clone your forked repository to your local machine:
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/Roo-Code-Packages.git
-cd Roo-Code-Packages
+git clone https://github.com/YOUR-USERNAME/Roo-Code-Marketplace.git
+cd Roo-Code-Marketplace
 ```
 
 ### 3. Create Your Package
@@ -163,12 +169,12 @@ touch my-package/modes/my-mode/metadata.en.yml
 
 ### 4. Test Your Package
 
-Before submitting, test your package by adding your fork as a custom source in the Package Manager:
+Before submitting, test your package by adding your fork as a custom source in the Marketplace:
 
-1. In VS Code, open the Package Manager
+1. In VS Code, open the Marketplace
 2. Go to the "Settings" tab
 3. Click "Add Source"
-4. Enter your fork's URL (e.g., `https://github.com/YOUR-USERNAME/Roo-Code-Packages`)
+4. Enter your fork's URL (e.g., `https://github.com/YOUR-USERNAME/Roo-Code-Marketplace`)
 5. Click "Add"
 6. Verify that your package appears and functions correctly
 
@@ -184,7 +190,7 @@ git push origin main
 
 ### 6. Create a Pull Request
 
-1. Go to the original repository: [https://github.com/RooVetGit/Roo-Code-Packages](https://github.com/RooVetGit/Roo-Code-Packages)
+1. Go to the original repository: [https://github.com/RooVetGit/Roo-Code-Marketplace](https://github.com/RooVetGit/Roo-Code-Marketplace)
 2. Click "Pull Requests" and then "New Pull Request"
 3. Click "Compare across forks"
 4. Select your fork as the head repository
@@ -199,7 +205,7 @@ After submitting your pull request:
 1. Maintainers will review your package
 2. They may request changes or improvements
 3. Once approved, your package will be merged into the main repository
-4. Your package will be available to all users of the Package Manager
+4. Your package will be available to all users of the Marketplace
 
 ## Best Practices
 

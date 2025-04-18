@@ -41,14 +41,23 @@ export interface ViewStateTransition {
 export type StateChangeHandler = (state: ViewState) => void
 
 export class PackageManagerViewStateManager {
-	private state: ViewState
-	private fetchTimeoutId?: NodeJS.Timeout
-	private readonly FETCH_TIMEOUT = 30000 // 30 seconds
-	private stateChangeHandlers: Set<StateChangeHandler> = new Set()
-	private sourcesModified = false // Track if sources have been modified
+	private state: ViewState = this.loadInitialState()
 
-	constructor() {
-		this.state = {
+	private loadInitialState(): ViewState {
+		// Try to restore state from sessionStorage
+		const savedState = sessionStorage.getItem("packageManagerState")
+		if (savedState) {
+			try {
+				return JSON.parse(savedState)
+			} catch {
+				return this.getDefaultState()
+			}
+		}
+		return this.getDefaultState()
+	}
+
+	private getDefaultState(): ViewState {
+		return {
 			allItems: [],
 			displayItems: [] as PackageManagerItem[],
 			isFetching: false,
@@ -66,6 +75,10 @@ export class PackageManagerViewStateManager {
 			},
 		}
 	}
+	private fetchTimeoutId?: NodeJS.Timeout
+	private readonly FETCH_TIMEOUT = 30000 // 30 seconds
+	private stateChangeHandlers: Set<StateChangeHandler> = new Set()
+	private sourcesModified = false // Track if sources have been modified
 
 	public initialize(): void {
 		// Send initial sources to extension
@@ -81,8 +94,20 @@ export class PackageManagerViewStateManager {
 	}
 
 	public cleanup(): void {
+		// Clear any pending timeouts
+		if (this.fetchTimeoutId) {
+			clearTimeout(this.fetchTimeoutId)
+			this.fetchTimeoutId = undefined
+		}
+
+		// Reset fetching state
+		if (this.state.isFetching) {
+			this.state.isFetching = false
+			this.notifyStateChange()
+		}
+
+		// Clear handlers but preserve state
 		this.stateChangeHandlers.clear()
-		if (this.fetchTimeoutId) clearTimeout(this.fetchTimeoutId)
 	}
 
 	public getState(): ViewState {
@@ -110,6 +135,13 @@ export class PackageManagerViewStateManager {
 		this.stateChangeHandlers.forEach((handler) => {
 			handler(newState)
 		})
+
+		// Save state to sessionStorage
+		try {
+			sessionStorage.setItem("packageManagerState", JSON.stringify(this.state))
+		} catch (error) {
+			console.warn("Failed to save package manager state:", error)
+		}
 	}
 
 	public async transition(transition: ViewStateTransition): Promise<void> {
@@ -195,12 +227,25 @@ export class PackageManagerViewStateManager {
 					// Clear any existing timeouts
 					this.clearFetchTimeout()
 
-					// Always fetch when switching to browse if sources were modified
-					if (this.sourcesModified) {
-						this.sourcesModified = false // Reset the flag
-						void this.transition({ type: "FETCH_ITEMS" })
-					} else if (this.state.allItems.length === 0) {
-						// Only fetch if we don't have any items yet
+					// Reset fetching state when switching tabs
+					if (this.state.isFetching) {
+						this.state.isFetching = false
+						this.notifyStateChange()
+					}
+
+					// Restore previous display items if they exist
+					if (this.state.allItems.length > 0) {
+						if (this.isFilterActive()) {
+							// Re-apply filters to ensure display items are current
+							this.state.displayItems = this.filterItems(this.state.allItems)
+						} else {
+							// Use all items if no filters are active
+							this.state.displayItems = this.state.allItems
+						}
+						this.notifyStateChange()
+					} else if (this.sourcesModified) {
+						// Fetch new items only if sources were modified or we have no items
+						this.sourcesModified = false
 						void this.transition({ type: "FETCH_ITEMS" })
 					}
 				}
@@ -209,11 +254,11 @@ export class PackageManagerViewStateManager {
 
 			case "UPDATE_FILTERS": {
 				const { filters = {} } = (transition.payload as TransitionPayloads["UPDATE_FILTERS"]) || {}
-				// Create new filters object, preserving existing filters unless explicitly changed
+				// Create new filters object with explicit checks for undefined and proper defaults
 				const updatedFilters = {
-					type: filters.type ?? this.state.filters.type,
-					search: filters.search ?? this.state.filters.search,
-					tags: filters.tags ?? this.state.filters.tags,
+					type: "type" in filters ? filters.type || "" : this.state.filters.type,
+					search: "search" in filters ? filters.search || "" : this.state.filters.search,
+					tags: "tags" in filters ? filters.tags || [] : this.state.filters.tags,
 				}
 
 				// Update state with new filters
@@ -221,13 +266,23 @@ export class PackageManagerViewStateManager {
 					...this.state,
 					filters: updatedFilters,
 				}
-				this.notifyStateChange()
 
-				// Send filter request immediately
-				vscode.postMessage({
-					type: "filterPackageManagerItems",
-					filters: updatedFilters,
-				} as WebviewMessage)
+				// If all filters are cleared, restore all items
+				if (
+					!updatedFilters.type &&
+					!updatedFilters.search &&
+					(!updatedFilters.tags || updatedFilters.tags.length === 0)
+				) {
+					this.state.displayItems = [...this.state.allItems]
+					this.notifyStateChange()
+				} else {
+					// Otherwise, apply the filters
+					this.notifyStateChange()
+					vscode.postMessage({
+						type: "filterPackageManagerItems",
+						filters: updatedFilters,
+					} as WebviewMessage)
+				}
 
 				break
 			}
@@ -392,6 +447,9 @@ export class PackageManagerViewStateManager {
 			}
 
 			if (message.state?.packageManagerItems) {
+				// Clear fetching state before updating items
+				this.state.isFetching = false
+
 				void this.transition({
 					type: "FETCH_COMPLETE",
 					payload: { items: message.state.packageManagerItems },

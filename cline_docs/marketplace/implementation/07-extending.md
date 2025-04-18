@@ -1,10 +1,10 @@
-# Extending the Package Manager
+# Extending the Marketplace
 
-This document provides guidance on extending the Package Manager with new features, component types, and customizations.
+This document provides guidance on extending the Marketplace with new features, component types, and customizations.
 
 ## Adding New Component Types
 
-The Package Manager is designed to be extensible, allowing for the addition of new component types beyond the default ones (mode, mcp server, prompt, package).
+The Marketplace is designed to be extensible, allowing for the addition of new component types beyond the default ones (mode, mcp server, prompt, package).
 
 ### Extending the ComponentType
 
@@ -178,7 +178,7 @@ templateFor: "your-component-type"
 
 ### Template Registration
 
-Register your template with the Package Manager:
+Register your template with the Marketplace:
 
 ```typescript
 // In your extension code
@@ -204,7 +204,7 @@ const createFromTemplate = (templateName: string) => {
 
 ## Implementing New Features
 
-The Package Manager is designed to be extended with new features. Here's how to implement common types of features:
+The Marketplace is designed to be extended with new features. Here's how to implement common types of features:
 
 ### Adding a New Filter Type
 
@@ -391,7 +391,7 @@ case "customAction":
 
 ## Customizing the UI
 
-The Package Manager UI can be customized in several ways:
+The Marketplace UI can be customized in several ways:
 
 ### Custom Styling
 
@@ -546,7 +546,7 @@ const CustomLayout: React.FC<{
 
 ## Extending Backend Functionality
 
-The Package Manager backend can be extended with new functionality:
+The Marketplace backend can be extended with new functionality:
 
 ### Custom Source Providers
 
@@ -669,7 +669,7 @@ context.subscriptions.push(
 
 ## Integration with Other Systems
 
-The Package Manager can be integrated with other systems:
+The Marketplace can be integrated with other systems:
 
 ### Integration with External APIs
 
@@ -862,7 +862,7 @@ const registerLocalDevTools = (context: vscode.ExtensionContext) => {
 
 ## Best Practices for Extensions
 
-When extending the Package Manager, follow these best practices:
+When extending the Marketplace, follow these best practices:
 
 ### Maintainable Code
 

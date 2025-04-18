@@ -1,12 +1,12 @@
 {
-	"title": "Gestionnaire de Paquets",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Parcourir",
 		"sources": "Sources"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Rechercher des éléments du gestionnaire de paquets..."
+			"placeholder": "Rechercher des éléments du marketplace..."
 		},
 		"type": {
 			"label": "Filtrer par type :",
@@ -36,7 +36,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "Aucun élément trouvé dans le gestionnaire de paquets",
+			"noItems": "Aucun élément trouvé dans le marketplace",
 			"withFilters": "Essayez d'ajuster vos filtres",
 			"noSources": "Essayez d'ajouter une source dans l'onglet Sources"
 		},
@@ -58,13 +58,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configurer les Sources du Gestionnaire de Paquets",
-		"description": "Ajoutez des dépôts Git contenant des éléments du gestionnaire de paquets. Ces dépôts seront récupérés lors de la navigation dans le gestionnaire de paquets.",
+		"title": "Configurer les Sources du Marketplace",
+		"description": "Ajoutez des dépôts Git contenant des éléments du marketplace. Ces dépôts seront récupérés lors de la navigation dans le marketplace.",
 		"add": {
 			"title": "Ajouter une Nouvelle Source",
 			"urlPlaceholder": "URL du dépôt Git (ex. https://github.com/username/repo)",
 			"urlFormats": "Formats pris en charge : HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), ou protocole Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nom d'affichage (optionnel, max 20 caractères)",
+			"namePlaceholder": "Nom d'affichage (max 20 caractères)",
 			"button": "Ajouter la Source"
 		},
 		"current": {

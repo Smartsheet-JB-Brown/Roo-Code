@@ -1,10 +1,10 @@
 # Testing Strategy
 
-This document outlines the comprehensive testing strategy for the Package Manager, including unit tests, integration tests, and test data management.
+This document outlines the comprehensive testing strategy for the Marketplace, including unit tests, integration tests, and test data management.
 
 ## Testing Philosophy
 
-The Package Manager follows a multi-layered testing approach to ensure reliability and maintainability:
+The Marketplace follows a multi-layered testing approach to ensure reliability and maintainability:
 
 1. **Unit Testing**: Testing individual components in isolation
 2. **Integration Testing**: Testing interactions between components
@@ -16,7 +16,7 @@ The Package Manager follows a multi-layered testing approach to ensure reliabili
 
 ### Required Dependencies
 
-The Package Manager requires specific testing dependencies:
+The Marketplace requires specific testing dependencies:
 
 ```json
 {
@@ -585,7 +585,7 @@ describe("Package Manager UI Integration", () => {
 
 ## Test Data Management
 
-The Package Manager uses several approaches to manage test data:
+The Marketplace uses several approaches to manage test data:
 
 ### Mock Data
 
@@ -719,7 +719,7 @@ function generateSubcomponents(count: number): PackageManagerItem["items"] {
 
 ## Type Filter Test Plan
 
-This section outlines the test plan for the type filtering functionality in the Package Manager, particularly focusing on the improvements to make type filter behavior consistent with search term behavior.
+This section outlines the test plan for the type filtering functionality in the Marketplace, particularly focusing on the improvements to make type filter behavior consistent with search term behavior.
 
 ### Unit Tests
 
@@ -906,7 +906,7 @@ This section outlines the test plan for the type filtering functionality in the 
 
 ## Test Organization
 
-The Package Manager tests are organized by functionality rather than by file structure:
+The Marketplace tests are organized by functionality rather than by file structure:
 
 ### Consolidated Test Files
 
@@ -941,7 +941,7 @@ describe("Package Manager", () => {
 
 ## Test Coverage
 
-The Package Manager maintains high test coverage:
+The Marketplace maintains high test coverage:
 
 ### Coverage Goals
 
@@ -984,7 +984,7 @@ Critical paths have additional test coverage:
 
 ## Test Performance
 
-The Package Manager tests are optimized for performance:
+The Marketplace tests are optimized for performance:
 
 ### Fast Unit Tests
 
@@ -1032,7 +1032,7 @@ module.exports = {
 
 ## Continuous Integration
 
-The Package Manager tests are integrated into the CI/CD pipeline:
+The Marketplace tests are integrated into the CI/CD pipeline:
 
 ### GitHub Actions Workflow
 
@@ -1088,7 +1088,7 @@ jobs:
 
 ## Test Debugging
 
-The Package Manager includes tools for debugging tests:
+The Marketplace includes tools for debugging tests:
 
 ### Debug Logging
 
@@ -1129,7 +1129,7 @@ describe("UI component test", () => {
 
 ## Test Documentation
 
-The Package Manager tests include comprehensive documentation:
+The Marketplace tests include comprehensive documentation:
 
 ### Test Comments
 

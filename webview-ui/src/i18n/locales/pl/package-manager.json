@@ -1,12 +1,12 @@
 {
-	"title": "Menedżer pakietów",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Przeglądaj",
 		"sources": "Źródła"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Szukaj elementów menedżera pakietów..."
+			"placeholder": "Szukaj elementów marketplace..."
 		},
 		"type": {
 			"label": "Filtruj według typu:",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "Nie znaleziono elementów menedżera pakietów",
+			"noItems": "Nie znaleziono elementów marketplace",
 			"withFilters": "Spróbuj dostosować filtry",
 			"noSources": "Spróbuj dodać źródło w zakładce Źródła"
 		},
@@ -53,13 +53,13 @@
 		}
 	},
 	"sources": {
-		"title": "Konfiguruj źródła menedżera pakietów",
-		"description": "Dodaj repozytoria Git zawierające elementy menedżera pakietów. Te repozytoria będą pobierane podczas przeglądania menedżera pakietów.",
+		"title": "Konfiguruj źródła marketplace",
+		"description": "Dodaj repozytoria Git zawierające elementy marketplace. Te repozytoria będą pobierane podczas przeglądania marketplace.",
 		"add": {
 			"title": "Dodaj nowe źródło",
 			"urlPlaceholder": "URL repozytorium Git (np. https://github.com/username/repo)",
 			"urlFormats": "Obsługiwane formaty: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) lub protokół Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nazwa wyświetlana (opcjonalnie, maks. 20 znaków)",
+			"namePlaceholder": "Nazwa wyświetlana (maks. 20 znaków)",
 			"button": "Dodaj źródło"
 		},
 		"current": {

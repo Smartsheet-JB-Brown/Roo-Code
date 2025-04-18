@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { PackageManagerViewStateManager, ViewState } from "./PackageManagerViewStateManager"
 
-export function useStateManager() {
-	const [manager] = useState(() => new PackageManagerViewStateManager())
+export function useStateManager(existingManager?: PackageManagerViewStateManager) {
+	const [manager] = useState(() => existingManager || new PackageManagerViewStateManager())
 	const [state, setState] = useState(() => manager.getState())
 
 	useEffect(() => {
@@ -26,9 +26,12 @@ export function useStateManager() {
 		return () => {
 			window.removeEventListener("message", handleMessage)
 			unsubscribe()
-			manager.cleanup()
+			// Don't cleanup the manager if it was provided externally
+			if (!existingManager) {
+				manager.cleanup()
+			}
 		}
-	}, [manager]) // Remove state from dependencies
+	}, [manager, existingManager])
 
 	return [state, manager] as const
 }

@@ -1,10 +1,10 @@
-# Adding Custom Package Sources
+# Adding Custom Marketplace Sources
 
-The Package Manager allows you to extend its functionality by adding custom package sources. This guide explains how to set up and manage your own package repositories to access additional components beyond the default offerings.
+The Marketplace allows you to extend its functionality by adding custom sources. This guide explains how to set up and manage your own Marktplace repositories to access additional components beyond the default offerings.
 
-## Setting up a Package Source Repository
+## Setting up a Marketplace Source Repository
 
-A package source repository is a Git repository that contains packages organized in a specific structure. You can create your own repository to host custom packages:
+A Marketplace source repository is a Git repository that contains Marketplace items organized in a specific structure. You can create your own repository to host custom packages:
 
 ### Repository Requirements
 
@@ -48,7 +48,7 @@ git push origin main
 
 ## Required Structure and Metadata
 
-A package source repository must follow a specific structure to be properly recognized by the Package Manager:
+A source repository must follow a specific structure to be properly recognized by the Marketplace:
 
 ### Repository Structure
 
@@ -79,7 +79,7 @@ repository-root/
 The root `metadata.en.yml` file describes the repository itself:
 
 ```yaml
-name: "Custom Components Repository"
+name: "Custom Roopository"
 description: "A collection of specialized components for data science workflows"
 version: "1.0.0"
 author: "Your Name or Organization"
@@ -88,28 +88,28 @@ tags:
     - data-science
 ```
 
-### Component Organization
+### Item Organization
 
-- Components should be organized by type in their respective directories
-- Each component must have its own directory containing a metadata file
-- Components can be nested within packages
+- Item should be organized by type in their respective directories
+- Each item must have its own directory containing a metadata file
+- Items can be nested within packages as subcomponents
 - Follow the same structure as described in [Adding Packages](./05-adding-packages.md)
 
 ## Adding Sources to Roo Code
 
-Once you have a properly structured package source repository, you can add it to your Roo Code Package Manager:
+Once you have a properly structured source repository, you can add it to your Roo Code Marketplace as a source:
 
 ### Default Package Source
 
 Roo Code comes with a default package source:
 
-- URL: `https://github.com/RooVetGit/Roo-Code-Packages`
+- URL: `https://github.com/RooVetGit/Roo-Code-Marketplace`
 - This source is enabled by default, and anytime all sources have been deleted.
 
 ### Adding a New Source
 
 1. Open VS Code with the Roo Code extension
-2. Navigate to the Package Manager
+2. Navigate to the Marketplace
 3. Switch to the "Sources" tab
 4. Click the "Add Source" button
 5. Enter the repository URL:
@@ -122,11 +122,11 @@ Roo Code comes with a default package source:
 The "Sources" tab provides several options for managing your package sources:
 
 1. **Remove**: Delete a source from your configuration
-2. **Refresh**: Update the package list from a sources - this is forced git clone/pull to override local caching of data
+2. **Refresh**: Update the item list from a sources - this is forced git clone/pull to override local caching of data
 
 ### Source Caching and Refreshing
 
-Package Manager sources are cached to improve performance:
+Marketplace sources are cached to improve performance:
 
 - **Cache Duration**: Sources are cached for 1 hour (3600000 ms)
 - **Force Refresh**: To force an immediate refresh of a source:
@@ -140,13 +140,13 @@ If a source isn't loading properly:
 
 1. Check that the repository URL is correct
 2. Ensure the repository follows the required structure
-3. Look for error messages in the Package Manager interface
+3. Look for error messages in the Marketplace interface
 4. Try refreshing the sources list
 5. Disable and re-enable the source
 
 ## Creating Private Sources
 
-For team or organization use, you might want to create private package sources:
+For team or organization use, you might want to create private sources:
 
 ### Private Repository Setup
 
@@ -166,21 +166,21 @@ To access private repositories, you may need to:
 
 For teams and organizations:
 
-1. Designate maintainers responsible for the package source
-2. Establish quality standards for contributed packages
+1. Designate maintainers responsible for the source
+2. Establish quality standards for contributed items and packages
 3. Create a review process for new additions
 4. Document usage guidelines for team members
-5. Consider implementing versioning for your packages
+5. Consider implementing versioning for your items and packages
 
 ## Using Multiple Sources
 
-The Package Manager supports multiple package sources simultaneously:
+The Marketplace supports multiple sources simultaneously:
 
 ### Benefits of Multiple Sources
 
 - Access components from different providers
 - Separate internal and external components
-- Test new packages before contributing them to the main repository
+- Test new work before contributing them to the main repository
 - Create specialized sources for different projects or teams
 
 ### Source Management Strategy
@@ -188,8 +188,8 @@ The Package Manager supports multiple package sources simultaneously:
 1. Keep the default source enabled for core components
 2. Add specialized sources for specific needs
 3. Create a personal source for testing and development
-4. Refresh sources after you've pushed changes to them to get the latest components
+4. Refresh sources after you've pushed changes to them to get the latest items
 
 ---
 
-**Previous**: [Adding Packages](./05-adding-packages.md) | **Next**: [Package Manager Architecture](../implementation/01-architecture.md)
+**Previous**: [Adding Packages](./05-adding-packages.md) | **Next**: [Marketplace Architecture](../implementation/01-architecture.md)

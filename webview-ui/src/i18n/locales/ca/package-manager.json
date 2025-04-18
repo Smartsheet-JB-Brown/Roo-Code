@@ -1,12 +1,12 @@
 {
-	"title": "Gestor de Paquets",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Navega",
 		"sources": "Fonts"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Cerca elements del gestor de paquets..."
+			"placeholder": "Cerca elements del marketplace..."
 		},
 		"type": {
 			"label": "Filtra per tipus:",
@@ -36,7 +36,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "No s'han trobat elements del gestor de paquets",
+			"noItems": "No s'han trobat elements del marketplace",
 			"withFilters": "Prova d'ajustar els filtres",
 			"noSources": "Prova d'afegir una font a la pestanya Fonts"
 		},
@@ -58,13 +58,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configura les Fonts del Gestor de Paquets",
-		"description": "Afegeix repositoris Git que continguin elements del gestor de paquets. Aquests repositoris es recuperaran en navegar pel gestor de paquets.",
+		"title": "Configura les Fonts del Marketplace",
+		"description": "Afegeix repositoris Git que continguin elements del marketplace. Aquests repositoris es recuperaran en navegar pel marketplace.",
 		"add": {
 			"title": "Afegeix Nova Font",
 			"urlPlaceholder": "URL del repositori Git (p. ex. https://github.com/username/repo)",
 			"urlFormats": "Formats admesos: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) o protocol Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nom de visualització (opcional, màx. 20 caràcters)",
+			"namePlaceholder": "Nom de visualització (màx. 20 caràcters)",
 			"button": "Afegeix Font"
 		},
 		"current": {

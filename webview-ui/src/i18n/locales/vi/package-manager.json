@@ -1,12 +1,12 @@
 {
-	"title": "Trình Quản Lý Gói",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Duyệt",
 		"sources": "Nguồn"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Tìm kiếm các mục quản lý gói..."
+			"placeholder": "Tìm kiếm các mục marketplace..."
 		},
 		"type": {
 			"label": "Lọc theo loại:",
@@ -34,7 +34,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "Không tìm thấy mục quản lý gói nào",
+			"noItems": "Không tìm thấy mục marketplace nào",
 			"withFilters": "Thử điều chỉnh bộ lọc của bạn",
 			"noSources": "Thử thêm một nguồn trong tab Nguồn"
 		},
@@ -52,13 +52,13 @@
 		}
 	},
 	"sources": {
-		"title": "Cấu hình Nguồn Trình Quản Lý Gói",
-		"description": "Thêm kho Git chứa các mục quản lý gói. Các kho này sẽ được tải khi duyệt trình quản lý gói.",
+		"title": "Cấu hình Nguồn Marketplace",
+		"description": "Thêm kho Git chứa các mục marketplace. Các kho này sẽ được tải khi duyệt marketplace.",
 		"add": {
 			"title": "Thêm Nguồn Mới",
 			"urlPlaceholder": "URL kho Git (ví dụ: https://github.com/username/repo)",
 			"urlFormats": "Định dạng được hỗ trợ: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), hoặc giao thức Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Tên hiển thị (tùy chọn, tối đa 20 ký tự)",
+			"namePlaceholder": "Tên hiển thị (tối đa 20 ký tự)",
 			"button": "Thêm Nguồn"
 		},
 		"current": {

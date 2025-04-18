@@ -1,6 +1,6 @@
 # Core Components
 
-This document provides detailed information about the core components of the Package Manager system, their responsibilities, implementation details, and interactions.
+This document provides detailed information about the core components of the Marketplace system, their responsibilities, implementation details, and interactions.
 
 ## GitFetcher
 
@@ -130,7 +130,7 @@ class MetadataScanner {
 
 ## PackageManagerManager
 
-The PackageManagerManager is the central component that manages package data, caching, and operations.
+The PackageManagerManager is the central component that manages marketplace data, caching, and operations.
 
 ### Responsibilities
 
@@ -236,7 +236,7 @@ The filtering system provides rich functionality:
 
 ## PackageManagerSourceValidation
 
-The PackageManagerSourceValidation component handles validation of package manager sources and their configurations.
+The PackageManagerSourceValidation component handles validation of marketplace sources and their configurations.
 
 ### Responsibilities
 
@@ -424,4 +424,4 @@ The system includes several optimizations:
 
 ---
 
-**Previous**: [Package Manager Architecture](./01-architecture.md) | **Next**: [Data Structures](./03-data-structures.md)
+**Previous**: [Marketplace Architecture](./01-architecture.md) | **Next**: [Data Structures](./03-data-structures.md)

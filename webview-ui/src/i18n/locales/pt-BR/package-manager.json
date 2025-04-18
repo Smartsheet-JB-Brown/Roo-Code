@@ -1,12 +1,12 @@
 {
-	"title": "Gerenciador de Pacotes",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Navegar",
 		"sources": "Fontes"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Pesquisar itens do gerenciador de pacotes..."
+			"placeholder": "Pesquisar itens do marketplace..."
 		},
 		"type": {
 			"label": "Filtrar por tipo:",
@@ -36,7 +36,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "Nenhum item do gerenciador de pacotes encontrado",
+			"noItems": "Nenhum item do marketplace encontrado",
 			"withFilters": "Tente ajustar os filtros",
 			"noSources": "Tente adicionar uma fonte na aba Fontes"
 		},
@@ -58,13 +58,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configurar Fontes do Gerenciador de Pacotes",
-		"description": "Adicione repositórios Git que contenham itens do gerenciador de pacotes. Estes repositórios serão obtidos ao navegar pelo gerenciador de pacotes.",
+		"title": "Configurar Fontes do Marketplace",
+		"description": "Adicione repositórios Git que contenham itens do marketplace. Estes repositórios serão obtidos ao navegar pelo marketplace.",
 		"add": {
 			"title": "Adicionar Nova Fonte",
 			"urlPlaceholder": "URL do repositório Git (ex: https://github.com/username/repo)",
 			"urlFormats": "Formatos suportados: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) ou protocolo Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nome de exibição (opcional, máx. 20 caracteres)",
+			"namePlaceholder": "Nome de exibição (máx. 20 caracteres)",
 			"button": "Adicionar Fonte"
 		},
 		"current": {

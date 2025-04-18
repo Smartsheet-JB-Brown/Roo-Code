@@ -1,12 +1,12 @@
 {
-	"title": "Gestore Pacchetti",
+	"title": "Marketplace",
 	"tabs": {
 		"browse": "Sfoglia",
 		"sources": "Sorgenti"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Cerca elementi del gestore pacchetti..."
+			"placeholder": "Cerca elementi del marketplace..."
 		},
 		"type": {
 			"label": "Filtra per tipo:",
@@ -36,7 +36,7 @@
 	},
 	"items": {
 		"empty": {
-			"noItems": "Nessun elemento del gestore pacchetti trovato",
+			"noItems": "Nessun elemento del marketplace trovato",
 			"withFilters": "Prova a modificare i filtri",
 			"noSources": "Prova ad aggiungere una sorgente nella scheda Sorgenti"
 		},
@@ -58,13 +58,13 @@
 		}
 	},
 	"sources": {
-		"title": "Configura Sorgenti del Gestore Pacchetti",
-		"description": "Aggiungi repository Git che contengono elementi del gestore pacchetti. Questi repository verranno recuperati durante la navigazione del gestore pacchetti.",
+		"title": "Configura Sorgenti del Marketplace",
+		"description": "Aggiungi repository Git che contengono elementi del marketplace. Questi repository verranno recuperati durante la navigazione del marketplace.",
 		"add": {
 			"title": "Aggiungi Nuova Sorgente",
 			"urlPlaceholder": "URL del repository Git (es. https://github.com/username/repo)",
 			"urlFormats": "Formati supportati: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) o protocollo Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nome visualizzato (opzionale, max 20 caratteri)",
+			"namePlaceholder": "Nome visualizzato (max 20 caratteri)",
 			"button": "Aggiungi Sorgente"
 		},
 		"current": {

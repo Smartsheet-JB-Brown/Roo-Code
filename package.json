@@ -97,7 +97,7 @@
 			},
 			{
 				"command": "roo-cline.packageManagerButtonClicked",
-				"title": "Package Manager",
+				"title": "Marketplace",
 				"icon": "$(extensions)"
 			},
 			{

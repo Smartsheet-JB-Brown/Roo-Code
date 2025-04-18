@@ -5,7 +5,7 @@
 /**
  * Default package manager repository URL
  */
-export const DEFAULT_PACKAGE_MANAGER_REPO_URL = "https://github.com/RooVetGit/Roo-Code-Packages"
+export const DEFAULT_PACKAGE_MANAGER_REPO_URL = "https://github.com/RooVetGit/Roo-Code-Marketplace"
 
 /**
  * Default package manager repository name

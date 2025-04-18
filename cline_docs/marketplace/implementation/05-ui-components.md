@@ -1,10 +1,10 @@
 # UI Component Design
 
-This document details the design and implementation of the Package Manager's UI components, including their structure, styling, interactions, and accessibility features.
+This document details the design and implementation of the Marketplace's UI components, including their structure, styling, interactions, and accessibility features.
 
 ## PackageManagerView
 
-The PackageManagerView is the main container component that manages the overall package manager interface.
+The PackageManagerView is the main container component that manages the overall marketplace interface.
 
 ### Component Structure
 
@@ -498,7 +498,7 @@ export const TypeGroup: React.FC<TypeGroupProps> = ({ type, items, className, se
 
 ## Source Configuration Components
 
-The Package Manager includes components for managing package sources.
+The Marketplace includes components for managing package sources.
 
 ### SourcesView
 
@@ -543,8 +543,8 @@ const SourcesView: React.FC<SourcesViewProps> = ({ sources, refreshingUrls, onRe
 
 	return (
 		<div>
-			<h4>Configure Package Manager Sources</h4>
-			<p>Add Git repositories containing package manager items.</p>
+			<h4>Configure Marketplace Sources</h4>
+			<p>Add Git repositories containing marketplace items.</p>
 
 			{/* Source form */}
 			<div>
@@ -592,7 +592,7 @@ const SourcesView: React.FC<SourcesViewProps> = ({ sources, refreshingUrls, onRe
 
 ## Filter Components
 
-The Package Manager includes components for filtering and searching.
+The Marketplace includes components for filtering and searching.
 
 ### SearchInput
 
@@ -703,7 +703,7 @@ const TagFilterGroup: React.FC<{
 
 ## Styling Approach
 
-The Package Manager UI uses a combination of Tailwind CSS and VSCode theme variables for styling.
+The Marketplace UI uses a combination of Tailwind CSS and VSCode theme variables for styling.
 
 ### VSCode Theme Integration
 
@@ -758,7 +758,7 @@ export function cn(...inputs: ClassValue[]) {
 
 ## Responsive Design
 
-The Package Manager UI is designed to work across different viewport sizes:
+The Marketplace UI is designed to work across different viewport sizes:
 
 ### Layout Adjustments
 
@@ -794,7 +794,7 @@ For smaller screens:
 
 ## Accessibility Features
 
-The Package Manager UI includes several accessibility features:
+The Marketplace UI includes several accessibility features:
 
 ### Keyboard Navigation
 
@@ -859,7 +859,7 @@ The UI ensures sufficient color contrast for all text:
 
 ## Animation and Transitions
 
-The Package Manager UI uses subtle animations to enhance the user experience:
+The Marketplace UI uses subtle animations to enhance the user experience:
 
 ### Expand/Collapse Animation
 
@@ -895,7 +895,7 @@ The Package Manager UI uses subtle animations to enhance the user experience:
 
 ## Error Handling in UI
 
-The Package Manager UI includes graceful error handling:
+The Marketplace UI includes graceful error handling:
 
 ### Error States
 
@@ -958,7 +958,7 @@ const PackageCardSkeleton: React.FC = () => {
 
 ## Component Testing
 
-The Package Manager UI components include comprehensive tests:
+The Marketplace UI components include comprehensive tests:
 
 ### Unit Tests
 

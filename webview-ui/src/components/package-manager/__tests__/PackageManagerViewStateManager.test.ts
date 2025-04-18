@@ -85,7 +85,7 @@ describe("PackageManagerViewStateManager", () => {
 			const state = manager.getState()
 			expect(state.sources).toEqual([
 				{
-					url: "https://github.com/RooVetGit/Roo-Code-Packages",
+					url: "https://github.com/RooVetGit/Roo-Code-Marketplace",
 					name: "Roo Code",
 					enabled: true,
 				},
@@ -96,7 +96,7 @@ describe("PackageManagerViewStateManager", () => {
 				type: "packageManagerSources",
 				sources: [
 					{
-						url: "https://github.com/RooVetGit/Roo-Code-Packages",
+						url: "https://github.com/RooVetGit/Roo-Code-Marketplace",
 						name: "Roo Code",
 						enabled: true,
 					},
@@ -744,7 +744,7 @@ describe("PackageManagerViewStateManager", () => {
 				type: "packageManagerSources",
 				sources: [
 					{
-						url: "https://github.com/RooVetGit/Roo-Code-Packages",
+						url: "https://github.com/RooVetGit/Roo-Code-Marketplace",
 						name: "Roo Code",
 						enabled: true,
 					},
@@ -976,7 +976,7 @@ describe("PackageManagerViewStateManager", () => {
 		it("should restore sources from packageManagerSources on webview launch", () => {
 			const savedSources = [
 				{
-					url: "https://github.com/RooVetGit/Roo-Code-Packages",
+					url: "https://github.com/RooVetGit/Roo-Code-Marketplace",
 					name: "Roo Code",
 					enabled: true,
 				},
