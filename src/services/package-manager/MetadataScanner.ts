@@ -21,6 +21,9 @@ export class MetadataScanner {
 	private readonly git?: SimpleGit
 	private localizationOptions: LocalizationOptions
 	private originalRootDir: string | null = null
+	private static readonly MAX_DEPTH = 5 // Maximum directory depth
+	private static readonly BATCH_SIZE = 50 // Number of items to process at once
+	private static readonly CONCURRENT_SCANS = 3 // Number of concurrent directory scans
 
 	constructor(git?: SimpleGit, localizationOptions?: LocalizationOptions) {
 		this.git = git
@@ -31,11 +34,76 @@ export class MetadataScanner {
 	}
 
 	/**
+	 * Generator function to yield items in batches
+	 */
+	private async *scanDirectoryBatched(
+		rootDir: string,
+		repoUrl: string,
+		sourceName?: string,
+		depth: number = 0,
+	): AsyncGenerator<PackageManagerItem[]> {
+		if (depth > MetadataScanner.MAX_DEPTH) {
+			return
+		}
+
+		const batch: PackageManagerItem[] = []
+		const entries = await fs.readdir(rootDir, { withFileTypes: true })
+
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue
+
+			const componentDir = path.join(rootDir, entry.name)
+			const metadata = await this.loadComponentMetadata(componentDir)
+			const localizedMetadata = metadata ? this.getLocalizedMetadata(metadata) : null
+
+			if (localizedMetadata) {
+				const item = await this.createPackageManagerItem(
+					localizedMetadata,
+					componentDir,
+					repoUrl,
+					this.originalRootDir || rootDir,
+					sourceName,
+				)
+
+				if (item) {
+					// If this is a package, scan for subcomponents
+					if (this.isPackageMetadata(localizedMetadata)) {
+						await this.scanPackageSubcomponents(componentDir, item)
+					}
+
+					batch.push(item)
+					if (batch.length >= MetadataScanner.BATCH_SIZE) {
+						yield batch.splice(0)
+					}
+				}
+			}
+
+			// Recursively scan subdirectories
+			if (!localizedMetadata || !this.isPackageMetadata(localizedMetadata)) {
+				const subGenerator = this.scanDirectoryBatched(componentDir, repoUrl, sourceName, depth + 1)
+				for await (const subBatch of subGenerator) {
+					batch.push(...subBatch)
+					if (batch.length >= MetadataScanner.BATCH_SIZE) {
+						yield batch.splice(0)
+					}
+				}
+			}
+		}
+
+		if (batch.length > 0) {
+			yield batch
+		}
+	}
+
+	/**
 	 * Scans a directory for components
 	 * @param rootDir The root directory to scan
 	 * @param repoUrl The repository URL
 	 * @param sourceName Optional source repository name
 	 * @returns Array of discovered items
+	 */
+	/**
+	 * Scan a directory and return items in batches
 	 */
 	async scanDirectory(
 		rootDir: string,
@@ -43,81 +111,16 @@ export class MetadataScanner {
 		sourceName?: string,
 		isRecursiveCall: boolean = false,
 	): Promise<PackageManagerItem[]> {
-		const items: PackageManagerItem[] = []
-
 		// Only set originalRootDir on the first call
 		if (!isRecursiveCall && !this.originalRootDir) {
 			this.originalRootDir = rootDir
 		}
 
-		try {
-			const entries = await fs.readdir(rootDir, { withFileTypes: true })
+		const items: PackageManagerItem[] = []
+		const generator = this.scanDirectoryBatched(rootDir, repoUrl, sourceName)
 
-			// Process directories sequentially to avoid memory spikes
-			for (const entry of entries) {
-				if (!entry.isDirectory()) continue
-
-				const componentDir = path.join(rootDir, entry.name)
-				const relativePath = path.relative(this.originalRootDir || rootDir, componentDir).replace(/\\/g, "/")
-
-				// Load metadata once
-				const metadata = await this.loadComponentMetadata(componentDir)
-				const localizedMetadata = metadata ? this.getLocalizedMetadata(metadata) : null
-
-				if (localizedMetadata) {
-					// Create item if we have valid metadata
-					const item = await this.createPackageManagerItem(
-						localizedMetadata,
-						componentDir,
-						repoUrl,
-						this.originalRootDir || rootDir,
-						sourceName,
-					)
-
-					if (item) {
-						// Handle package items
-						if (this.isPackageMetadata(localizedMetadata)) {
-							// Process listed items sequentially
-							if (localizedMetadata.items) {
-								item.items = []
-								for (const subItem of localizedMetadata.items) {
-									const subPath = path.join(componentDir, subItem.path)
-									const subMetadata = await this.loadComponentMetadata(subPath)
-									const localizedSubMetadata = subMetadata
-										? this.getLocalizedMetadata(subMetadata)
-										: null
-
-									if (localizedSubMetadata) {
-										item.items.push({
-											type: subItem.type,
-											path: subItem.path,
-											metadata: localizedSubMetadata,
-											lastUpdated: await this.getLastModifiedDate(subPath),
-										})
-									}
-								}
-							}
-
-							// Scan for unlisted components
-							await this.scanPackageSubcomponents(componentDir, item)
-							items.push(item)
-							continue // Skip further recursion for package directories
-						}
-
-						items.push(item)
-					}
-				}
-
-				// Only recurse if:
-				// 1. No metadata was found, or
-				// 2. Metadata was found but it's not a package
-				if (!localizedMetadata || !this.isPackageMetadata(localizedMetadata)) {
-					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName, true)
-					items.push(...subItems)
-				}
-			}
-		} catch (error) {
-			console.error(`Error scanning directory ${rootDir}:`, error)
+		for await (const batch of generator) {
+			items.push(...batch)
 		}
 
 		return items

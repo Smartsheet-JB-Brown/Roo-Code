@@ -287,8 +287,9 @@ export class PackageManagerManager {
 	 * @param filters The filter criteria
 	 * @returns Filtered items
 	 */
-	// Cache size limit to prevent memory issues
 	private static readonly MAX_CACHE_SIZE = 100
+	private static readonly BATCH_SIZE = 100
+
 	private filterCache = new Map<
 		string,
 		{
@@ -312,6 +313,9 @@ export class PackageManagerManager {
 		}
 	}
 
+	/**
+	 * Filter items
+	 */
 	filterItems(
 		items: PackageManagerItem[],
 		filters: { type?: ComponentType; search?: string; tags?: string[] },
@@ -326,22 +330,40 @@ export class PackageManagerManager {
 		// Clean up old cache entries
 		this.cleanupFilterCache()
 
-		// Helper function to normalize text for case/whitespace-insensitive comparison
-		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
-
-		// Normalize search term once
-		const searchTerm = filters.search ? normalizeText(filters.search) : ""
-
-		// Helper function to check if text contains the search term
-		const containsSearchTerm = (text: string) => {
-			if (!searchTerm) return true
-			return normalizeText(text).includes(normalizeText(searchTerm))
+		// Process items in batches to avoid memory spikes
+		const allFilteredItems: PackageManagerItem[] = []
+		for (let i = 0; i < items.length; i += PackageManagerManager.BATCH_SIZE) {
+			const batch = items.slice(i, Math.min(i + PackageManagerManager.BATCH_SIZE, items.length))
+			const filteredBatch = this.processItemBatch(batch, filters)
+			allFilteredItems.push(...filteredBatch)
 		}
 
-		// Filter items with shallow copies
-		const filteredItems = items
+		// Cache the results
+		this.filterCache.set(cacheKey, {
+			items: allFilteredItems,
+			timestamp: Date.now(),
+		})
+
+		return allFilteredItems
+	}
+
+	/**
+	 * Process a batch of items
+	 */
+	/**
+	 * Process a batch of items
+	 */
+	private processItemBatch(
+		batch: PackageManagerItem[],
+		filters: { type?: ComponentType; search?: string; tags?: string[] },
+	): PackageManagerItem[] {
+		// Helper functions
+		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
+		const searchTerm = filters.search ? normalizeText(filters.search) : ""
+		const containsSearchTerm = (text: string) => !searchTerm || normalizeText(text).includes(searchTerm)
+
+		return batch
 			.map((item) => {
-				// Create shallow copy of item
 				const itemCopy = { ...item }
 
 				// Check parent item matches
@@ -354,7 +376,7 @@ export class PackageManagerManager {
 						(itemCopy.tags && filters.tags.some((tag) => itemCopy.tags!.includes(tag))),
 				}
 
-				// Process subcomponents and track if any match
+				// Process subcomponents
 				let hasMatchingSubcomponents = false
 				if (itemCopy.items?.length) {
 					itemCopy.items = itemCopy.items.map((subItem) => {
@@ -363,14 +385,13 @@ export class PackageManagerManager {
 							search:
 								!searchTerm ||
 								(subItem.metadata &&
-									(containsSearchTerm(subItem.metadata.name) ||
-										containsSearchTerm(subItem.metadata.description))),
+									(containsSearchTerm(subItem.metadata.name || "") ||
+										containsSearchTerm(subItem.metadata.description || "") ||
+										containsSearchTerm(subItem.type || ""))),
 							tags:
 								!filters.tags?.length ||
-								!!(
-									subItem.metadata?.tags &&
-									filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))
-								),
+								(subItem.metadata?.tags &&
+									filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))),
 						}
 
 						const subItemMatched =
@@ -380,16 +401,13 @@ export class PackageManagerManager {
 
 						if (subItemMatched) {
 							hasMatchingSubcomponents = true
-							// Set matchInfo for matching subcomponent
-							// Build match reason based on active filters
-							const matchReason: Record<string, boolean> = {}
-
-							if (searchTerm) {
-								matchReason.nameMatch = containsSearchTerm(subItem.metadata?.name || "")
-								matchReason.descriptionMatch = containsSearchTerm(subItem.metadata?.description || "")
+							const matchReason: Record<string, boolean> = {
+								nameMatch: searchTerm ? containsSearchTerm(subItem.metadata?.name || "") : true,
+								descriptionMatch: searchTerm
+									? containsSearchTerm(subItem.metadata?.description || "")
+									: false,
 							}
 
-							// Always include typeMatch when filtering by type
 							if (filters.type) {
 								matchReason.typeMatch = subMatches.type
 							}
@@ -413,19 +431,11 @@ export class PackageManagerManager {
 				const isPackageWithMatchingSubcomponent = itemCopy.type === "package" && hasMatchingSubcomponents
 
 				if (parentMatchesAll || isPackageWithMatchingSubcomponent) {
-					// Add match info without deep cloning
-					// Build parent match reason based on active filters
-					const matchReason: Record<string, boolean> = {}
-
-					if (searchTerm) {
-						matchReason.nameMatch = containsSearchTerm(itemCopy.name)
-						matchReason.descriptionMatch = containsSearchTerm(itemCopy.description)
-					} else {
-						matchReason.nameMatch = false
-						matchReason.descriptionMatch = false
+					const matchReason: Record<string, boolean> = {
+						nameMatch: searchTerm ? containsSearchTerm(itemCopy.name) : false,
+						descriptionMatch: searchTerm ? containsSearchTerm(itemCopy.description) : false,
 					}
 
-					// Always include typeMatch when filtering by type
 					if (filters.type) {
 						matchReason.typeMatch = itemMatches.type
 					}
@@ -434,22 +444,26 @@ export class PackageManagerManager {
 						matchReason.hasMatchingSubcomponents = true
 					}
 
+					// If this is a package and we're searching, also check if any subcomponent names match
+					if (searchTerm && itemCopy.type === "package" && itemCopy.items?.length) {
+						const subcomponentNameMatches = itemCopy.items.some(
+							(subItem) => subItem.metadata && containsSearchTerm(subItem.metadata.name || ""),
+						)
+						if (subcomponentNameMatches) {
+							matchReason.hasMatchingSubcomponents = true
+						}
+					}
+
 					itemCopy.matchInfo = {
 						matched: true,
 						matchReason,
 					}
 					return itemCopy
 				}
+
 				return null
 			})
 			.filter((item): item is PackageManagerItem => item !== null)
-
-		// Cache the results with timestamp
-		this.filterCache.set(cacheKey, {
-			items: filteredItems,
-			timestamp: Date.now(),
-		})
-		return filteredItems
 	}
 
 	/**
