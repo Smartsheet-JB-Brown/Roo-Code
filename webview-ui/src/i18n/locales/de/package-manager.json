@@ -39,6 +39,8 @@
 			"noSources": "Versuchen Sie, eine Quelle im Quellen-Tab hinzuzufügen"
 		},
 		"count": "{{count}} Elemente gefunden",
+		"components": "{{count}} Komponente",
+		"components_plural": "{{count}} Komponenten",
 		"refresh": {
 			"button": "Aktualisieren",
 			"refreshing": "Aktualisiere..."

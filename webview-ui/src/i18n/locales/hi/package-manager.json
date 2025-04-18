@@ -39,6 +39,8 @@
 			"noSources": "स्रोत टैब में एक स्रोत जोड़ने का प्रयास करें"
 		},
 		"count": "{{count}} आइटम मिला",
+		"components": "{{count}} कंपोनेंट",
+		"components_plural": "{{count}} कंपोनेंट",
 		"count_plural": "{{count}} आइटम मिले",
 		"refresh": {
 			"button": "रीफ्रेश",

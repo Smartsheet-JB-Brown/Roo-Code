@@ -41,6 +41,8 @@
 			"noSources": "Tente adicionar uma fonte na aba Fontes"
 		},
 		"count": "{{count}} item encontrado",
+		"components": "{{count}} componente",
+		"components_plural": "{{count}} componentes",
 		"count_plural": "{{count}} itens encontrados",
 		"refresh": {
 			"button": "Atualizar",

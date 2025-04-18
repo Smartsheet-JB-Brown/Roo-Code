@@ -39,6 +39,8 @@
 			"noSources": "Intente agregar una fuente en la pestaña Fuentes"
 		},
 		"count": "{{count}} elementos encontrados",
+		"components": "{{count}} componente",
+		"components_plural": "{{count}} componentes",
 		"refresh": {
 			"button": "Actualizar",
 			"refreshing": "Actualizando..."

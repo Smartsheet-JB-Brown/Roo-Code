@@ -41,6 +41,8 @@
 			"noSources": "Essayez d'ajouter une source dans l'onglet Sources"
 		},
 		"count": "{{count}} élément trouvé",
+		"components": "{{count}} composant",
+		"components_plural": "{{count}} composants",
 		"count_plural": "{{count}} éléments trouvés",
 		"refresh": {
 			"button": "Actualiser",

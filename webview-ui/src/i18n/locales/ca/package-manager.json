@@ -41,6 +41,8 @@
 			"noSources": "Prova d'afegir una font a la pestanya Fonts"
 		},
 		"count": "S'ha trobat {{count}} element",
+		"components": "{{count}} component",
+		"components_plural": "{{count}} components",
 		"count_plural": "S'han trobat {{count}} elements",
 		"refresh": {
 			"button": "Actualitza",

@@ -41,6 +41,8 @@
 			"noSources": "Prova ad aggiungere una sorgente nella scheda Sorgenti"
 		},
 		"count": "{{count}} elemento trovato",
+		"components": "{{count}} componente",
+		"components_plural": "{{count}} componenti",
 		"count_plural": "{{count}} elementi trovati",
 		"refresh": {
 			"button": "Aggiorna",
