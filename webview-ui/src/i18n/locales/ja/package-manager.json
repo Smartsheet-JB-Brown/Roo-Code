@@ -39,6 +39,7 @@
 			"noSources": "ソースタブでソースを追加してみてください"
 		},
 		"count": "{{count}}個のアイテムが見つかりました",
+		"components": "{{count}}個のコンポーネント",
 		"refresh": {
 			"button": "更新",
 			"refreshing": "更新中..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "作者: {{author}}",
 			"from": "ソース: {{source}}",
-			"externalComponents": "{{count}}個の外部コンポーネントを含む",
-			"externalComponents_plural": "{{count}}個の外部コンポーネントを含む",
 			"viewSource": "表示",
 			"viewOnSource": "{{source}}で表示"
 		}

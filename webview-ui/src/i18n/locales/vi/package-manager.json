@@ -39,6 +39,7 @@
 			"noSources": "Thử thêm một nguồn trong tab Nguồn"
 		},
 		"count": "Tìm thấy {{count}} mục",
+		"components": "{{count}} thành phần",
 		"refresh": {
 			"button": "Làm mới",
 			"refreshing": "Đang làm mới..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "bởi {{author}}",
 			"from": "từ {{source}}",
-			"externalComponents": "Chứa {{count}} thành phần bên ngoài",
-			"externalComponents_plural": "Chứa {{count}} thành phần bên ngoài",
 			"viewSource": "Xem",
 			"viewOnSource": "Xem trên {{source}}"
 		}

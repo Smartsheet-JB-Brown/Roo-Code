@@ -86,15 +86,21 @@ export class PackageManagerViewStateManager {
 	}
 
 	public getState(): ViewState {
+		// Only create new arrays if they exist and have items
+		const displayItems = this.state.displayItems?.length ? [...this.state.displayItems] : this.state.displayItems
+		const refreshingUrls = this.state.refreshingUrls.length ? [...this.state.refreshingUrls] : []
+		const tags = this.state.filters.tags.length ? [...this.state.filters.tags] : []
+
+		// Create minimal new state object
 		return {
 			...this.state,
-			allItems: [...this.state.allItems],
-			displayItems: this.state.displayItems ? [...this.state.displayItems] : undefined,
-			refreshingUrls: [...this.state.refreshingUrls],
-			sources: [...this.state.sources],
+			allItems: this.state.allItems.length ? [...this.state.allItems] : [],
+			displayItems,
+			refreshingUrls,
+			sources: this.state.sources.length ? [...this.state.sources] : [DEFAULT_PACKAGE_MANAGER_SOURCE],
 			filters: {
 				...this.state.filters,
-				tags: [...this.state.filters.tags],
+				tags,
 			},
 		}
 	}
@@ -113,17 +119,11 @@ export class PackageManagerViewStateManager {
 					return
 				}
 
-				// Create a new state object to ensure React sees the change
-				const newState = {
-					...this.state,
-					isFetching: true,
-				}
-
 				// Clear any existing timeout before starting new fetch
 				this.clearFetchTimeout()
 
-				// Update state and notify before starting fetch
-				this.state = newState
+				// Update state directly
+				this.state.isFetching = true
 				this.notifyStateChange()
 
 				// Set timeout for fetch operation
@@ -146,21 +146,20 @@ export class PackageManagerViewStateManager {
 				this.clearFetchTimeout()
 
 				// Create a new state object with sorted items
-				const sortedItems = this.sortItems([...items])
-				const newState = {
-					...this.state,
-					isFetching: false,
-					displayItems: sortedItems, // Use items directly from backend
+				// Sort items in place to avoid creating unnecessary copies
+				const sortedItems = this.sortItems(items)
+
+				// Minimize state updates
+				if (this.isFilterActive()) {
+					this.state.displayItems = sortedItems
+					this.state.isFetching = false
+				} else {
+					this.state.allItems = sortedItems
+					this.state.displayItems = sortedItems
+					this.state.isFetching = false
 				}
 
-				// Only update allItems if this isn't a filter response
-				if (!this.isFilterActive()) {
-					newState.allItems = sortedItems
-				}
-
-				// Update state and notify
-				this.state = newState
-
+				// Notify state change
 				this.notifyStateChange()
 				break
 			}
@@ -168,12 +167,8 @@ export class PackageManagerViewStateManager {
 			case "FETCH_ERROR": {
 				this.clearFetchTimeout()
 
-				// Create a new state object to ensure React sees the change
-				this.state = {
-					...this.state,
-					isFetching: false,
-				}
-
+				// Update state directly
+				this.state.isFetching = false
 				this.notifyStateChange()
 				break
 			}
@@ -181,23 +176,18 @@ export class PackageManagerViewStateManager {
 			case "SET_ACTIVE_TAB": {
 				const { tab } = transition.payload as TransitionPayloads["SET_ACTIVE_TAB"]
 
-				// Create a new state object
-				const newState = {
-					...this.state,
-					activeTab: tab,
-				}
+				// Update state directly
+				this.state.activeTab = tab
 
 				// Add default source when switching to sources tab if no sources exist
-				if (tab === "sources" && newState.sources.length === 0) {
-					newState.sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
+				if (tab === "sources" && this.state.sources.length === 0) {
+					this.state.sources = [DEFAULT_PACKAGE_MANAGER_SOURCE]
 					vscode.postMessage({
 						type: "packageManagerSources",
 						sources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
 					} as WebviewMessage)
 				}
 
-				// Update state and notify
-				this.state = newState
 				this.notifyStateChange()
 
 				// Handle browse tab switch
@@ -254,13 +244,12 @@ export class PackageManagerViewStateManager {
 				}
 				// Apply sorting to both allItems and displayItems
 				// Sort items immutably
-				const sortedAllItems = this.sortItems(this.state.allItems)
-				const sortedDisplayItems = this.state.displayItems ? this.sortItems(this.state.displayItems) : undefined
-
-				this.state = {
-					...this.state,
-					allItems: sortedAllItems,
-					displayItems: sortedDisplayItems,
+				// Sort arrays in place
+				if (this.state.allItems.length) {
+					this.sortItems(this.state.allItems)
+				}
+				if (this.state.displayItems?.length) {
+					this.sortItems(this.state.displayItems)
 				}
 				this.notifyStateChange()
 				break
@@ -377,19 +366,16 @@ export class PackageManagerViewStateManager {
 
 	private sortItems(items: PackageManagerItem[]): PackageManagerItem[] {
 		const { by, order } = this.state.sortConfig
-		return [...items].sort((a, b) => {
-			let aValue = a[by] || ""
-			let bValue = b[by] || ""
 
-			// Handle dates for lastUpdated
-			if (by === "lastUpdated") {
-				aValue = aValue || "1970-01-01T00:00:00Z"
-				bValue = bValue || "1970-01-01T00:00:00Z"
-			}
+		// Sort array in place
+		items.sort((a, b) => {
+			const aValue = by === "lastUpdated" ? a[by] || "1970-01-01T00:00:00Z" : a[by] || ""
+			const bValue = by === "lastUpdated" ? b[by] || "1970-01-01T00:00:00Z" : b[by] || ""
 
-			const comparison = aValue.localeCompare(bValue)
-			return order === "asc" ? comparison : -comparison
+			return order === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
 		})
+
+		return items
 	}
 
 	public async handleMessage(message: any): Promise<void> {

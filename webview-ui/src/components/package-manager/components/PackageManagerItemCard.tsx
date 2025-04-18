@@ -208,21 +208,22 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 				</Button>
 			</div>
 
-			{groupedItems && (
+			<div className="border-t border-vscode-panel-border mt-4">
 				<ExpandableSection
-					title={t("package-manager:items.card.externalComponents", { count: 0 })}
+					title={t("package-manager:items.components", { count: item.items?.length ?? 0 })}
 					badge={(() => {
 						const matchCount = item.items?.filter((subItem) => subItem.matchInfo?.matched).length ?? 0
-						return matchCount > 0 ? t("package-manager:items.count", { count: matchCount }) : undefined
+						return matchCount > 0 ? t("package-manager:items.components", { count: matchCount }) : undefined
 					})()}
 					defaultExpanded={item.items?.some((subItem) => subItem.matchInfo?.matched) ?? false}>
 					<div className="space-y-4">
-						{Object.entries(groupedItems).map(([type, group]) => (
-							<TypeGroup key={type} type={type} items={group.items} />
-						))}
+						{groupedItems &&
+							Object.entries(groupedItems).map(([type, group]) => (
+								<TypeGroup key={type} type={type} items={group.items} />
+							))}
 					</div>
 				</ExpandableSection>
-			)}
+			</div>
 		</div>
 	)
 }

@@ -130,78 +130,143 @@ export function validateSourceName(name?: string): ValidationError[] {
  * @param newSource The new source to check against the list (optional)
  * @returns An array of validation errors, empty if valid
  */
+// Cache for normalized strings to avoid repeated operations
+const normalizeCache = new Map<string, string>()
+
+function normalizeString(str: string): string {
+	const cached = normalizeCache.get(str)
+	if (cached) return cached
+
+	const normalized = str.toLowerCase().replace(/\s+/g, "")
+	normalizeCache.set(str, normalized)
+	return normalized
+}
+
 export function validateSourceDuplicates(
 	sources: PackageManagerSource[],
 	newSource?: PackageManagerSource,
 ): ValidationError[] {
 	const errors: ValidationError[] = []
-	const normalizedUrls: { url: string; index: number }[] = []
-	const normalizedNames: { name: string; index: number }[] = []
+	const urlMap = new Map<string, number>()
+	const nameMap = new Map<string, number>()
 
 	// Process existing sources
-	sources.forEach((source, index) => {
-		// Normalize URL (case and whitespace insensitive)
-		const normalizedUrl = source.url.toLowerCase().replace(/\s+/g, "")
-		normalizedUrls.push({ url: normalizedUrl, index })
+	// Process existing sources
+	const seen = new Set<string>()
 
-		// Normalize name if it exists (case and whitespace insensitive)
-		if (source.name) {
-			const normalizedName = source.name.toLowerCase().replace(/\s+/g, "")
-			normalizedNames.push({ name: normalizedName, index })
+	// Check for duplicates within existing sources
+	for (let i = 0; i < sources.length; i++) {
+		const source = sources[i]
+		const normalizedUrl = normalizeString(source.url)
+		const normalizedName = source.name ? normalizeString(source.name) : null
+
+		// Check for URL duplicates
+		for (let j = i + 1; j < sources.length; j++) {
+			const otherSource = sources[j]
+			const otherUrl = normalizeString(otherSource.url)
+
+			if (normalizedUrl === otherUrl) {
+				const key = `url:${i}:${j}`
+				if (!seen.has(key)) {
+					errors.push({
+						field: "url",
+						message: `Source #${i + 1} has a duplicate URL with Source #${j + 1}`,
+					})
+					errors.push({
+						field: "url",
+						message: `Source #${j + 1} has a duplicate URL with Source #${i + 1}`,
+					})
+					seen.add(key)
+					seen.add(`url:${j}:${i}`)
+				}
+			}
+
+			// Check for name duplicates if both have names
+			if (normalizedName && otherSource.name) {
+				const otherName = normalizeString(otherSource.name)
+				if (normalizedName === otherName) {
+					const key = `name:${i}:${j}`
+					if (!seen.has(key)) {
+						errors.push({
+							field: "name",
+							message: `Source #${i + 1} has a duplicate name with Source #${j + 1}`,
+						})
+						errors.push({
+							field: "name",
+							message: `Source #${j + 1} has a duplicate name with Source #${i + 1}`,
+						})
+						seen.add(key)
+						seen.add(`name:${j}:${i}`)
+					}
+				}
+			}
 		}
-	})
-
-	// Check for duplicates within the existing sources
-	normalizedUrls.forEach((item, index) => {
-		const duplicates = normalizedUrls.filter((other, otherIndex) => other.url === item.url && otherIndex !== index)
-
-		if (duplicates.length > 0) {
-			errors.push({
-				field: "url",
-				message: `Source #${item.index + 1} has a duplicate URL with Source #${duplicates[0].index + 1} (case and whitespace insensitive match)`,
-			})
-		}
-	})
-
-	normalizedNames.forEach((item, index) => {
-		const duplicates = normalizedNames.filter(
-			(other, otherIndex) => other.name === item.name && otherIndex !== index,
-		)
-
-		if (duplicates.length > 0) {
-			errors.push({
-				field: "name",
-				message: `Source #${item.index + 1} has a duplicate name with Source #${duplicates[0].index + 1} (case and whitespace insensitive match)`,
-			})
-		}
-	})
+	}
 
 	// Check new source against existing sources if provided
 	if (newSource) {
-		// Validate URL
 		if (newSource.url) {
-			const normalizedNewUrl = newSource.url.toLowerCase().replace(/\s+/g, "")
-			const duplicateUrl = normalizedUrls.find((item) => item.url === normalizedNewUrl)
-
-			if (duplicateUrl) {
+			const normalizedNewUrl = normalizeString(newSource.url)
+			const existingUrlIndex = urlMap.get(normalizedNewUrl)
+			if (existingUrlIndex !== undefined) {
 				errors.push({
 					field: "url",
-					message: `URL is a duplicate of Source #${duplicateUrl.index + 1} (case and whitespace insensitive match)`,
+					message: `URL is a duplicate of Source #${existingUrlIndex + 1}`,
 				})
 			}
 		}
 
-		// Validate name
 		if (newSource.name) {
-			const normalizedNewName = newSource.name.toLowerCase().replace(/\s+/g, "")
-			const duplicateName = normalizedNames.find((item) => item.name === normalizedNewName)
-
-			if (duplicateName) {
+			const normalizedNewName = normalizeString(newSource.name)
+			const existingNameIndex = nameMap.get(normalizedNewName)
+			if (existingNameIndex !== undefined) {
 				errors.push({
 					field: "name",
-					message: `Name is a duplicate of Source #${duplicateName.index + 1} (case and whitespace insensitive match)`,
+					message: `Name is a duplicate of Source #${existingNameIndex + 1}`,
 				})
 			}
+		}
+	}
+
+	// Check new source against existing sources if provided
+	if (newSource) {
+		const normalizedNewUrl = normalizeString(newSource.url)
+		const normalizedNewName = newSource.name ? normalizeString(newSource.name) : null
+
+		// Add new source to maps temporarily
+		const newIndex = sources.length
+		urlMap.set(normalizedNewUrl, newIndex)
+		if (normalizedNewName) {
+			nameMap.set(normalizedNewName, newIndex)
+		}
+
+		// Check for duplicates with existing sources
+		for (let i = 0; i < sources.length; i++) {
+			const source = sources[i]
+			const sourceUrl = normalizeString(source.url)
+
+			if (sourceUrl === normalizedNewUrl) {
+				errors.push({
+					field: "url",
+					message: `URL is a duplicate of Source #${i + 1}`,
+				})
+			}
+
+			if (source.name && normalizedNewName) {
+				const sourceName = normalizeString(source.name)
+				if (sourceName === normalizedNewName) {
+					errors.push({
+						field: "name",
+						message: `Name is a duplicate of Source #${i + 1}`,
+					})
+				}
+			}
+		}
+
+		// Remove temporary entries
+		urlMap.delete(normalizedNewUrl)
+		if (normalizedNewName) {
+			nameMap.delete(normalizedNewName)
 		}
 	}
 
@@ -232,24 +297,37 @@ export function validateSource(
  * @returns An array of validation errors, empty if valid
  */
 export function validateSources(sources: PackageManagerSource[]): ValidationError[] {
-	const errors: ValidationError[] = []
+	// Pre-allocate maximum possible size for errors array
+	const errors: ValidationError[] = new Array(sources.length * 2 + (sources.length * (sources.length - 1)) / 2)
+	let errorIndex = 0
 
 	// Validate each source individually
-	sources.forEach((source, index) => {
-		const sourceErrors = [...validateSourceUrl(source.url), ...validateSourceName(source.name)]
+	for (let i = 0; i < sources.length; i++) {
+		const source = sources[i]
+		const urlErrors = validateSourceUrl(source.url)
+		const nameErrors = validateSourceName(source.name)
 
 		// Add index to error messages
-		sourceErrors.forEach((error) => {
-			errors.push({
+		for (const error of urlErrors) {
+			errors[errorIndex++] = {
 				field: error.field,
-				message: `Source #${index + 1}: ${error.message}`,
-			})
-		})
-	})
+				message: `Source #${i + 1}: ${error.message}`,
+			}
+		}
+		for (const error of nameErrors) {
+			errors[errorIndex++] = {
+				field: error.field,
+				message: `Source #${i + 1}: ${error.message}`,
+			}
+		}
+	}
 
 	// Check for duplicates across all sources
 	const duplicateErrors = validateSourceDuplicates(sources)
-	errors.push(...duplicateErrors)
+	for (const error of duplicateErrors) {
+		errors[errorIndex++] = error
+	}
 
-	return errors
+	// Trim array to actual size
+	return errors.slice(0, errorIndex)
 }

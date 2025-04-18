@@ -168,11 +168,19 @@ describe("PackageManagerItemCard", () => {
 	})
 
 	describe("Details section", () => {
-		it("should render expandable details section when item has subcomponents", () => {
+		it("should render expandable details section with correct count when item has no components", () => {
+			const itemWithNoItems = { ...mockItem, items: [] }
+			renderWithProviders(<PackageManagerItemCard {...defaultProps} item={itemWithNoItems} />)
+
+			// The component uses t("package-manager:items.components", { count: 0 })
+			expect(screen.getByText("0 components")).toBeInTheDocument()
+		})
+
+		it("should render expandable details section with correct count when item has components", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
-			// The component uses t("package-manager:items.card.externalComponents", { count: 0 })
-			expect(screen.getByText("Contains 0 external component")).toBeInTheDocument()
+			// The component uses t("package-manager:items.components", { count: 2 })
+			expect(screen.getByText("2 components")).toBeInTheDocument()
 		})
 
 		it("should not render details section when item has no subcomponents", () => {
@@ -184,7 +192,7 @@ describe("PackageManagerItemCard", () => {
 
 		it("should show grouped items when expanded", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
-			fireEvent.click(screen.getByText("Contains 0 external component"))
+			fireEvent.click(screen.getByText("2 components"))
 
 			// These use the type-group translations
 			expect(screen.getByText((content, element) => element?.textContent === "MCP Servers")).toBeInTheDocument()
@@ -200,7 +208,7 @@ describe("PackageManagerItemCard", () => {
 
 		it("should maintain proper order of items within groups", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
-			fireEvent.click(screen.getByText("Contains 0 external component"))
+			fireEvent.click(screen.getByText("2 components"))
 
 			const items = screen.getAllByRole("listitem")
 			expect(items[0]).toHaveTextContent("Test Server")

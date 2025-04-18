@@ -39,6 +39,7 @@
 			"noSources": "Try adding a source in the Sources tab"
 		},
 		"count": "{{count}} items found",
+		"components": "{{count}} components",
 		"refresh": {
 			"button": "Refresh",
 			"refreshing": "Refreshing..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "by {{author}}",
 			"from": "from {{source}}",
-			"externalComponents": "Contains {{count}} external component",
-			"externalComponents_plural": "Contains {{count}} external components",
 			"viewSource": "View",
 			"viewOnSource": "View on {{source}}"
 		}

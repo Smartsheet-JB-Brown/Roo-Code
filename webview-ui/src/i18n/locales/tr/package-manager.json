@@ -39,6 +39,7 @@
 			"noSources": "Kaynaklar sekmesinde bir kaynak eklemeyi deneyin"
 		},
 		"count": "{{count}} öğe bulundu",
+		"components": "{{count}} bileşen",
 		"refresh": {
 			"button": "Yenile",
 			"refreshing": "Yenileniyor..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "yazar: {{author}}",
 			"from": "kaynak: {{source}}",
-			"externalComponents": "{{count}} harici bileşen içeriyor",
-			"externalComponents_plural": "{{count}} harici bileşen içeriyor",
 			"viewSource": "Görüntüle",
 			"viewOnSource": "{{source}} üzerinde görüntüle"
 		}

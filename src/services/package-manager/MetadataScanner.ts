@@ -18,12 +18,13 @@ import { getUserLocale } from "./utils"
  * Handles component discovery and metadata loading
  */
 export class MetadataScanner {
-	private readonly git?: SimpleGit
+	private git?: SimpleGit
 	private localizationOptions: LocalizationOptions
 	private originalRootDir: string | null = null
 	private static readonly MAX_DEPTH = 5 // Maximum directory depth
 	private static readonly BATCH_SIZE = 50 // Number of items to process at once
 	private static readonly CONCURRENT_SCANS = 3 // Number of concurrent directory scans
+	private isDisposed = false
 
 	constructor(git?: SimpleGit, localizationOptions?: LocalizationOptions) {
 		this.git = git
@@ -31,6 +32,24 @@ export class MetadataScanner {
 			userLocale: getUserLocale(),
 			fallbackLocale: "en",
 		}
+	}
+
+	/**
+	 * Clean up resources
+	 */
+	dispose(): void {
+		if (this.isDisposed) {
+			return
+		}
+
+		// Clean up git instance reference
+		this.git = undefined
+
+		// Clear any other references
+		this.originalRootDir = null
+		this.localizationOptions = null as any
+
+		this.isDisposed = true
 	}
 
 	/**

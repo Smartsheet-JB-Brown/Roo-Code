@@ -39,6 +39,7 @@
 			"noSources": "소스 탭에서 소스를 추가해 보세요"
 		},
 		"count": "{{count}}개의 항목을 찾았습니다",
+		"components": "{{count}}개의 컴포넌트",
 		"refresh": {
 			"button": "새로 고침",
 			"refreshing": "새로 고치는 중..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "작성자: {{author}}",
 			"from": "출처: {{source}}",
-			"externalComponents": "외부 컴포넌트 {{count}}개 포함",
-			"externalComponents_plural": "외부 컴포넌트 {{count}}개 포함",
 			"viewSource": "보기",
 			"viewOnSource": "{{source}}에서 보기"
 		}

@@ -39,6 +39,8 @@
 			"noSources": "Spróbuj dodać źródło w zakładce Źródła"
 		},
 		"count": "Znaleziono {{count}} elementów",
+		"components": "{{count}} komponent",
+		"components_plural": "{{count}} komponenty",
 		"refresh": {
 			"button": "Odśwież",
 			"refreshing": "Odświeżanie..."
@@ -46,8 +48,6 @@
 		"card": {
 			"by": "autor: {{author}}",
 			"from": "z: {{source}}",
-			"externalComponents": "Zawiera {{count}} komponent zewnętrzny",
-			"externalComponents_plural": "Zawiera {{count}} komponenty zewnętrzne",
 			"viewSource": "Zobacz",
 			"viewOnSource": "Zobacz na {{source}}"
 		}

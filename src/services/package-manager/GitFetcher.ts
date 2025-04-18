@@ -16,6 +16,7 @@ export class GitFetcher {
 	private metadataScanner: MetadataScanner
 	private git?: SimpleGit
 	private localizationOptions: LocalizationOptions
+	private activeGitInstances: Set<SimpleGit> = new Set()
 
 	constructor(context: vscode.ExtensionContext, localizationOptions?: LocalizationOptions) {
 		this.cacheDir = path.join(context.globalStorageUri.fsPath, "package-manager-cache")
@@ -27,13 +28,54 @@ export class GitFetcher {
 	}
 
 	/**
+	 * Clean up resources
+	 */
+	dispose(): void {
+		// Clean up all git instances
+		this.activeGitInstances.forEach((git) => {
+			try {
+				// Force cleanup of git instance
+				;(git as any)._executor = null
+			} catch {
+				// Ignore cleanup errors
+			}
+		})
+		this.activeGitInstances.clear()
+
+		// Clean up metadata scanner
+		if (this.metadataScanner) {
+			this.metadataScanner = null as any
+		}
+	}
+
+	/**
 	 * Initialize git instance for a repository
 	 * @param repoDir Repository directory
 	 */
 	private initGit(repoDir: string): void {
+		// Clean up old git instance if it exists
+		if (this.git) {
+			this.activeGitInstances.delete(this.git)
+			try {
+				// Force cleanup of git instance
+				;(this.git as any)._executor = null
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
+
+		// Create new git instance
 		this.git = simpleGit(repoDir)
+		this.activeGitInstances.add(this.git)
+
 		// Update MetadataScanner with new git instance
+		const oldScanner = this.metadataScanner
 		this.metadataScanner = new MetadataScanner(this.git, this.localizationOptions)
+
+		// Clean up old scanner
+		if (oldScanner) {
+			oldScanner.dispose?.()
+		}
 	}
 
 	/**
@@ -68,9 +110,8 @@ export class GitFetcher {
 		const metadata = await this.parseRepositoryMetadata(repoDir)
 
 		// Parse package manager items
-		// Get current branch
-		const git = simpleGit(repoDir)
-		const branch = await git.revparse(["--abbrev-ref", "HEAD"])
+		// Get current branch using existing git instance
+		const branch = (await this.git?.revparse(["--abbrev-ref", "HEAD"])) || "main"
 
 		const items = await this.parsePackageManagerItems(repoDir, repoUrl, sourceName || metadata.name)
 
@@ -196,9 +237,8 @@ export class GitFetcher {
 				}
 			}
 
-			// Get current branch
-			const git = simpleGit(repoDir)
-			const branch = await git.revparse(["--abbrev-ref", "HEAD"])
+			// Get current branch using existing git instance
+			const branch = (await this.git?.revparse(["--abbrev-ref", "HEAD"])) || "main"
 		} catch (error) {
 			throw new Error(
 				`Failed to clone/pull repository: ${error instanceof Error ? error.message : String(error)}`,

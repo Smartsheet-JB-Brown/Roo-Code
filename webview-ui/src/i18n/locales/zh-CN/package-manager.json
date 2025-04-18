@@ -39,6 +39,7 @@
 			"noSources": "尝试在源标签页中添加源"
 		},
 		"count": "找到{{count}}个项目",
+		"components": "{{count}}个组件",
 		"refresh": {
 			"button": "刷新",
 			"refreshing": "正在刷新..."
@@ -46,8 +47,6 @@
 		"card": {
 			"by": "作者：{{author}}",
 			"from": "来源：{{source}}",
-			"externalComponents": "包含{{count}}个外部组件",
-			"externalComponents_plural": "包含{{count}}个外部组件",
 			"viewSource": "查看",
 			"viewOnSource": "在{{source}}上查看"
 		}

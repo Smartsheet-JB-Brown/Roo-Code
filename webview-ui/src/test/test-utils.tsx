@@ -60,6 +60,7 @@ i18next.use(initReactI18next).init({
 						noSources: "Try adding a source in the Sources tab",
 					},
 					count: "{{count}} items found",
+					components: "{{count}} components",
 					refresh: {
 						button: "Refresh",
 						refreshing: "Refreshing...",
@@ -69,8 +70,6 @@ i18next.use(initReactI18next).init({
 						from: "from {{source}}",
 						viewSource: "View",
 						viewOnSource: "View on {{source}}",
-						externalComponents: "Contains {{count}} external component",
-						externalComponents_plural: "Contains {{count}} external components",
 					},
 				},
 				"type-group": {
