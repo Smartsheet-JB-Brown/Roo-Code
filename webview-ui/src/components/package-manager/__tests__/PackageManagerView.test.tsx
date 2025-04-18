@@ -104,7 +104,7 @@ describe("PackageManagerView", () => {
 		})
 
 		// Should show loading state
-		expect(screen.getByText("Loading items...")).toBeInTheDocument()
+		expect(screen.getByText("Refreshing...")).toBeInTheDocument()
 
 		// Simulate receiving items
 		await act(async () => {
@@ -175,7 +175,11 @@ describe("PackageManagerView", () => {
 		})
 
 		// Verify initial items are shown
-		expect(screen.getByText("3 items found")).toBeInTheDocument()
+		expect(
+			screen.getByText((content, element) => {
+				return element?.textContent === "3 items found"
+			}),
+		).toBeInTheDocument()
 		expect(screen.getByText("MCP Server 1")).toBeInTheDocument()
 		expect(screen.getByText("Mode 1")).toBeInTheDocument()
 		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()

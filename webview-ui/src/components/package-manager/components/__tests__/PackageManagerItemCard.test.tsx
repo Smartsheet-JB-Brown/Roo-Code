@@ -163,7 +163,7 @@ describe("PackageManagerItemCard", () => {
 				name: "View",
 			})
 			expect(button.querySelector(".codicon-link-external")).toBeInTheDocument()
-			expect(button).toHaveTextContent(/Source/i)
+			expect(button).toHaveTextContent("View")
 		})
 	})
 
