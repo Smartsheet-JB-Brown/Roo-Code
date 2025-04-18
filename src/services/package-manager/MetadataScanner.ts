@@ -45,7 +45,7 @@ export class MetadataScanner {
 	): Promise<PackageManagerItem[]> {
 		const items: PackageManagerItem[] = []
 
-		// Only set originalRootDir on the first call, not recursive calls
+		// Only set originalRootDir on the first call
 		if (!isRecursiveCall && !this.originalRootDir) {
 			this.originalRootDir = rootDir
 		}
@@ -53,74 +53,65 @@ export class MetadataScanner {
 		try {
 			const entries = await fs.readdir(rootDir, { withFileTypes: true })
 
+			// Process directories sequentially to avoid memory spikes
 			for (const entry of entries) {
 				if (!entry.isDirectory()) continue
 
 				const componentDir = path.join(rootDir, entry.name)
-				// Always calculate paths relative to the original root directory
 				const relativePath = path.relative(this.originalRootDir || rootDir, componentDir).replace(/\\/g, "/")
+
+				// Load metadata once
 				const metadata = await this.loadComponentMetadata(componentDir)
-				// If no metadata found, or metadata validation fails, try recursing
-				if (!metadata || !this.getLocalizedMetadata(metadata)) {
-					// Pass the current directory as the root for this recursive call
-					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName, true)
-					items.push(...subItems)
-					continue
-				}
+				const localizedMetadata = metadata ? this.getLocalizedMetadata(metadata) : null
 
-				// Get localized metadata with fallback
-				const localizedMetadata = this.getLocalizedMetadata(metadata)
-				if (!localizedMetadata) continue
+				if (localizedMetadata) {
+					// Create item if we have valid metadata
+					const item = await this.createPackageManagerItem(
+						localizedMetadata,
+						componentDir,
+						repoUrl,
+						this.originalRootDir || rootDir,
+						sourceName,
+					)
 
-				// Always use the original root directory for path calculations
-				const item = await this.createPackageManagerItem(
-					localizedMetadata,
-					componentDir,
-					repoUrl,
-					this.originalRootDir || rootDir,
-					sourceName,
-				)
-				if (item) {
-					// If this is a package, scan for subcomponents
-					if (this.isPackageMetadata(localizedMetadata)) {
-						// Load metadata for items listed in package metadata
-						if (localizedMetadata.items) {
-							const subcomponents = await Promise.all(
-								localizedMetadata.items.map(async (subItem) => {
+					if (item) {
+						// Handle package items
+						if (this.isPackageMetadata(localizedMetadata)) {
+							// Process listed items sequentially
+							if (localizedMetadata.items) {
+								item.items = []
+								for (const subItem of localizedMetadata.items) {
 									const subPath = path.join(componentDir, subItem.path)
-									const subRelativePath = path.relative(rootDir, subPath).replace(/\\/g, "/")
 									const subMetadata = await this.loadComponentMetadata(subPath)
+									const localizedSubMetadata = subMetadata
+										? this.getLocalizedMetadata(subMetadata)
+										: null
 
-									// Skip if no metadata found
-									if (!subMetadata) return null
-
-									// Get localized metadata with fallback
-									const localizedSubMetadata = this.getLocalizedMetadata(subMetadata)
-									if (!localizedSubMetadata) return null
-
-									return {
-										type: subItem.type,
-										path: subItem.path,
-										metadata: localizedSubMetadata,
-										lastUpdated: await this.getLastModifiedDate(subPath),
+									if (localizedSubMetadata) {
+										item.items.push({
+											type: subItem.type,
+											path: subItem.path,
+											metadata: localizedSubMetadata,
+											lastUpdated: await this.getLastModifiedDate(subPath),
+										})
 									}
-								}),
-							)
-							item.items = subcomponents.filter((sub): sub is NonNullable<typeof sub> => sub !== null)
+								}
+							}
+
+							// Scan for unlisted components
+							await this.scanPackageSubcomponents(componentDir, item)
+							items.push(item)
+							continue // Skip further recursion for package directories
 						}
 
-						// Also scan directory for unlisted subcomponents
-						await this.scanPackageSubcomponents(componentDir, item)
-					}
-					items.push(item)
-					// Skip recursion if this is a package directory
-					if (this.isPackageMetadata(localizedMetadata)) {
-						continue
+						items.push(item)
 					}
 				}
 
-				// Recursively scan subdirectories only if not in a package
-				if (!metadata || !this.isPackageMetadata(localizedMetadata)) {
+				// Only recurse if:
+				// 1. No metadata was found, or
+				// 2. Metadata was found but it's not a package
+				if (!localizedMetadata || !this.isPackageMetadata(localizedMetadata)) {
 					const subItems = await this.scanDirectory(componentDir, repoUrl, sourceName, true)
 					items.push(...subItems)
 				}
@@ -297,39 +288,51 @@ export class MetadataScanner {
 		packageItem: PackageManagerItem,
 		parentPath: string = "",
 	): Promise<void> {
-		const entries = await fs.readdir(packageDir, { withFileTypes: true })
+		try {
+			const entries = await fs.readdir(packageDir, { withFileTypes: true })
 
-		for (const entry of entries) {
-			if (!entry.isDirectory()) continue
+			// Process directories sequentially
+			for (const entry of entries) {
+				if (!entry.isDirectory()) continue
 
-			const subPath = path.join(packageDir, entry.name)
-			// Normalize path to use forward slashes
-			const relativePath = parentPath ? `${parentPath}/${entry.name}` : entry.name
+				const subPath = path.join(packageDir, entry.name)
+				const relativePath = parentPath ? `${parentPath}/${entry.name}` : entry.name
 
-			// Try to load metadata directly
-			const subMetadata = await this.loadComponentMetadata(subPath)
+				// Try to load metadata directly
+				const subMetadata = await this.loadComponentMetadata(subPath)
+				if (!subMetadata) {
+					// If no metadata found, recurse into directory
+					await this.scanPackageSubcomponents(subPath, packageItem, relativePath)
+					continue
+				}
 
-			if (subMetadata) {
 				// Get localized metadata with fallback
 				const localizedSubMetadata = this.getLocalizedMetadata(subMetadata)
-				if (localizedSubMetadata) {
-					const isListed = packageItem.items?.some((i) => i.path === relativePath)
-
-					if (!isListed) {
-						const subItem = {
-							type: localizedSubMetadata.type,
-							path: relativePath,
-							metadata: localizedSubMetadata,
-							lastUpdated: await this.getLastModifiedDate(subPath),
-						}
-						packageItem.items = packageItem.items || []
-						packageItem.items.push(subItem)
-					}
+				if (!localizedSubMetadata) {
+					// If no localized metadata, recurse into directory
+					await this.scanPackageSubcomponents(subPath, packageItem, relativePath)
+					continue
 				}
-			}
 
-			// Recursively scan this directory
-			await this.scanPackageSubcomponents(subPath, packageItem, relativePath)
+				// Check if this component is already listed
+				const isListed = packageItem.items?.some((i) => i.path === relativePath)
+				if (!isListed) {
+					// Initialize items array if needed
+					packageItem.items = packageItem.items || []
+
+					// Add new subcomponent
+					packageItem.items.push({
+						type: localizedSubMetadata.type,
+						path: relativePath,
+						metadata: localizedSubMetadata,
+						lastUpdated: await this.getLastModifiedDate(subPath),
+					})
+				}
+
+				// Don't recurse into directories that have valid metadata
+			}
+		} catch (error) {
+			console.error(`Error scanning package subcomponents in ${packageDir}:`, error)
 		}
 	}
 
