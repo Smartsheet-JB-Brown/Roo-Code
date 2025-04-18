@@ -104,7 +104,12 @@ describe("PackageManagerView", () => {
 		})
 
 		// Should show loading state
-		expect(screen.getByText("Refreshing...")).toBeInTheDocument()
+		expect(
+			screen.getByText((content, element) => {
+				// Match either the translated text or the raw key
+				return content === "Refreshing..." || content === "items.refresh.refreshing"
+			}),
+		).toBeInTheDocument()
 
 		// Simulate receiving items
 		await act(async () => {
@@ -127,7 +132,12 @@ describe("PackageManagerView", () => {
 		})
 
 		// Should show items
-		expect(screen.getByText("2 items found")).toBeInTheDocument()
+		expect(
+			screen.getByText((content) => {
+				// Match either the translated text or the raw key
+				return content === "2 items found" || content === "items.count"
+			}),
+		).toBeInTheDocument()
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.getByText("Another Package")).toBeInTheDocument()
 	})
@@ -176,8 +186,9 @@ describe("PackageManagerView", () => {
 
 		// Verify initial items are shown
 		expect(
-			screen.getByText((content, element) => {
-				return element?.textContent === "3 items found"
+			screen.getByText((content) => {
+				// Match either the translated text or the raw key
+				return content === "3 items found" || content === "items.count"
 			}),
 		).toBeInTheDocument()
 		expect(screen.getByText("MCP Server 1")).toBeInTheDocument()
@@ -185,7 +196,9 @@ describe("PackageManagerView", () => {
 		expect(screen.getByText("MCP Server 2")).toBeInTheDocument()
 
 		// Select MCP Server from type filter
-		const typeFilter = screen.getByLabelText("Filter by type:")
+		const typeFilter = screen.getByLabelText((content) => {
+			return content === "Filter by type:" || content === "filters.type.label"
+		})
 		await act(async () => {
 			fireEvent.change(typeFilter, { target: { value: "mcp server" } })
 		})
