@@ -1,15 +1,15 @@
 {
 	"title": "Marketplace",
 	"tabs": {
-		"browse": "Navega",
+		"browse": "Explorar",
 		"sources": "Fonts"
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Cerca elements del marketplace..."
+			"placeholder": "Cercar elements del marketplace..."
 		},
 		"type": {
-			"label": "Filtra per tipus:",
+			"label": "Filtrar per tipus:",
 			"all": "Tots els tipus",
 			"mode": "Mode",
 			"mcp server": "Servidor MCP",
@@ -17,72 +17,74 @@
 			"package": "Paquet"
 		},
 		"sort": {
-			"label": "Ordena per:",
+			"label": "Ordenar per:",
 			"name": "Nom",
 			"author": "Autor",
 			"lastUpdated": "Última actualització"
 		},
 		"tags": {
-			"label": "Filtra per etiquetes:",
-			"available": "{{count}} disponible",
-			"available_plural": "{{count}} disponibles",
-			"clear": "Neteja etiquetes ({{count}})",
+			"label": "Filtrar per etiquetes:",
+			"available": "{{count}} disponibles",
+			"clear": "Netejar etiquetes ({{count}})",
 			"placeholder": "Escriu per cercar i seleccionar etiquetes...",
 			"noResults": "No s'han trobat etiquetes coincidents",
-			"selected": "Mostrant elements amb qualsevol de les etiquetes seleccionades ({{count}} seleccionada)",
-			"selected_plural": "Mostrant elements amb qualsevol de les etiquetes seleccionades ({{count}} seleccionades)",
+			"selected": "Mostrant elements amb qualsevol de les etiquetes seleccionades ({{count}} seleccionades)",
 			"clickToFilter": "Fes clic a les etiquetes per filtrar elements"
 		}
 	},
+	"type-group": {
+		"match": "Coincidència",
+		"modes": "Modes",
+		"mcp-servers": "Servidors MCP",
+		"prompts": "Prompts",
+		"packages": "Paquets",
+		"generic-type": "{{type}}"
+	},
 	"items": {
 		"empty": {
-			"noItems": "No s'han trobat elements del marketplace",
+			"noItems": "No s'han trobat elements al marketplace",
 			"withFilters": "Prova d'ajustar els filtres",
 			"noSources": "Prova d'afegir una font a la pestanya Fonts"
 		},
-		"count": "S'ha trobat {{count}} element",
-		"components": "{{count}} component",
-		"components_plural": "{{count}} components",
-		"count_plural": "S'han trobat {{count}} elements",
+		"count": "S'han trobat {{count}} elements",
+		"components": "{{count}} components",
 		"refresh": {
-			"button": "Actualitza",
+			"button": "Actualitzar",
 			"refreshing": "Actualitzant..."
 		},
 		"card": {
 			"by": "per {{author}}",
 			"from": "de {{source}}",
-			"externalComponents": "Conté {{count}} component extern",
-			"externalComponents_plural": "Conté {{count}} components externs",
-			"viewSource": "Visualitza",
-			"viewOnSource": "Visualitza a {{source}}"
+			"viewSource": "Veure",
+			"viewOnSource": "Veure a {{source}}"
 		}
 	},
 	"sources": {
-		"title": "Configura les Fonts del Marketplace",
-		"description": "Afegeix repositoris Git que continguin elements del marketplace. Aquests repositoris es recuperaran en navegar pel marketplace.",
+		"title": "Configurar fonts del Marketplace",
+		"description": "Afegeix repositoris Git que continguin elements del marketplace. Aquests repositoris es descarregaran quan s'explori el marketplace.",
 		"add": {
-			"title": "Afegeix Nova Font",
-			"urlPlaceholder": "URL del repositori Git (p. ex. https://github.com/username/repo)",
-			"urlFormats": "Formats admesos: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) o protocol Git (git://github.com/username/repo.git)",
-			"namePlaceholder": "Nom de visualització (màx. 20 caràcters)",
-			"button": "Afegeix Font"
+			"title": "Afegir nova font",
+			"urlPlaceholder": "URL del repositori Git (p. ex., https://github.com/username/repo)",
+			"urlFormats": "Formats admesos: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), o protocol Git (git://github.com/username/repo.git)",
+			"namePlaceholder": "Nom a mostrar (màx. 20 caràcters)",
+			"button": "Afegir font"
 		},
 		"current": {
-			"title": "Fonts Actuals",
-			"count": "{{current}}/{{max}} màxim",
+			"title": "Fonts actuals",
+			"count": "{{current}}/{{max}} màx.",
 			"empty": "No hi ha fonts configurades. Afegeix una font per començar.",
-			"refresh": "Actualitza aquesta font",
-			"remove": "Elimina font"
+			"refresh": "Actualitzar aquesta font",
+			"remove": "Eliminar font"
 		},
 		"errors": {
-			"emptyUrl": "L'URL no pot estar buit",
+			"emptyUrl": "L'URL no pot estar buida",
 			"invalidUrl": "Format d'URL no vàlid",
-			"nonVisibleChars": "L'URL conté caràcters no visibles a part d'espais",
-			"invalidGitUrl": "L'URL ha de ser una URL de repositori Git vàlida (p. ex. https://github.com/username/repo)",
-			"duplicateUrl": "Aquest URL ja és a la llista (coincidència sense distinció entre majúscules/minúscules i espais)",
-			"nameTooLong": "El nom no pot superar els 20 caràcters",
-			"nonVisibleCharsName": "El nom conté caràcters no visibles a part d'espais",
-			"duplicateName": "Aquest nom ja està en ús (coincidència sense distinció entre majúscules/minúscules i espais)",
+			"nonVisibleChars": "L'URL conté caràcters no visibles diferents d'espais",
+			"invalidGitUrl": "L'URL ha de ser una URL vàlida de repositori Git (p. ex., https://github.com/username/repo)",
+			"duplicateUrl": "Aquesta URL ja és a la llista (coincidència insensible a majúscules i espais)",
+			"nameTooLong": "El nom ha de tenir 20 caràcters o menys",
+			"nonVisibleCharsName": "El nom conté caràcters no visibles diferents d'espais",
+			"duplicateName": "Aquest nom ja està en ús (coincidència insensible a majúscules i espais)",
 			"maxSources": "Màxim de {{max}} fonts permeses"
 		}
 	}

@@ -20,7 +20,7 @@
 			"label": "정렬 기준:",
 			"name": "이름",
 			"author": "작성자",
-			"lastUpdated": "마지막 업데이트"
+			"lastUpdated": "최근 업데이트"
 		},
 		"tags": {
 			"label": "태그별 필터:",
@@ -28,9 +28,17 @@
 			"clear": "태그 지우기 ({{count}})",
 			"placeholder": "태그 검색 및 선택...",
 			"noResults": "일치하는 태그가 없습니다",
-			"selected": "선택한 태그 중 하나를 포함하는 항목 표시 중 ({{count}}개 선택됨)",
+			"selected": "선택한 태그가 있는 항목 표시 중 ({{count}}개 선택됨)",
 			"clickToFilter": "태그를 클릭하여 항목 필터링"
 		}
+	},
+	"type-group": {
+		"match": "일치",
+		"modes": "모드",
+		"mcp-servers": "MCP 서버",
+		"prompts": "프롬프트",
+		"packages": "패키지",
+		"generic-type": "{{type}}"
 	},
 	"items": {
 		"empty": {
@@ -38,8 +46,8 @@
 			"withFilters": "필터를 조정해 보세요",
 			"noSources": "소스 탭에서 소스를 추가해 보세요"
 		},
-		"count": "{{count}}개의 항목을 찾았습니다",
-		"components": "{{count}}개의 컴포넌트",
+		"count": "{{count}}개 항목 찾음",
+		"components": "{{count}}개 구성 요소",
 		"refresh": {
 			"button": "새로 고침",
 			"refreshing": "새로 고치는 중..."
@@ -57,7 +65,7 @@
 		"add": {
 			"title": "새 소스 추가",
 			"urlPlaceholder": "Git 저장소 URL (예: https://github.com/username/repo)",
-			"urlFormats": "지원되는 형식: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git), 또는 Git 프로토콜 (git://github.com/username/repo.git)",
+			"urlFormats": "지원되는 형식: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) 또는 Git 프로토콜 (git://github.com/username/repo.git)",
 			"namePlaceholder": "표시 이름 (최대 20자)",
 			"button": "소스 추가"
 		},
@@ -70,9 +78,9 @@
 		},
 		"errors": {
 			"emptyUrl": "URL을 입력해야 합니다",
-			"invalidUrl": "잘못된 URL 형식입니다",
+			"invalidUrl": "잘못된 URL 형식",
 			"nonVisibleChars": "URL에 공백 이외의 보이지 않는 문자가 포함되어 있습니다",
-			"invalidGitUrl": "유효한 Git 저장소 URL을 입력하세요 (예: https://github.com/username/repo)",
+			"invalidGitUrl": "URL은 유효한 Git 저장소 URL이어야 합니다 (예: https://github.com/username/repo)",
 			"duplicateUrl": "이 URL은 이미 목록에 있습니다 (대소문자 및 공백 구분 없이 일치)",
 			"nameTooLong": "이름은 20자 이하여야 합니다",
 			"nonVisibleCharsName": "이름에 공백 이외의 보이지 않는 문자가 포함되어 있습니다",

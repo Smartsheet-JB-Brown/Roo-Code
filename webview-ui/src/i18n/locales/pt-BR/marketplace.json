@@ -1,7 +1,7 @@
 {
 	"title": "Marketplace",
 	"tabs": {
-		"browse": "Navegar",
+		"browse": "Explorar",
 		"sources": "Fontes"
 	},
 	"filters": {
@@ -24,26 +24,30 @@
 		},
 		"tags": {
 			"label": "Filtrar por tags:",
-			"available": "{{count}} disponível",
-			"available_plural": "{{count}} disponíveis",
+			"available": "{{count}} disponíveis",
 			"clear": "Limpar tags ({{count}})",
 			"placeholder": "Digite para pesquisar e selecionar tags...",
 			"noResults": "Nenhuma tag correspondente encontrada",
-			"selected": "Exibindo itens com qualquer uma das tags selecionadas ({{count}} selecionada)",
-			"selected_plural": "Exibindo itens com qualquer uma das tags selecionadas ({{count}} selecionadas)",
-			"clickToFilter": "Clique nas tags para filtrar os itens"
+			"selected": "Mostrando itens com qualquer uma das tags selecionadas ({{count}} selecionadas)",
+			"clickToFilter": "Clique nas tags para filtrar itens"
 		}
+	},
+	"type-group": {
+		"match": "Correspondência",
+		"modes": "Modos",
+		"mcp-servers": "Servidores MCP",
+		"prompts": "Prompts",
+		"packages": "Pacotes",
+		"generic-type": "{{type}}"
 	},
 	"items": {
 		"empty": {
-			"noItems": "Nenhum item do marketplace encontrado",
+			"noItems": "Nenhum item encontrado no marketplace",
 			"withFilters": "Tente ajustar os filtros",
 			"noSources": "Tente adicionar uma fonte na aba Fontes"
 		},
-		"count": "{{count}} item encontrado",
-		"components": "{{count}} componente",
-		"components_plural": "{{count}} componentes",
-		"count_plural": "{{count}} itens encontrados",
+		"count": "{{count}} itens encontrados",
+		"components": "{{count}} componentes",
 		"refresh": {
 			"button": "Atualizar",
 			"refreshing": "Atualizando..."
@@ -51,25 +55,23 @@
 		"card": {
 			"by": "por {{author}}",
 			"from": "de {{source}}",
-			"externalComponents": "Contém {{count}} componente externo",
-			"externalComponents_plural": "Contém {{count}} componentes externos",
-			"viewSource": "Visualizar",
-			"viewOnSource": "Visualizar no {{source}}"
+			"viewSource": "Ver",
+			"viewOnSource": "Ver no {{source}}"
 		}
 	},
 	"sources": {
 		"title": "Configurar Fontes do Marketplace",
-		"description": "Adicione repositórios Git que contenham itens do marketplace. Estes repositórios serão obtidos ao navegar pelo marketplace.",
+		"description": "Adicione repositórios Git que contenham itens do marketplace. Estes repositórios serão buscados ao navegar pelo marketplace.",
 		"add": {
 			"title": "Adicionar Nova Fonte",
-			"urlPlaceholder": "URL do repositório Git (ex: https://github.com/username/repo)",
+			"urlPlaceholder": "URL do repositório Git (ex., https://github.com/username/repo)",
 			"urlFormats": "Formatos suportados: HTTPS (https://github.com/username/repo), SSH (git@github.com:username/repo.git) ou protocolo Git (git://github.com/username/repo.git)",
 			"namePlaceholder": "Nome de exibição (máx. 20 caracteres)",
 			"button": "Adicionar Fonte"
 		},
 		"current": {
 			"title": "Fontes Atuais",
-			"count": "{{current}}/{{max}} máximo",
+			"count": "{{current}}/{{max}} máx.",
 			"empty": "Nenhuma fonte configurada. Adicione uma fonte para começar.",
 			"refresh": "Atualizar esta fonte",
 			"remove": "Remover fonte"
@@ -78,11 +80,11 @@
 			"emptyUrl": "A URL não pode estar vazia",
 			"invalidUrl": "Formato de URL inválido",
 			"nonVisibleChars": "A URL contém caracteres não visíveis além de espaços",
-			"invalidGitUrl": "A URL deve ser uma URL de repositório Git válida (ex: https://github.com/username/repo)",
-			"duplicateUrl": "Esta URL já está na lista (correspondência sem distinção entre maiúsculas/minúsculas e espaços)",
-			"nameTooLong": "O nome deve ter no máximo 20 caracteres",
+			"invalidGitUrl": "A URL deve ser uma URL válida de repositório Git (ex., https://github.com/username/repo)",
+			"duplicateUrl": "Esta URL já está na lista (correspondência insensível a maiúsculas/minúsculas e espaços)",
+			"nameTooLong": "O nome deve ter 20 caracteres ou menos",
 			"nonVisibleCharsName": "O nome contém caracteres não visíveis além de espaços",
-			"duplicateName": "Este nome já está em uso (correspondência sem distinção entre maiúsculas/minúsculas e espaços)",
+			"duplicateName": "Este nome já está em uso (correspondência insensível a maiúsculas/minúsculas e espaços)",
 			"maxSources": "Máximo de {{max}} fontes permitidas"
 		}
 	}

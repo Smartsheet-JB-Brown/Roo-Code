@@ -24,13 +24,21 @@
 		},
 		"tags": {
 			"label": "Filtruj według tagów:",
-			"available": "Dostępne: {{count}}",
+			"available": "{{count}} dostępnych",
 			"clear": "Wyczyść tagi ({{count}})",
 			"placeholder": "Wpisz, aby wyszukać i wybrać tagi...",
 			"noResults": "Nie znaleziono pasujących tagów",
-			"selected": "Pokazywanie elementów z wybranymi tagami (wybrano: {{count}})",
+			"selected": "Pokazywanie elementów z wybranymi tagami (wybrano {{count}})",
 			"clickToFilter": "Kliknij tagi, aby filtrować elementy"
 		}
+	},
+	"type-group": {
+		"match": "Dopasowanie",
+		"modes": "Tryby",
+		"mcp-servers": "Serwery MCP",
+		"prompts": "Prompty",
+		"packages": "Pakiety",
+		"generic-type": "{{type}}"
 	},
 	"items": {
 		"empty": {
@@ -39,21 +47,20 @@
 			"noSources": "Spróbuj dodać źródło w zakładce Źródła"
 		},
 		"count": "Znaleziono {{count}} elementów",
-		"components": "{{count}} komponent",
-		"components_plural": "{{count}} komponenty",
+		"components": "{{count}} komponentów",
 		"refresh": {
 			"button": "Odśwież",
 			"refreshing": "Odświeżanie..."
 		},
 		"card": {
 			"by": "autor: {{author}}",
-			"from": "z: {{source}}",
+			"from": "z {{source}}",
 			"viewSource": "Zobacz",
 			"viewOnSource": "Zobacz na {{source}}"
 		}
 	},
 	"sources": {
-		"title": "Konfiguruj źródła marketplace",
+		"title": "Konfiguruj źródła Marketplace",
 		"description": "Dodaj repozytoria Git zawierające elementy marketplace. Te repozytoria będą pobierane podczas przeglądania marketplace.",
 		"add": {
 			"title": "Dodaj nowe źródło",
@@ -75,10 +82,10 @@
 			"nonVisibleChars": "URL zawiera niewidoczne znaki inne niż spacje",
 			"invalidGitUrl": "URL musi być prawidłowym URL-em repozytorium Git (np. https://github.com/username/repo)",
 			"duplicateUrl": "Ten URL już znajduje się na liście (dopasowanie niewrażliwe na wielkość liter i spacje)",
-			"nameTooLong": "Nazwa nie może przekraczać 20 znaków",
+			"nameTooLong": "Nazwa musi mieć 20 znaków lub mniej",
 			"nonVisibleCharsName": "Nazwa zawiera niewidoczne znaki inne niż spacje",
 			"duplicateName": "Ta nazwa jest już używana (dopasowanie niewrażliwe na wielkość liter i spacje)",
-			"maxSources": "Dozwolone maksymalnie {{max}} źródeł"
+			"maxSources": "Maksymalnie dozwolone {{max}} źródeł"
 		}
 	}
 }

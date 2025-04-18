@@ -6,7 +6,7 @@
 	},
 	"filters": {
 		"search": {
-			"placeholder": "Marketplace-Elemente durchsuchen..."
+			"placeholder": "Marketplace-Einträge durchsuchen..."
 		},
 		"type": {
 			"label": "Nach Typ filtern:",
@@ -27,20 +27,27 @@
 			"available": "{{count}} verfügbar",
 			"clear": "Tags löschen ({{count}})",
 			"placeholder": "Tippen Sie, um Tags zu suchen und auszuwählen...",
-			"noResults": "Keine übereinstimmenden Tags gefunden",
-			"selected": "Zeigt Elemente mit beliebigen der ausgewählten Tags ({{count}} ausgewählt)",
-			"clickToFilter": "Klicken Sie auf Tags, um Elemente zu filtern"
+			"noResults": "Keine passenden Tags gefunden",
+			"selected": "Zeige Einträge mit beliebigen ausgewählten Tags ({{count}} ausgewählt)",
+			"clickToFilter": "Klicken Sie auf Tags zum Filtern"
 		}
+	},
+	"type-group": {
+		"match": "Treffer",
+		"modes": "Modi",
+		"mcp-servers": "MCP-Server",
+		"prompts": "Prompts",
+		"packages": "Pakete",
+		"generic-type": "{{type}}"
 	},
 	"items": {
 		"empty": {
-			"noItems": "Keine Marketplace-Elemente gefunden",
-			"withFilters": "Versuchen Sie, Ihre Filter anzupassen",
+			"noItems": "Keine Marketplace-Einträge gefunden",
+			"withFilters": "Versuchen Sie, die Filter anzupassen",
 			"noSources": "Versuchen Sie, eine Quelle im Quellen-Tab hinzuzufügen"
 		},
-		"count": "{{count}} Elemente gefunden",
-		"components": "{{count}} Komponente",
-		"components_plural": "{{count}} Komponenten",
+		"count": "{{count}} Einträge gefunden",
+		"components": "{{count}} Komponenten",
 		"refresh": {
 			"button": "Aktualisieren",
 			"refreshing": "Aktualisiere..."
@@ -48,15 +55,13 @@
 		"card": {
 			"by": "von {{author}}",
 			"from": "von {{source}}",
-			"externalComponents": "Enthält {{count}} externe Komponente",
-			"externalComponents_plural": "Enthält {{count}} externe Komponenten",
 			"viewSource": "Ansehen",
 			"viewOnSource": "Auf {{source}} ansehen"
 		}
 	},
 	"sources": {
 		"title": "Marketplace-Quellen konfigurieren",
-		"description": "Fügen Sie Git-Repositories hinzu, die Marketplace-Elemente enthalten. Diese Repositories werden beim Durchsuchen des Marketplace abgerufen.",
+		"description": "Fügen Sie Git-Repositories hinzu, die Marketplace-Einträge enthalten. Diese Repositories werden beim Durchsuchen des Marketplaces abgerufen.",
 		"add": {
 			"title": "Neue Quelle hinzufügen",
 			"urlPlaceholder": "Git-Repository-URL (z.B. https://github.com/username/repo)",
@@ -66,7 +71,7 @@
 		},
 		"current": {
 			"title": "Aktuelle Quellen",
-			"count": "{{current}}/{{max}} maximal",
+			"count": "{{current}}/{{max}} max.",
 			"empty": "Keine Quellen konfiguriert. Fügen Sie eine Quelle hinzu, um zu beginnen.",
 			"refresh": "Diese Quelle aktualisieren",
 			"remove": "Quelle entfernen"

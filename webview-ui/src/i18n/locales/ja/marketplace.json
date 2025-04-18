@@ -32,6 +32,14 @@
 			"clickToFilter": "タグをクリックしてアイテムをフィルター"
 		}
 	},
+	"type-group": {
+		"match": "一致",
+		"modes": "モード",
+		"mcp-servers": "MCPサーバー",
+		"prompts": "プロンプト",
+		"packages": "パッケージ",
+		"generic-type": "{{type}}"
+	},
 	"items": {
 		"empty": {
 			"noItems": "マーケットプレイスのアイテムが見つかりません",
@@ -53,7 +61,7 @@
 	},
 	"sources": {
 		"title": "マーケットプレイスのソースを設定",
-		"description": "マーケットプレイスのアイテムを含むGitリポジトリを追加します。これらのリポジトリはマーケットプレイスのブラウズ時に取得されます。",
+		"description": "マーケットプレイスのアイテムを含むGitリポジトリを追加します。これらのリポジトリはマーケットプレイスの閲覧時に取得されます。",
 		"add": {
 			"title": "新しいソースを追加",
 			"urlPlaceholder": "GitリポジトリのURL (例: https://github.com/username/repo)",
@@ -71,13 +79,13 @@
 		"errors": {
 			"emptyUrl": "URLを入力してください",
 			"invalidUrl": "無効なURL形式です",
-			"nonVisibleChars": "URLにスペース以外の非表示文字が含まれています",
-			"invalidGitUrl": "有効なGitリポジトリのURLを入力してください (例: https://github.com/username/repo)",
+			"nonVisibleChars": "URLにスペース以外の不可視文字が含まれています",
+			"invalidGitUrl": "URLは有効なGitリポジトリのURLである必要があります (例: https://github.com/username/repo)",
 			"duplicateUrl": "このURLは既にリストに存在します (大文字小文字とスペースを区別しない一致)",
-			"nameTooLong": "名前は20文字以内にしてください",
-			"nonVisibleCharsName": "名前にスペース以外の非表示文字が含まれています",
+			"nameTooLong": "名前は20文字以内である必要があります",
+			"nonVisibleCharsName": "名前にスペース以外の不可視文字が含まれています",
 			"duplicateName": "この名前は既に使用されています (大文字小文字とスペースを区別しない一致)",
-			"maxSources": "最大{{max}}個までしかソースを追加できません"
+			"maxSources": "最大{{max}}個のソースまで追加できます"
 		}
 	}
 }
