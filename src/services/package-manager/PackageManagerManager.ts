@@ -287,10 +287,45 @@ export class PackageManagerManager {
 	 * @param filters The filter criteria
 	 * @returns Filtered items
 	 */
+	// Cache size limit to prevent memory issues
+	private static readonly MAX_CACHE_SIZE = 100
+	private filterCache = new Map<
+		string,
+		{
+			items: PackageManagerItem[]
+			timestamp: number
+		}
+	>()
+
+	/**
+	 * Clear old entries from the filter cache
+	 */
+	private cleanupFilterCache(): void {
+		if (this.filterCache.size > PackageManagerManager.MAX_CACHE_SIZE) {
+			// Sort by timestamp and keep only the most recent entries
+			const entries = Array.from(this.filterCache.entries())
+				.sort(([, a], [, b]) => b.timestamp - a.timestamp)
+				.slice(0, PackageManagerManager.MAX_CACHE_SIZE)
+
+			this.filterCache.clear()
+			entries.forEach(([key, value]) => this.filterCache.set(key, value))
+		}
+	}
+
 	filterItems(
 		items: PackageManagerItem[],
 		filters: { type?: ComponentType; search?: string; tags?: string[] },
 	): PackageManagerItem[] {
+		// Create cache key from filters
+		const cacheKey = JSON.stringify(filters)
+		const cached = this.filterCache.get(cacheKey)
+		if (cached) {
+			return cached.items
+		}
+
+		// Clean up old cache entries
+		this.cleanupFilterCache()
+
 		// Helper function to normalize text for case/whitespace-insensitive comparison
 		const normalizeText = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim()
 
@@ -303,144 +338,118 @@ export class PackageManagerManager {
 			return normalizeText(text).includes(normalizeText(searchTerm))
 		}
 
-		// Create a deep clone of all items
-		const clonedItems = items.map((originalItem) => JSON.parse(JSON.stringify(originalItem)) as PackageManagerItem)
+		// Filter items with shallow copies
+		const filteredItems = items
+			.map((item) => {
+				// Create shallow copy of item
+				const itemCopy = { ...item }
 
-		// Apply filters
-		const filteredItems = clonedItems.filter((item) => {
-			// Check parent item matches
-			const itemMatches = {
-				type: !filters.type || item.type === filters.type,
-				search: !searchTerm || containsSearchTerm(item.name) || containsSearchTerm(item.description),
-				tags: !filters.tags?.length || (item.tags && filters.tags.some((tag) => item.tags!.includes(tag))),
-			}
+				// Check parent item matches
+				const itemMatches = {
+					type: !filters.type || itemCopy.type === filters.type,
+					search:
+						!searchTerm || containsSearchTerm(itemCopy.name) || containsSearchTerm(itemCopy.description),
+					tags:
+						!filters.tags?.length ||
+						(itemCopy.tags && filters.tags.some((tag) => itemCopy.tags!.includes(tag))),
+				}
 
-			// Check subcomponent matches
-			const subcomponentMatches =
-				item.items?.some((subItem) => {
-					const subMatches = {
-						type: !filters.type || subItem.type === filters.type,
-						search:
-							!searchTerm ||
-							(subItem.metadata &&
-								(containsSearchTerm(subItem.metadata.name) ||
-									containsSearchTerm(subItem.metadata.description))),
-						tags:
-							!filters.tags?.length ||
-							(subItem.metadata?.tags &&
-								filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))),
-					}
-
-					// When filtering by type, require exact type match
-					// For other filters (search/tags), any match is sufficient
-					return (
-						subMatches.type &&
-						(!searchTerm || subMatches.search) &&
-						(!filters.tags?.length || subMatches.tags)
-					)
-				}) ?? false
-
-			// Include item if either:
-			// 1. Parent matches all active filters, or
-			// 2. Parent is a package and any subcomponent matches any active filter
-			const hasActiveFilters = filters.type || searchTerm || filters.tags?.length
-			if (!hasActiveFilters) return true
-
-			const parentMatchesAll = itemMatches.type && itemMatches.search && itemMatches.tags
-			const isPackageWithMatchingSubcomponent = item.type === "package" && subcomponentMatches
-			return parentMatchesAll || isPackageWithMatchingSubcomponent
-		})
-
-		// Add match info to filtered items
-		return filteredItems.map((item) => {
-			// Calculate parent item matches
-			const itemMatches = {
-				type: !filters.type || item.type === filters.type,
-				search: !searchTerm || containsSearchTerm(item.name) || containsSearchTerm(item.description),
-				tags: !filters.tags?.length || (item.tags && filters.tags.some((tag) => item.tags!.includes(tag))),
-			}
-
-			// Process subcomponents
-			let hasMatchingSubcomponents = false
-			if (item.items) {
-				item.items = item.items.map((subItem) => {
-					// Calculate individual filter matches for subcomponent
-					const subMatches = {
-						type: !filters.type || subItem.type === filters.type,
-						search:
-							!searchTerm ||
-							(subItem.metadata &&
-								(containsSearchTerm(subItem.metadata.name) ||
-									containsSearchTerm(subItem.metadata.description))),
-						tags:
-							!filters.tags?.length ||
-							(subItem.metadata?.tags &&
-								filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))),
-					}
-
-					// A subcomponent matches if it matches all active filters
-					const subMatched = subMatches.type && subMatches.search && subMatches.tags
-
-					if (subMatched) {
-						hasMatchingSubcomponents = true
-						// Build match reason for matched subcomponent
-						const matchReason: Record<string, boolean> = {
-							...(searchTerm && {
-								nameMatch: !!subItem.metadata && containsSearchTerm(subItem.metadata.name),
-								descriptionMatch:
-									!!subItem.metadata && containsSearchTerm(subItem.metadata.description),
-							}),
-							...(filters.type && { typeMatch: subMatches.type }),
-							...(filters.tags?.length && { tagMatch: !!subMatches.tags }),
+				// Process subcomponents and track if any match
+				let hasMatchingSubcomponents = false
+				if (itemCopy.items?.length) {
+					itemCopy.items = itemCopy.items.map((subItem) => {
+						const subMatches = {
+							type: !filters.type || subItem.type === filters.type,
+							search:
+								!searchTerm ||
+								(subItem.metadata &&
+									(containsSearchTerm(subItem.metadata.name) ||
+										containsSearchTerm(subItem.metadata.description))),
+							tags:
+								!filters.tags?.length ||
+								!!(
+									subItem.metadata?.tags &&
+									filters.tags.some((tag) => subItem.metadata!.tags!.includes(tag))
+								),
 						}
 
-						subItem.matchInfo = {
-							matched: true,
-							matchReason,
+						const subItemMatched =
+							subMatches.type &&
+							(!searchTerm || subMatches.search) &&
+							(!filters.tags?.length || subMatches.tags)
+
+						if (subItemMatched) {
+							hasMatchingSubcomponents = true
+							// Set matchInfo for matching subcomponent
+							// Build match reason based on active filters
+							const matchReason: Record<string, boolean> = {}
+
+							if (searchTerm) {
+								matchReason.nameMatch = containsSearchTerm(subItem.metadata?.name || "")
+								matchReason.descriptionMatch = containsSearchTerm(subItem.metadata?.description || "")
+							}
+
+							// Always include typeMatch when filtering by type
+							if (filters.type) {
+								matchReason.typeMatch = subMatches.type
+							}
+
+							subItem.matchInfo = {
+								matched: true,
+								matchReason,
+							}
+						} else {
+							subItem.matchInfo = { matched: false }
 						}
+
+						return subItem
+					})
+				}
+
+				const hasActiveFilters = filters.type || searchTerm || filters.tags?.length
+				if (!hasActiveFilters) return itemCopy
+
+				const parentMatchesAll = itemMatches.type && itemMatches.search && itemMatches.tags
+				const isPackageWithMatchingSubcomponent = itemCopy.type === "package" && hasMatchingSubcomponents
+
+				if (parentMatchesAll || isPackageWithMatchingSubcomponent) {
+					// Add match info without deep cloning
+					// Build parent match reason based on active filters
+					const matchReason: Record<string, boolean> = {}
+
+					if (searchTerm) {
+						matchReason.nameMatch = containsSearchTerm(itemCopy.name)
+						matchReason.descriptionMatch = containsSearchTerm(itemCopy.description)
 					} else {
-						subItem.matchInfo = {
-							matched: false,
-						}
+						matchReason.nameMatch = false
+						matchReason.descriptionMatch = false
 					}
 
-					return subItem
-				})
-			}
+					// Always include typeMatch when filtering by type
+					if (filters.type) {
+						matchReason.typeMatch = itemMatches.type
+					}
 
-			// Build match reason for parent item
-			const matchReason: Record<string, boolean> = {
-				nameMatch: searchTerm ? containsSearchTerm(item.name) : true,
-				descriptionMatch: searchTerm ? containsSearchTerm(item.description) : true,
-			}
+					if (hasMatchingSubcomponents) {
+						matchReason.hasMatchingSubcomponents = true
+					}
 
-			if (filters.type) {
-				matchReason.typeMatch = itemMatches.type
-			}
-			if (filters.tags?.length) {
-				matchReason.tagMatch = !!itemMatches.tags
-			}
-			if (hasMatchingSubcomponents) {
-				matchReason.hasMatchingSubcomponents = true
-			}
+					itemCopy.matchInfo = {
+						matched: true,
+						matchReason,
+					}
+					return itemCopy
+				}
+				return null
+			})
+			.filter((item): item is PackageManagerItem => item !== null)
 
-			// Parent item is matched if:
-			// 1. It matches all active filters directly, or
-			// 2. It's a package and has any matching subcomponents
-			const parentMatchesAll =
-				(!filters.type || itemMatches.type) &&
-				(!searchTerm || itemMatches.search) &&
-				(!filters.tags?.length || itemMatches.tags)
-
-			const isPackageWithMatchingSubcomponent = item.type === "package" && hasMatchingSubcomponents
-
-			item.matchInfo = {
-				matched: parentMatchesAll || isPackageWithMatchingSubcomponent,
-				matchReason,
-			}
-
-			return item
+		// Cache the results with timestamp
+		this.filterCache.set(cacheKey, {
+			items: filteredItems,
+			timestamp: Date.now(),
 		})
+		return filteredItems
 	}
 
 	/**
@@ -492,6 +501,17 @@ export class PackageManagerManager {
 	}
 
 	/**
+	 * Updates current items with filtered results
+	 * @param filters The filter criteria
+	 * @returns Filtered items
+	 */
+	updateWithFilteredItems(filters: { type?: ComponentType; search?: string; tags?: string[] }): PackageManagerItem[] {
+		const filteredItems = this.filterItems(this.currentItems, filters)
+		this.currentItems = filteredItems
+		return filteredItems
+	}
+
+	/**
 	 * Cleans up resources used by the package manager
 	 */
 	async cleanup(): Promise<void> {
@@ -499,6 +519,8 @@ export class PackageManagerManager {
 		const sources = Array.from(this.cache.keys()).map((url) => ({ url, enabled: true }))
 		await this.cleanupCacheDirectories(sources)
 		this.clearCache()
+		// Clear filter cache
+		this.filterCache.clear()
 	}
 
 	/**

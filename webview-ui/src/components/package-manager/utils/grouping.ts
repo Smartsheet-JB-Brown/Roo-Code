@@ -21,33 +21,45 @@ export interface GroupedItems {
  * @param items Array of items to group
  * @returns Object with items grouped by type
  */
+// Cache for group objects to avoid recreating them
+const groupCache = new Map<string, { type: string; items: any[] }>()
+
 export function groupItemsByType(items: PackageManagerItem["items"] = []): GroupedItems {
 	if (!items?.length) {
 		return {}
 	}
 
-	return items.reduce((groups: GroupedItems, item) => {
-		if (!item.type) {
-			return groups
-		}
+	// Clear old items from groups but keep the group objects
+	groupCache.forEach((group) => (group.items.length = 0))
 
-		if (!groups[item.type]) {
-			groups[item.type] = {
+	const groups: GroupedItems = {}
+
+	for (const item of items) {
+		if (!item.type) continue
+
+		let group = groupCache.get(item.type)
+		if (!group) {
+			group = {
 				type: item.type,
 				items: [],
 			}
+			groupCache.set(item.type, group)
 		}
 
-		groups[item.type].items.push({
+		if (!groups[item.type]) {
+			groups[item.type] = group
+		}
+
+		group.items.push({
 			name: item.metadata?.name || "Unnamed item",
 			description: item.metadata?.description,
 			metadata: item.metadata,
 			path: item.path,
 			matchInfo: item.matchInfo,
 		})
+	}
 
-		return groups
-	}, {})
+	return groups
 }
 
 /**
@@ -55,19 +67,26 @@ export function groupItemsByType(items: PackageManagerItem["items"] = []): Group
  * @param item The item to format
  * @returns Formatted string with name and description
  */
+// Reuse string buffer for formatting
+const formatBuffer = {
+	result: "",
+	maxLength: 100,
+}
+
 export function formatItemText(item: { name: string; description?: string }): string {
 	if (!item.description) {
 		return item.name
 	}
 
-	// Truncate description if it's too long
-	const maxDescriptionLength = 100
-	const description =
-		item.description.length > maxDescriptionLength
-			? `${item.description.substring(0, maxDescriptionLength)}...`
+	// Reuse the same string buffer
+	formatBuffer.result = item.name
+	formatBuffer.result += " - "
+	formatBuffer.result +=
+		item.description.length > formatBuffer.maxLength
+			? item.description.substring(0, formatBuffer.maxLength) + "..."
 			: item.description
 
-	return `${item.name} - ${description}`
+	return formatBuffer.result
 }
 
 /**
@@ -75,8 +94,12 @@ export function formatItemText(item: { name: string; description?: string }): st
  * @param groups Grouped items object
  * @returns Total number of items
  */
+// Cache array of group values
+let groupValuesCache: Array<{ items: any[] }> = []
+
 export function getTotalItemCount(groups: GroupedItems): number {
-	return Object.values(groups).reduce((total, group) => total + group.items.length, 0)
+	groupValuesCache = Object.values(groups)
+	return groupValuesCache.reduce((total, group) => total + group.items.length, 0)
 }
 
 /**
@@ -84,6 +107,11 @@ export function getTotalItemCount(groups: GroupedItems): number {
  * @param groups Grouped items object
  * @returns Array of type strings
  */
+// Cache array of types
+let typesCache: string[] = []
+
 export function getUniqueTypes(groups: GroupedItems): string[] {
-	return Object.keys(groups).sort()
+	typesCache = Object.keys(groups)
+	typesCache.sort()
+	return typesCache
 }

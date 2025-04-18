@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React, { useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { PackageManagerItem } from "../../../../../src/services/package-manager/types"
 import { vscode } from "@/utils/vscode"
@@ -33,8 +33,8 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 		}
 	}
 
-	const getTypeLabel = (type: string) => {
-		switch (type) {
+	const typeLabel = useMemo(() => {
+		switch (item.type) {
 			case "mode":
 				return t("package-manager:filters.type.mode")
 			case "mcp server":
@@ -46,10 +46,10 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 			default:
 				return t("package-manager:filters.type.all")
 		}
-	}
+	}, [item.type, t])
 
-	const getTypeColor = (type: string) => {
-		switch (type) {
+	const typeColor = useMemo(() => {
+		switch (item.type) {
 			case "mode":
 				return "bg-blue-600"
 			case "mcp server":
@@ -61,32 +61,31 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 			default:
 				return "bg-gray-600"
 		}
-	}
+	}, [item.type])
 
-	const handleOpenUrl = () => {
-		// If sourceUrl is present and valid, use it directly without modifications
+	// Memoize URL calculation
+	const urlToOpen = useMemo(() => {
 		if (item.sourceUrl && isValidUrl(item.sourceUrl)) {
-			return vscode.postMessage({
-				type: "openExternal",
-				url: item.sourceUrl,
-			})
+			return item.sourceUrl
 		}
 
-		// Otherwise use repoUrl with git path information
-		let urlToOpen = item.repoUrl
+		let url = item.repoUrl
 		if (item.defaultBranch) {
-			urlToOpen = `${urlToOpen}/tree/${item.defaultBranch}`
+			url = `${url}/tree/${item.defaultBranch}`
 			if (item.path) {
 				const normalizedPath = item.path.replace(/\\/g, "/").replace(/^\/+/, "")
-				urlToOpen = `${urlToOpen}/${normalizedPath}`
+				url = `${url}/${normalizedPath}`
 			}
 		}
+		return url
+	}, [item.sourceUrl, item.repoUrl, item.defaultBranch, item.path])
 
+	const handleOpenUrl = useCallback(() => {
 		vscode.postMessage({
 			type: "openExternal",
 			url: urlToOpen,
 		})
-	}
+	}, [urlToOpen])
 
 	// Group items by type
 	const groupedItems = useMemo(() => {
@@ -135,9 +134,7 @@ export const PackageManagerItemCard: React.FC<PackageManagerItemCardProps> = ({
 						</p>
 					) : null}
 				</div>
-				<span className={`px-2 py-1 text-xs text-white rounded-full ${getTypeColor(item.type)}`}>
-					{getTypeLabel(item.type)}
-				</span>
+				<span className={`px-2 py-1 text-xs text-white rounded-full ${typeColor}`}>{typeLabel}</span>
 			</div>
 
 			<p className="my-2 text-vscode-foreground">{item.description}</p>

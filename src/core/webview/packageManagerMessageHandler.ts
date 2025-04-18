@@ -203,23 +203,13 @@ export async function handlePackageManagerMessages(
 		case "filterPackageManagerItems": {
 			if (message.filters) {
 				try {
-					// Get current items from the manager
-					const items = packageManagerManager.getCurrentItems()
-					// Apply filters using the manager's filtering logic
-					const filteredItems = packageManagerManager.filterItems(items, {
+					// Update filtered items and post state
+					packageManagerManager.updateWithFilteredItems({
 						type: message.filters.type as ComponentType | undefined,
 						search: message.filters.search,
 						tags: message.filters.tags,
 					})
-					// Get current state and merge filtered items
-					const currentState = await provider.getStateToPostToWebview()
-					await provider.postMessageToWebview({
-						type: "state",
-						state: {
-							...currentState,
-							packageManagerItems: filteredItems,
-						},
-					})
+					await provider.postStateToWebview()
 				} catch (error) {
 					console.error("Package Manager: Error filtering items:", error)
 					vscode.window.showErrorMessage("Failed to filter package manager items")

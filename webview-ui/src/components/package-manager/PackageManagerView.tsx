@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { cn } from "@/lib/utils"
@@ -25,8 +25,18 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 		manager.transition({ type: "FETCH_ITEMS" })
 	}, [manager])
 
-	// Compute all available tags
-	const allTags = Array.from(new Set(state.allItems.flatMap((item) => item.tags || []))).sort()
+	// Memoize all available tags
+	const allTags = useMemo(
+		() => Array.from(new Set(state.allItems.flatMap((item) => item.tags || []))).sort(),
+		[state.allItems],
+	)
+
+	// Memoize filtered tags
+	const filteredTags = useMemo(
+		() =>
+			tagSearch ? allTags.filter((tag: string) => tag.toLowerCase().includes(tagSearch.toLowerCase())) : allTags,
+		[allTags, tagSearch],
+	)
 
 	return (
 		<Tab>
@@ -178,55 +188,47 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 														{t("package-manager:filters.tags.noResults")}
 													</CommandEmpty>
 													<CommandGroup>
-														{allTags
-															.filter((tag) =>
-																tag.toLowerCase().includes(tagSearch.toLowerCase()),
-															)
-															.map((tag) => (
-																<CommandItem
-																	key={tag}
-																	onSelect={() => {
-																		const isSelected =
-																			state.filters.tags.includes(tag)
-																		if (isSelected) {
-																			manager.transition({
-																				type: "UPDATE_FILTERS",
-																				payload: {
-																					filters: {
-																						tags: state.filters.tags.filter(
-																							(t) => t !== tag,
-																						),
-																					},
+														{filteredTags.map((tag: string) => (
+															<CommandItem
+																key={tag}
+																onSelect={() => {
+																	const isSelected = state.filters.tags.includes(tag)
+																	if (isSelected) {
+																		manager.transition({
+																			type: "UPDATE_FILTERS",
+																			payload: {
+																				filters: {
+																					tags: state.filters.tags.filter(
+																						(t) => t !== tag,
+																					),
 																				},
-																			})
-																		} else {
-																			manager.transition({
-																				type: "UPDATE_FILTERS",
-																				payload: {
-																					filters: {
-																						tags: [
-																							...state.filters.tags,
-																							tag,
-																						],
-																					},
+																			},
+																		})
+																	} else {
+																		manager.transition({
+																			type: "UPDATE_FILTERS",
+																			payload: {
+																				filters: {
+																					tags: [...state.filters.tags, tag],
 																				},
-																			})
-																		}
-																	}}
-																	className={`flex items-center gap-2 p-1 cursor-pointer text-sm hover:bg-vscode-button-secondaryBackground ${
-																		state.filters.tags.includes(tag)
-																			? "bg-vscode-button-background text-vscode-button-foreground"
-																			: "text-vscode-dropdown-foreground"
-																	}`}
-																	onMouseDown={(e) => {
-																		e.preventDefault()
-																	}}>
-																	<span
-																		className={`codicon ${state.filters.tags.includes(tag) ? "codicon-check" : ""}`}
-																	/>
-																	{tag}
-																</CommandItem>
-															))}
+																			},
+																		})
+																	}
+																}}
+																className={`flex items-center gap-2 p-1 cursor-pointer text-sm hover:bg-vscode-button-secondaryBackground ${
+																	state.filters.tags.includes(tag)
+																		? "bg-vscode-button-background text-vscode-button-foreground"
+																		: "text-vscode-dropdown-foreground"
+																}`}
+																onMouseDown={(e) => {
+																	e.preventDefault()
+																}}>
+																<span
+																	className={`codicon ${state.filters.tags.includes(tag) ? "codicon-check" : ""}`}
+																/>
+																{tag}
+															</CommandItem>
+														))}
 													</CommandGroup>
 												</CommandList>
 											)}
@@ -400,16 +402,21 @@ const PackageManagerSourcesConfig: React.FC<PackageManagerSourcesConfigProps> = 
 		setError("")
 	}
 
-	const handleToggleSource = (index: number) => {
-		const updatedSources = [...sources]
-		updatedSources[index].enabled = !updatedSources[index].enabled
-		onSourcesChange(updatedSources)
-	}
+	const handleToggleSource = useCallback(
+		(index: number) => {
+			onSourcesChange(
+				sources.map((source, i) => (i === index ? { ...source, enabled: !source.enabled } : source)),
+			)
+		},
+		[sources, onSourcesChange],
+	)
 
-	const handleRemoveSource = (index: number) => {
-		const updatedSources = sources.filter((_, i) => i !== index)
-		onSourcesChange(updatedSources)
-	}
+	const handleRemoveSource = useCallback(
+		(index: number) => {
+			onSourcesChange(sources.filter((_, i) => i !== index))
+		},
+		[sources, onSourcesChange],
+	)
 
 	return (
 		<div>
