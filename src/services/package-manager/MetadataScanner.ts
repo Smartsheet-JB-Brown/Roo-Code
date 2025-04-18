@@ -97,8 +97,8 @@ export class MetadataScanner {
 				}
 			}
 
-			// Recursively scan subdirectories
-			if (!localizedMetadata || !this.isPackageMetadata(localizedMetadata)) {
+			// Only scan subdirectories if no metadata was found
+			if (!localizedMetadata) {
 				const subGenerator = this.scanDirectoryBatched(componentDir, repoUrl, sourceName, depth + 1)
 				for await (const subBatch of subGenerator) {
 					batch.push(...subBatch)
