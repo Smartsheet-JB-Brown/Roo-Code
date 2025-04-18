@@ -86,12 +86,21 @@ export class PackageManagerViewStateManager {
 	}
 
 	public getState(): ViewState {
-		return { ...this.state }
+		return {
+			...this.state,
+			allItems: [...this.state.allItems],
+			displayItems: this.state.displayItems ? [...this.state.displayItems] : undefined,
+			refreshingUrls: [...this.state.refreshingUrls],
+			sources: [...this.state.sources],
+			filters: {
+				...this.state.filters,
+				tags: [...this.state.filters.tags],
+			},
+		}
 	}
 
 	private notifyStateChange(): void {
-		const newState = { ...this.state }
-
+		const newState = this.getState() // Use getState to ensure proper copying
 		this.stateChangeHandlers.forEach((handler) => {
 			handler(newState)
 		})
@@ -235,14 +244,23 @@ export class PackageManagerViewStateManager {
 
 			case "UPDATE_SORT": {
 				const { sortConfig } = transition.payload as TransitionPayloads["UPDATE_SORT"]
-				this.state.sortConfig = {
-					...this.state.sortConfig,
-					...sortConfig,
+				// Create new state with updated sort config
+				this.state = {
+					...this.state,
+					sortConfig: {
+						...this.state.sortConfig,
+						...sortConfig,
+					},
 				}
 				// Apply sorting to both allItems and displayItems
-				this.state.allItems = this.sortItems(this.state.allItems)
-				if (this.state.displayItems) {
-					this.state.displayItems = this.sortItems(this.state.displayItems)
+				// Sort items immutably
+				const sortedAllItems = this.sortItems(this.state.allItems)
+				const sortedDisplayItems = this.state.displayItems ? this.sortItems(this.state.displayItems) : undefined
+
+				this.state = {
+					...this.state,
+					allItems: sortedAllItems,
+					displayItems: sortedDisplayItems,
 				}
 				this.notifyStateChange()
 				break
@@ -251,7 +269,10 @@ export class PackageManagerViewStateManager {
 			case "REFRESH_SOURCE": {
 				const { url } = transition.payload as TransitionPayloads["REFRESH_SOURCE"]
 				if (!this.state.refreshingUrls.includes(url)) {
-					this.state.refreshingUrls = [...this.state.refreshingUrls, url]
+					this.state = {
+						...this.state,
+						refreshingUrls: [...this.state.refreshingUrls, url],
+					}
 					this.notifyStateChange()
 					vscode.postMessage({
 						type: "refreshPackageManagerSource",
@@ -263,7 +284,10 @@ export class PackageManagerViewStateManager {
 
 			case "REFRESH_SOURCE_COMPLETE": {
 				const { url } = transition.payload as TransitionPayloads["REFRESH_SOURCE_COMPLETE"]
-				this.state.refreshingUrls = this.state.refreshingUrls.filter((existingUrl) => existingUrl !== url)
+				this.state = {
+					...this.state,
+					refreshingUrls: this.state.refreshingUrls.filter((existingUrl) => existingUrl !== url),
+				}
 				this.notifyStateChange()
 				break
 			}
@@ -271,12 +295,14 @@ export class PackageManagerViewStateManager {
 			case "UPDATE_SOURCES": {
 				const { sources } = transition.payload as TransitionPayloads["UPDATE_SOURCES"]
 				// If all sources are removed, add the default source
-				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : sources
-				this.state.sources = updatedSources
+				const updatedSources = sources.length === 0 ? [DEFAULT_PACKAGE_MANAGER_SOURCE] : [...sources]
+				this.state = {
+					...this.state,
+					sources: updatedSources,
+					isFetching: false, // Reset fetching state first
+				}
 				this.sourcesModified = true // Set the flag when sources are modified
 
-				// Reset fetching state first
-				this.state.isFetching = false
 				this.notifyStateChange()
 
 				// Send sources update to extension
@@ -288,7 +314,10 @@ export class PackageManagerViewStateManager {
 				// Only start fetching if we have sources
 				if (updatedSources.length > 0) {
 					// Set fetching state and notify
-					this.state.isFetching = true
+					this.state = {
+						...this.state,
+						isFetching: true,
+					}
 					this.notifyStateChange()
 
 					// Send fetch request
@@ -369,7 +398,10 @@ export class PackageManagerViewStateManager {
 			// Update sources from either sources or packageManagerSources in state
 			if (message.state?.sources || message.state?.packageManagerSources) {
 				const sources = message.state.packageManagerSources || message.state.sources
-				this.state.sources = sources?.length > 0 ? sources : [DEFAULT_PACKAGE_MANAGER_SOURCE]
+				this.state = {
+					...this.state,
+					sources: sources?.length > 0 ? [...sources] : [DEFAULT_PACKAGE_MANAGER_SOURCE],
+				}
 				this.notifyStateChange()
 			}
 
