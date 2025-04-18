@@ -20,8 +20,8 @@ describe("TypeGroup", () => {
 	it("should render type header and items", () => {
 		renderWithProviders(<TypeGroup type="mcp server" items={mockItems} />)
 
-		// Test using translation key
-		expect(screen.getByText("MCP Servers")).toBeInTheDocument()
+		// Test using translation key with flexible text matching
+		expect(screen.getByText((content, element) => element?.textContent === "MCP Servers")).toBeInTheDocument()
 
 		// Check items using list roles and text content
 		const items = screen.getAllByRole("listitem")
@@ -37,12 +37,12 @@ describe("TypeGroup", () => {
 			{ input: "mcp server", expected: "MCP Servers" },
 			{ input: "prompt", expected: "Prompts" },
 			{ input: "package", expected: "Packages" },
-			{ input: "custom", expected: "Customs" },
+			{ input: "custom", expected: "Customs" }, // Uses generic-type with capitalization
 		]
 
 		types.forEach(({ input, expected }) => {
 			const { unmount } = renderWithProviders(<TypeGroup type={input} items={mockItems} />)
-			expect(screen.getByText(expected)).toBeInTheDocument()
+			expect(screen.getByText((content, element) => element?.textContent === expected)).toBeInTheDocument()
 			unmount()
 		})
 	})

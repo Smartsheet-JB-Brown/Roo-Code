@@ -64,7 +64,12 @@ describe("PackageManagerItemCard", () => {
 
 		expect(screen.getByText("Test Package")).toBeInTheDocument()
 		expect(screen.getByText("A test package")).toBeInTheDocument()
-		expect(screen.getByText("by Test Author")).toBeInTheDocument()
+		expect(
+			screen.getByText((content, element) => {
+				// This will match the translated text "by Test Author" regardless of how it's structured
+				return element?.textContent === "by Test Author"
+			}),
+		).toBeInTheDocument()
 		expect(screen.getByText(/Package/i)).toBeInTheDocument() // Using case-insensitive regex since translations might vary in case
 	})
 
@@ -162,7 +167,8 @@ describe("PackageManagerItemCard", () => {
 		it("should render expandable details section when item has subcomponents", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
 
-			expect(screen.getByText("Component Details")).toBeInTheDocument()
+			// The component uses t("package-manager:items.card.externalComponents", { count: 0 })
+			expect(screen.getByText("Contains 0 external component")).toBeInTheDocument()
 		})
 
 		it("should not render details section when item has no subcomponents", () => {
@@ -174,10 +180,11 @@ describe("PackageManagerItemCard", () => {
 
 		it("should show grouped items when expanded", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
+			fireEvent.click(screen.getByText("Contains 0 external component"))
 
-			fireEvent.click(screen.getByText("Component Details"))
-
-			expect(screen.getByText("MCP Servers")).toBeInTheDocument()
+			// These use the type-group translations
+			expect(screen.getByText((content, element) => element?.textContent === "MCP Servers")).toBeInTheDocument()
+			expect(screen.getByText((content, element) => element?.textContent === "Modes")).toBeInTheDocument()
 			expect(screen.getByText("Modes")).toBeInTheDocument()
 
 			// Check for items using getByRole and textContent
@@ -190,8 +197,7 @@ describe("PackageManagerItemCard", () => {
 
 		it("should maintain proper order of items within groups", () => {
 			renderWithProviders(<PackageManagerItemCard {...defaultProps} />)
-
-			fireEvent.click(screen.getByText("Component Details"))
+			fireEvent.click(screen.getByText("Contains 0 external component"))
 
 			const items = screen.getAllByRole("listitem")
 			expect(items[0]).toHaveTextContent("Test Server")

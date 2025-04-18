@@ -20,24 +20,33 @@ i18next.use(initReactI18next).init({
 	resources: {
 		en: {
 			"package-manager": {
-				// Type group translations
-				"type-group.mcp-servers": "MCP Servers",
-				"type-group.modes": "Modes",
-				"type-group.prompts": "Prompts",
-				"type-group.packages": "Packages",
-				"type-group.match": "Match",
-				"type-group.generic-type": "{{type}}s",
-
-				// Item card translations
-				"item-card.by-author": "by {{author}}",
-				"item-card.type-package": "Package",
-				"item-card.type-mode": "Mode",
-				"item-card.type-mcp-server": "MCP Server",
-				"item-card.type-prompt": "Prompt",
-				"item-card.source": "Source",
-				"item-card.component-details": "Component Details",
-				"item-card.filter-by-tag": "Filter by tag",
-				"item-card.by": "by",
+				filters: {
+					type: {
+						package: "Package",
+						mode: "Mode",
+						"mcp server": "MCP Server",
+						prompt: "Prompt",
+					},
+					tags: {
+						clickToFilter: "Click tags to filter items",
+					},
+				},
+				items: {
+					card: {
+						by: "by {{author}}",
+						viewSource: "View",
+						externalComponents: "Contains {{count}} external component",
+						externalComponents_plural: "Contains {{count}} external components",
+					},
+				},
+				"type-group": {
+					"mcp-servers": "MCP Servers",
+					modes: "Modes",
+					prompts: "Prompts",
+					packages: "Packages",
+					match: "Match",
+					"generic-type": "{{type}}s",
+				},
 			},
 		},
 	},
