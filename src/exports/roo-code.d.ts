@@ -31,6 +31,7 @@ type ProviderSettings = {
 	glamaModelInfo?:
 		| ({
 				maxTokens?: (number | null) | undefined
+				maxThinkingTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -53,6 +54,7 @@ type ProviderSettings = {
 	openRouterModelInfo?:
 		| ({
 				maxTokens?: (number | null) | undefined
+				maxThinkingTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -95,6 +97,7 @@ type ProviderSettings = {
 	openAiCustomModelInfo?:
 		| ({
 				maxTokens?: (number | null) | undefined
+				maxThinkingTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -140,6 +143,7 @@ type ProviderSettings = {
 	unboundModelInfo?:
 		| ({
 				maxTokens?: (number | null) | undefined
+				maxThinkingTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -161,6 +165,7 @@ type ProviderSettings = {
 	requestyModelInfo?:
 		| ({
 				maxTokens?: (number | null) | undefined
+				maxThinkingTokens?: (number | null) | undefined
 				contextWindow: number
 				supportsImages?: boolean | undefined
 				supportsComputerUse?: boolean | undefined
@@ -286,7 +291,6 @@ type GlobalSettings = {
 				search_and_replace: boolean
 				insert_content: boolean
 				powerSteering: boolean
-				append_to_file: boolean
 		  }
 		| undefined
 	language?:
@@ -527,6 +531,12 @@ type RooCodeEvents = {
 			totalCacheReads?: number | undefined
 			totalCost: number
 			contextTokens: number
+		},
+		{
+			[x: string]: {
+				attempts: number
+				failures: number
+			}
 		},
 	]
 	taskTokenUsageUpdated: [

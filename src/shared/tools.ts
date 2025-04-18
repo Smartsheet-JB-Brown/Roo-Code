@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { ClineAsk, ToolProgressStatus, ToolGroup } from "../schemas"
+import { ClineAsk, ToolProgressStatus, ToolGroup, ToolName } from "../schemas"
 
 export type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>
 
@@ -25,29 +25,6 @@ export interface TextContent {
 	content: string
 	partial: boolean
 }
-
-export const toolNames = [
-	"execute_command",
-	"read_file",
-	"write_to_file",
-	"append_to_file",
-	"apply_diff",
-	"insert_content",
-	"search_and_replace",
-	"search_files",
-	"list_files",
-	"list_code_definition_names",
-	"browser_action",
-	"use_mcp_tool",
-	"access_mcp_resource",
-	"ask_followup_question",
-	"attempt_completion",
-	"switch_mode",
-	"new_task",
-	"fetch_instructions",
-] as const
-
-export type ToolName = (typeof toolNames)[number]
 
 export const toolParamNames = [
 	"command",
@@ -167,14 +144,6 @@ export interface NewTaskToolUse extends ToolUse {
 	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message">>
 }
 
-export type ToolUsage = Record<
-	ToolName,
-	{
-		attempts: number
-		failures: number
-	}
->
-
 // Define tool group configuration
 export type ToolGroupConfig = {
 	tools: readonly string[]
@@ -234,3 +203,45 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"switch_mode",
 	"new_task",
 ] as const
+
+export type DiffResult =
+	| { success: true; content: string; failParts?: DiffResult[] }
+	| ({
+			success: false
+			error?: string
+			details?: {
+				similarity?: number
+				threshold?: number
+				matchedRange?: { start: number; end: number }
+				searchContent?: string
+				bestMatch?: string
+			}
+			failParts?: DiffResult[]
+	  } & ({ error: string } | { failParts: DiffResult[] }))
+
+export interface DiffStrategy {
+	/**
+	 * Get the name of this diff strategy for analytics and debugging
+	 * @returns The name of the diff strategy
+	 */
+	getName(): string
+
+	/**
+	 * Get the tool description for this diff strategy
+	 * @param args The tool arguments including cwd and toolOptions
+	 * @returns The complete tool description including format requirements and examples
+	 */
+	getToolDescription(args: { cwd: string; toolOptions?: { [key: string]: string } }): string
+
+	/**
+	 * Apply a diff to the original content
+	 * @param originalContent The original file content
+	 * @param diffContent The diff content in the strategy's format
+	 * @param startLine Optional line number where the search block starts. If not provided, searches the entire file.
+	 * @param endLine Optional line number where the search block ends. If not provided, searches the entire file.
+	 * @returns A DiffResult object containing either the successful result or error details
+	 */
+	applyDiff(originalContent: string, diffContent: string, startLine?: number, endLine?: number): Promise<DiffResult>
+
+	getProgressStatus?(toolUse: ToolUse, result?: any): ToolProgressStatus
+}
