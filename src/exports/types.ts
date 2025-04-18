@@ -355,7 +355,7 @@ type GlobalSettings = {
 		  }
 		| undefined
 	enhancementApiConfigId?: string | undefined
-	packageManagerSources?:
+	marketplaceSources?:
 		| {
 				url: string
 				name?: string | undefined

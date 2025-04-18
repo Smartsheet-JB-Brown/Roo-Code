@@ -23,7 +23,7 @@ const PackageManagerView: React.FC<PackageManagerViewProps> = ({ onDone }) => {
 		<Tab>
 			<TabHeader>
 				<div className="flex justify-between items-center">
-					<h3>Package Manager</h3>
+					<h3>Marketplace</h3>
 					<div className="flex gap-2">
 						<Button
 							variant={state.activeTab === "browse" ? "default" : "secondary"}

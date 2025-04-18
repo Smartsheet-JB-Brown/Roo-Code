@@ -96,7 +96,7 @@
 				"icon": "$(notebook)"
 			},
 			{
-				"command": "roo-cline.packageManagerButtonClicked",
+				"command": "roo-cline.marketplaceButtonClicked",
 				"title": "Marketplace",
 				"icon": "$(extensions)"
 			},
@@ -261,7 +261,7 @@
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.packageManagerButtonClicked",
+					"command": "roo-cline.marketplaceButtonClicked",
 					"group": "navigation@4",
 					"when": "view == roo-cline.SidebarProvider"
 				},
@@ -303,7 +303,7 @@
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.packageManagerButtonClicked",
+					"command": "roo-cline.marketplaceButtonClicked",
 					"group": "navigation@4",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},

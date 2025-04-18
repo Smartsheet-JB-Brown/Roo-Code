@@ -420,7 +420,7 @@ Integration tests verify that different components work together correctly.
 ### Backend Integration Tests
 
 ```typescript
-describe("Package Manager Integration", () => {
+describe("Marketplace Integration", () => {
 	let manager: PackageManagerManager
 	let metadataScanner: MetadataScanner
 	let templateItems: PackageManagerItem[]
@@ -428,7 +428,7 @@ describe("Package Manager Integration", () => {
 	beforeAll(async () => {
 		// Load real data from template
 		metadataScanner = new MetadataScanner()
-		const templatePath = path.resolve(__dirname, "../../../../package-manager-template")
+		const templatePath = path.resolve(__dirname, "../../../../marketplace-template")
 		templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com")
 	})
 
@@ -507,7 +507,7 @@ describe("Package Manager Integration", () => {
 ### Frontend Integration Tests
 
 ```typescript
-describe("Package Manager UI Integration", () => {
+describe("Marketplace UI Integration", () => {
   const mockItems: PackageManagerItem[] = [
     {
       name: "Test Package",
@@ -665,7 +665,7 @@ Real template data is used for integration tests:
 beforeAll(async () => {
 	// Load real data from template
 	metadataScanner = new MetadataScanner()
-	const templatePath = path.resolve(__dirname, "../../../../package-manager-template")
+	const templatePath = path.resolve(__dirname, "../../../../marketplace-template")
 	templateItems = await metadataScanner.scanDirectory(templatePath, "https://example.com")
 })
 ```
@@ -911,7 +911,7 @@ The Marketplace tests are organized by functionality rather than by file structu
 ### Consolidated Test Files
 
 ```
-src/services/package-manager/__tests__/
+src/services/marketplace/__tests__/
 ├── PackageManager.consolidated.test.ts  # Combined tests
 ├── searchUtils.test.ts                  # Search utility tests
 └── PackageSubcomponents.test.ts         # Subcomponent tests
@@ -922,7 +922,7 @@ src/services/package-manager/__tests__/
 Tests are organized into logical groups:
 
 ```typescript
-describe("Package Manager", () => {
+describe("Marketplace", () => {
 	// Shared setup
 
 	describe("Direct Filtering", () => {
@@ -964,7 +964,7 @@ module.exports = {
 			lines: 85,
 			statements: 85,
 		},
-		"src/services/package-manager/*.ts": {
+		"src/services/marketplace/*.ts": {
 			branches: 90,
 			functions: 90,
 			lines: 90,
@@ -1003,7 +1003,7 @@ describe("containsSearchTerm", () => {
 
 ```typescript
 // Optimized integration tests
-describe("Package Manager Integration", () => {
+describe("Marketplace Integration", () => {
 	// Load template data once for all tests
 	beforeAll(async () => {
 		templateItems = await metadataScanner.scanDirectory(templatePath)
@@ -1098,7 +1098,7 @@ describe("Complex integration test", () => {
 	it("should handle complex search", async () => {
 		// Enable debug logging for this test
 		const originalDebug = process.env.DEBUG
-		process.env.DEBUG = "package-manager:*"
+		process.env.DEBUG = "marketplace:*"
 
 		// Test logic...
 
@@ -1167,4 +1167,4 @@ describe("Package filtering", () => {
 
 ---
 
-**Previous**: [UI Component Design](./05-ui-components.md) | **Next**: [Extending the Package Manager](./07-extending.md)
+**Previous**: [UI Component Design](./05-ui-components.md) | **Next**: [Extending the Marketplace](./07-extending.md)

@@ -19,7 +19,7 @@ import { ClineProvider } from "./core/webview/ClineProvider"
 import { CodeActionProvider } from "./core/CodeActionProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { McpServerManager } from "./services/mcp/McpServerManager"
-import { PackageManagerManager } from "./services/package-manager"
+import { MarketplaceManager } from "./services/marketplace"
 import { telemetryService } from "./services/telemetry/TelemetryService"
 import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
 import { API } from "./exports/api"
@@ -38,7 +38,7 @@ import { formatLanguage } from "./shared/language"
 
 let outputChannel: vscode.OutputChannel
 let extensionContext: vscode.ExtensionContext
-let packageManagerManager: PackageManagerManager
+let marketplaceManager: MarketplaceManager
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -70,9 +70,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const provider = new ClineProvider(context, outputChannel, "sidebar")
 
-	// Initialize package manager
-	packageManagerManager = new PackageManagerManager(context)
-	provider.setPackageManagerManager(packageManagerManager)
+	marketplaceManager = new MarketplaceManager(context)
+	provider.setMarketplaceManager(marketplaceManager)
 	telemetryService.setProvider(provider)
 
 	context.subscriptions.push(
@@ -134,12 +133,11 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function deactivate() {
 	outputChannel.appendLine("Roo-Code extension deactivated")
 
-	// Clean up package manager
-	if (packageManagerManager) {
+	if (marketplaceManager) {
 		try {
-			await packageManagerManager.cleanup()
+			await marketplaceManager.cleanup()
 		} catch (error) {
-			console.error("Failed to clean up package manager:", error)
+			console.error("Failed to clean up marketplace:", error)
 		}
 	}
 

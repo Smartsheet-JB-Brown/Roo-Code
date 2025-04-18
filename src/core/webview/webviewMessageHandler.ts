@@ -42,16 +42,16 @@ import { getDiffStrategy } from "../diff/DiffStrategy"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildApiHandler } from "../../api"
 import { GlobalState } from "../../schemas"
-import { PackageManagerManager } from "../../services/package-manager"
-import { handlePackageManagerMessages } from "./packageManagerMessageHandler"
+import { MarketplaceManager } from "../../services/marketplace"
+import { handleMarketplaceMessages } from "./marketplaceMessageHandler"
 
-// Track if package manager data has been loaded
-let packageManagerDataLoaded = false
+// Track if marketplace data has been loaded
+let marketplaceDataLoaded = false
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
 	message: WebviewMessage,
-	packageManagerManager?: PackageManagerManager,
+	marketplaceManager?: MarketplaceManager,
 ) => {
 	// Utility functions provided for concise get/update of global state via contextProxy API.
 	const getGlobalState = <K extends keyof GlobalState>(key: K) => provider.contextProxy.getValue(key)
@@ -64,10 +64,10 @@ export const webviewMessageHandler = async (
 			const customModes = await provider.customModesManager.getCustomModes()
 			await updateGlobalState("customModes", customModes)
 
-			// Don't handle package manager messages in webviewDidLaunch
-			// They will be handled by the fetchPackageManagerItems case
+			// Don't handle marketplace messages in webviewDidLaunch
+			// They will be handled by the fetchMarketplaceItems case
 			console.log(
-				`DEBUG: webviewDidLaunch - skipping package manager handling, will be triggered by explicit fetchPackageManagerItems`,
+				`DEBUG: webviewDidLaunch - skipping marketplace handling, will be triggered by explicit fetchMarketplaceItems`,
 			)
 
 			console.log(`DEBUG: About to call postStateToWebview`)
@@ -261,22 +261,15 @@ export const webviewMessageHandler = async (
 
 			provider.isViewLaunched = true
 			break
-		case "fetchPackageManagerItems":
-			if (packageManagerManager) {
-				console.log(`DEBUG: Handling explicit fetchPackageManagerItems message`)
+		case "fetchMarketplaceItems":
+			if (marketplaceManager) {
 				try {
-					// Use non-null assertion to tell TypeScript that packageManagerManager is definitely not undefined here
-					console.log(`DEBUG: Before calling handlePackageManagerMessages for fetchPackageManagerItems`)
-					const result = await handlePackageManagerMessages(provider, message, packageManagerManager!)
-					console.log(
-						`DEBUG: After calling handlePackageManagerMessages for fetchPackageManagerItems, result: ${result}`,
-					)
-					console.log(`DEBUG: Package manager message handled successfully: ${message.type}`)
+					const result = await handleMarketplaceMessages(provider, message, marketplaceManager!)
 				} catch (error) {
-					console.error(`DEBUG: Error handling package manager message: ${error}`)
+					console.error(`DEBUG: Error handling marketplace message: ${error}`)
 				}
 			} else {
-				console.log(`DEBUG: packageManagerManager is undefined, skipping package manager message handling`)
+				console.log(`DEBUG: marketplaceManager is undefined, skipping marketplace message handling`)
 			}
 			break
 		case "newTask":
@@ -1406,21 +1399,19 @@ export const webviewMessageHandler = async (
 		}
 	}
 
-	// Handle package manager related messages
-	// Handle package manager messages
 	if (
-		packageManagerManager &&
-		(message.type === "packageManagerSources" ||
+		marketplaceManager &&
+		(message.type === "marketplaceSources" ||
 			message.type === "openExternal" ||
-			message.type === "refreshPackageManagerSource" ||
-			message.type === "filterPackageManagerItems")
+			message.type === "refreshMarketplaceSource" ||
+			message.type === "filterMarketplaceItems")
 	) {
 		try {
-			console.log(`DEBUG: Routing ${message.type} message to packageManagerMessageHandler`)
-			const result = await handlePackageManagerMessages(provider, message, packageManagerManager)
-			console.log(`DEBUG: Package manager message handled successfully: ${message.type}, result: ${result}`)
+			console.log(`DEBUG: Routing ${message.type} message to marketplaceMessageHandler`)
+			const result = await handleMarketplaceMessages(provider, message, marketplaceManager)
+			console.log(`DEBUG: Marketplace message handled successfully: ${message.type}, result: ${result}`)
 		} catch (error) {
-			console.error(`DEBUG: Error handling package manager message: ${error}`)
+			console.error(`DEBUG: Error handling marketplace message: ${error}`)
 		}
 	}
 }

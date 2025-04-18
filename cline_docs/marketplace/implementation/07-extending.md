@@ -184,7 +184,7 @@ Register your template with the Marketplace:
 // In your extension code
 const registerTemplates = (context: vscode.ExtensionContext) => {
 	const templatePath = path.join(context.extensionPath, "templates", "your-template")
-	packageManager.registerTemplate(templatePath)
+	marketplace.registerTemplate(templatePath)
 }
 ```
 
@@ -336,7 +336,7 @@ const ViewModeSelector: React.FC<{
 4. **Integrate with the Main UI**:
 
 ```tsx
-<div className="package-manager-container">
+<div className="marketplace-container">
 	<div className="toolbar">
 		<ViewModeSelector viewMode={viewMode} setViewMode={setViewMode} />
 		{/* Other toolbar items */}
@@ -476,7 +476,7 @@ const PackageManagerView: React.FC<{
 	const PackageCard = componentOverrides.PackageCard || PackageManagerItemCard
 
 	return (
-		<div className="package-manager">
+		<div className="marketplace">
 			{items.map((item) => (
 				<PackageCard
 					key={item.name}
@@ -584,8 +584,8 @@ class CustomSourceProvider implements SourceProvider {
 
 ```typescript
 // In your extension code
-const registerSourceProviders = (packageManager: PackageManagerManager) => {
-	packageManager.registerSourceProvider(new CustomSourceProvider())
+const registerSourceProviders = (marketplace: PackageManagerManager) => {
+	marketplace.registerSourceProvider(new CustomSourceProvider())
 }
 ```
 
@@ -637,7 +637,7 @@ To add support for custom messages:
 const extendMessageHandler = () => {
 	const originalHandler = handlePackageManagerMessages
 
-	return async (message: any, packageManager: PackageManagerManager) => {
+	return async (message: any, marketplace: PackageManagerManager) => {
 		// Handle custom messages
 		if (message.type === "yourCustomMessage") {
 			// Your custom message handling
@@ -650,7 +650,7 @@ const extendMessageHandler = () => {
 		}
 
 		// Fall back to the original handler
-		return originalHandler(message, packageManager)
+		return originalHandler(message, marketplace)
 	}
 }
 ```
@@ -661,8 +661,8 @@ const extendMessageHandler = () => {
 // In your extension code
 const customMessageHandler = extendMessageHandler()
 context.subscriptions.push(
-	vscode.commands.registerCommand("packageManager.handleMessage", (message) => {
-		return customMessageHandler(message, packageManager)
+	vscode.commands.registerCommand("marketplace.handleMessage", (message) => {
+		return customMessageHandler(message, marketplace)
 	}),
 )
 ```
@@ -728,8 +728,8 @@ class ApiSourceProvider implements SourceProvider {
 
 ```typescript
 // In your extension code
-const registerApiProvider = (packageManager: PackageManagerManager) => {
-	packageManager.registerSourceProvider(new ApiSourceProvider("https://your-api.example.com"))
+const registerApiProvider = (marketplace: PackageManagerManager) => {
+	marketplace.registerSourceProvider(new ApiSourceProvider("https://your-api.example.com"))
 }
 ```
 
@@ -829,7 +829,7 @@ class LocalDevProvider {
 }
 ```
 
-2. **Integrate with the Package Manager**:
+2. **Integrate with the Marketplace**:
 
 ```typescript
 // In your extension code
@@ -845,15 +845,15 @@ const registerLocalDevTools = (context: vscode.ExtensionContext) => {
 
 	// Register commands
 	context.subscriptions.push(
-		vscode.commands.registerCommand("packageManager.createLocal", async (template, name) => {
+		vscode.commands.registerCommand("marketplace.createLocal", async (template, name) => {
 			return localDevProvider.createLocalPackage(template, name)
 		}),
 
-		vscode.commands.registerCommand("packageManager.buildLocal", async (packagePath) => {
+		vscode.commands.registerCommand("marketplace.buildLocal", async (packagePath) => {
 			return localDevProvider.buildLocalPackage(packagePath)
 		}),
 
-		vscode.commands.registerCommand("packageManager.testLocal", async (packagePath) => {
+		vscode.commands.registerCommand("marketplace.testLocal", async (packagePath) => {
 			return localDevProvider.testLocalPackage(packagePath)
 		}),
 	)

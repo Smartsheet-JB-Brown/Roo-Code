@@ -51,7 +51,7 @@ This interface represents a complete repository:
 
 ```typescript
 /**
- * Represents an individual package manager item
+ * Represents an individual marketplace item
  */
 export interface PackageManagerItem {
 	name: string
@@ -113,7 +113,7 @@ Enhanced match tracking:
 
 ```typescript
 /**
- * Error type for package manager source validation
+ * Error type for marketplace source validation
  */
 export interface ValidationError {
 	field: string
@@ -154,7 +154,7 @@ Manages UI state:
 - **isFetching**: Loading state indicator
 - **activeTab**: Current view tab
 - **refreshingUrls**: Sources being refreshed
-- **sources**: Package manager sources
+- **sources**: Marketplace sources
 - **filters**: Active filters
 - **sortConfig**: Sort configuration
 

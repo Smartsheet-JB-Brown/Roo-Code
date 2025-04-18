@@ -19,15 +19,15 @@ i18next.use(initReactI18next).init({
 	},
 	resources: {
 		en: {
-			"package-manager": {
-				title: "Package Manager",
+			marketplace: {
+				title: "Marketplace",
 				tabs: {
 					browse: "Browse",
 					sources: "Sources",
 				},
 				filters: {
 					search: {
-						placeholder: "Search package manager items...",
+						placeholder: "Search marketplace items...",
 					},
 					type: {
 						label: "Filter by type:",
@@ -55,7 +55,7 @@ i18next.use(initReactI18next).init({
 				},
 				items: {
 					empty: {
-						noItems: "No package manager items found",
+						noItems: "No marketplace items found",
 						withFilters: "Try adjusting your filters",
 						noSources: "Try adding a source in the Sources tab",
 					},
@@ -88,8 +88,8 @@ i18next.use(initReactI18next).init({
 // Minimal mock state
 const mockExtensionState = {
 	language: "en",
-	packageManagerSources: [{ url: "test-url", enabled: true }],
-	setPackageManagerSources: jest.fn(),
+	marketplaceSources: [{ url: "test-url", enabled: true }],
+	setMarketplaceSources: jest.fn(),
 	experiments: {
 		search_and_replace: false,
 		insert_content: false,

@@ -249,7 +249,7 @@ classDiagram
     - Coordinates repository operations
     - Provides filtering and sorting
 
-4. **packageManagerMessageHandler**
+4. **marketplaceMessageHandler**
     - Routes messages between UI and backend
     - Processes commands from the UI
     - Returns data and status updates

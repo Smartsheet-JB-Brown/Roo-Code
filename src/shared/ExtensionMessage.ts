@@ -15,7 +15,7 @@ import {
 import { McpServer } from "./mcp"
 import { GitCommit } from "../utils/git"
 import { Mode } from "./modes"
-import { PackageManagerItem, PackageManagerSource } from "../services/package-manager/types"
+import { MarketplaceItem, MarketplaceSource } from "../services/marketplace/types"
 
 export type { ApiConfigMeta, ToolProgressStatus }
 
@@ -78,7 +78,7 @@ export interface ExtensionMessage {
 		| "settingsButtonClicked"
 		| "historyButtonClicked"
 		| "promptsButtonClicked"
-		| "packageManagerButtonClicked"
+		| "marketplaceButtonClicked"
 		| "didBecomeVisible"
 		| "focusInput"
 	invoke?: "newChat" | "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
@@ -115,7 +115,7 @@ export interface ExtensionMessage {
 		label?: string
 	}>
 	error?: string
-	items?: PackageManagerItem[]
+	items?: MarketplaceItem[]
 	url?: string // For repositoryRefreshComplete
 }
 
@@ -211,8 +211,8 @@ export type ExtensionState = Pick<
 
 	renderContext: "sidebar" | "editor"
 	settingsImportedAt?: number
-	packageManagerSources?: PackageManagerSource[]
-	packageManagerItems?: PackageManagerItem[]
+	marketplaceSources?: MarketplaceSource[]
+	marketplaceItems?: MarketplaceItem[]
 }
 
 export type { ClineMessage, ClineAsk, ClineSay }

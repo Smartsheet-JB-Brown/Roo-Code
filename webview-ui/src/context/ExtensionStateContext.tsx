@@ -11,8 +11,8 @@ import { Mode, CustomModePrompts, defaultModeSlug, defaultPrompts, ModeConfig } 
 import { CustomSupportPrompts } from "../../../src/shared/support-prompt"
 import { experimentDefault, ExperimentId } from "../../../src/shared/experiments"
 import { TelemetrySetting } from "../../../src/shared/TelemetrySetting"
-import { PackageManagerSource } from "../../../src/services/package-manager/types"
-import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../../src/services/package-manager/constants"
+import { MarketplaceSource } from "../../../src/services/marketplace/types"
+import { DEFAULT_MARKETPLACE_SOURCE } from "../../../src/services/marketplace/constants"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -88,7 +88,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	pinnedApiConfigs?: Record<string, boolean>
 	setPinnedApiConfigs: (value: Record<string, boolean>) => void
 	togglePinnedApiConfig: (configName: string) => void
-	setPackageManagerSources: (value: PackageManagerSource[]) => void
+	setMarketplaceSources: (value: MarketplaceSource[]) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -161,7 +161,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
 		renderContext: "sidebar",
 		maxReadFileLine: 500, // Default max read file line limit
-		packageManagerSources: [DEFAULT_PACKAGE_MANAGER_SOURCE],
+		marketplaceSources: [DEFAULT_MARKETPLACE_SOURCE],
 		pinnedApiConfigs: {}, // Empty object for pinned API configs
 		terminalZshOhMy: false, // Default Oh My Zsh integration setting
 		terminalZshP10k: false, // Default Powerlevel10k integration setting
@@ -188,8 +188,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					const newState = message.state!
 					console.log("DEBUG: ExtensionStateContext received state message:", {
 						hasApiConfig: !!newState.apiConfiguration,
-						hasPackageManagerItems: !!newState.packageManagerItems,
-						packageManagerItemsCount: newState.packageManagerItems?.length || 0,
+						hasMarketplaceItems: !!newState.marketplaceItems,
+						marketplaceItemsCount: newState.marketplaceItems?.length || 0,
 					})
 
 					setState((prevState) => mergeExtensionState(prevState, newState))
@@ -349,7 +349,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 				return { ...prevState, pinnedApiConfigs: newPinned }
 			}),
-		setPackageManagerSources: (value) => setState((prevState) => ({ ...prevState, packageManagerSources: value })),
+		setMarketplaceSources: (value) => setState((prevState) => ({ ...prevState, marketplaceSources: value })),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

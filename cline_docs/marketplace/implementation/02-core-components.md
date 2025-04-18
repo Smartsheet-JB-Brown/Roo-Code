@@ -159,7 +159,7 @@ class PackageManagerManager {
 	}
 
 	/**
-	 * Get package manager items from sources
+	 * Get marketplace items from sources
 	 */
 	public async getPackageManagerItems(
 		sources: PackageManagerSource[],
@@ -251,14 +251,14 @@ The PackageManagerSourceValidation component handles validation of marketplace s
 ```typescript
 export class PackageManagerSourceValidation {
 	/**
-	 * Validates a package manager source URL
+	 * Validates a marketplace source URL
 	 */
 	public static validateSourceUrl(url: string): ValidationError[] {
 		// Implementation details
 	}
 
 	/**
-	 * Validates a package manager source name
+	 * Validates a marketplace source name
 	 */
 	public static validateSourceName(name?: string): ValidationError[] {
 		// Implementation details

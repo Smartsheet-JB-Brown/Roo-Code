@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import EventEmitter from "events"
 
 import { Anthropic } from "@anthropic-ai/sdk"
-import { DEFAULT_PACKAGE_MANAGER_SOURCE } from "../../services/package-manager/constants"
+import { DEFAULT_MARKETPLACE_SOURCE } from "../../services/marketplace/constants"
 import delay from "delay"
 import axios from "axios"
 import pWaitFor from "p-wait-for"
@@ -38,7 +38,7 @@ import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
-import { PackageManagerManager } from "../../services/package-manager"
+import { MarketplaceManager } from "../../services/marketplace"
 import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
 import { fileExistsAtPath } from "../../utils/fs"
 import { setSoundEnabled } from "../../utils/sound"
@@ -77,7 +77,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		return this._workspaceTracker
 	}
 	protected mcpHub?: McpHub // Change from private to protected
-	private packageManagerManager?: PackageManagerManager
+	private marketplaceManager?: MarketplaceManager
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -764,7 +764,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	 */
 	private setWebviewMessageListener(webview: vscode.Webview) {
 		const onReceiveMessage = async (message: WebviewMessage) =>
-			webviewMessageHandler(this, message, this.packageManagerManager)
+			webviewMessageHandler(this, message, this.marketplaceManager)
 
 		webview.onDidReceiveMessage(onReceiveMessage, null, this.disposables)
 	}
@@ -1221,7 +1221,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			showRooIgnoredFiles,
 			language,
 			maxReadFileLine,
-			packageManagerSources,
+			marketplaceSources,
 		} = await this.getState()
 
 		const telemetryKey = process.env.POSTHOG_API_KEY
@@ -1229,13 +1229,12 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		const allowedCommands = vscode.workspace.getConfiguration("roo-cline").get<string[]>("allowedCommands") || []
 		const cwd = this.cwd
 
-		// Get package manager items from the manager
-		const packageManagerItems = this.packageManagerManager?.getCurrentItems() || []
+		const marketplaceItems = this.marketplaceManager?.getCurrentItems() || []
 
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
-			packageManagerItems,
-			packageManagerSources: packageManagerSources ?? [],
+			marketplaceItems,
+			marketplaceSources: marketplaceSources ?? [],
 			apiConfiguration,
 			customInstructions,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
@@ -1393,7 +1392,7 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 			telemetrySetting: stateValues.telemetrySetting || "unset",
 			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? true,
 			maxReadFileLine: stateValues.maxReadFileLine ?? 500,
-			packageManagerSources: stateValues.packageManagerSources ?? [DEFAULT_PACKAGE_MANAGER_SOURCE],
+			marketplaceSources: stateValues.marketplaceSources ?? [DEFAULT_MARKETPLACE_SOURCE],
 		}
 	}
 
@@ -1489,11 +1488,11 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	}
 
 	/**
-	 * Set the package manager manager instance
-	 * @param packageManagerManager The package manager manager instance
+	 * Set the marketplace manager instance
+	 * @param marketplaceManager The marketplace manager instance
 	 */
-	public setPackageManagerManager(packageManagerManager: PackageManagerManager) {
-		this.packageManagerManager = packageManagerManager
+	public setMarketplaceManager(marketplaceManager: MarketplaceManager) {
+		this.marketplaceManager = marketplaceManager
 	}
 
 	/**

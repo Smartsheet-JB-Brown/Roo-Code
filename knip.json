@@ -26,7 +26,7 @@
 		"src/schemas/ipc.ts",
 		"src/extension.ts",
 		"scripts/**",
-		"package-manager-template/**",
+		"marketplace-template/**",
 		"src/utils/git.ts"
 	],
 	"workspaces": {

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { ExtensionMessage } from "../../src/shared/ExtensionMessage"
 import TranslationProvider from "./i18n/TranslationContext"
-import { PackageManagerViewStateManager } from "./components/package-manager/PackageManagerViewStateManager"
+import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
 
 import { vscode } from "./utils/vscode"
 import { telemetryClient } from "./utils/TelemetryClient"
@@ -14,11 +14,11 @@ import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import McpView from "./components/mcp/McpView"
-import PackageManagerView from "./components/package-manager/PackageManagerView"
+import PackageManagerView from "./components/marketplace/MarketplaceView"
 import PromptsView from "./components/prompts/PromptsView"
 import { HumanRelayDialog } from "./components/human-relay/HumanRelayDialog"
 
-type Tab = "settings" | "history" | "mcp" | "prompts" | "chat" | "packageManager"
+type Tab = "settings" | "history" | "mcp" | "prompts" | "chat" | "marketplace"
 
 const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]>, Tab>> = {
 	chatButtonClicked: "chat",
@@ -26,7 +26,7 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 	promptsButtonClicked: "prompts",
 	mcpButtonClicked: "mcp",
 	historyButtonClicked: "history",
-	packageManagerButtonClicked: "packageManager",
+	marketplaceButtonClicked: "marketplace",
 }
 
 const App = () => {
@@ -34,7 +34,7 @@ const App = () => {
 		useExtensionState()
 
 	// Create a persistent state manager
-	const packageManagerStateManager = useMemo(() => new PackageManagerViewStateManager(), [])
+	const marketplaceStateManager = useMemo(() => new MarketplaceViewStateManager(), [])
 
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
 	const [tab, setTab] = useState<Tab>("chat")
@@ -124,8 +124,8 @@ const App = () => {
 			{tab === "settings" && (
 				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
 			)}
-			{tab === "packageManager" && (
-				<PackageManagerView stateManager={packageManagerStateManager} onDone={() => switchTab("chat")} />
+			{tab === "marketplace" && (
+				<PackageManagerView stateManager={marketplaceStateManager} onDone={() => switchTab("chat")} />
 			)}
 			<ChatView
 				ref={chatViewRef}

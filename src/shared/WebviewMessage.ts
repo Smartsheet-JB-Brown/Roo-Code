@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { ApiConfiguration, ApiProvider } from "./api"
 import { Mode, PromptComponent, ModeConfig } from "./modes"
-import { PackageManagerSource } from "../services/package-manager/types"
+import { MarketplaceSource } from "../services/marketplace/types"
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
 
@@ -126,11 +126,11 @@ export interface WebviewMessage {
 		| "maxReadFileLine"
 		| "searchFiles"
 		| "toggleApiConfigPin"
-		| "packageManagerSources"
-		| "fetchPackageManagerItems"
-		| "filterPackageManagerItems"
-		| "packageManagerButtonClicked"
-		| "refreshPackageManagerSource"
+		| "marketplaceSources"
+		| "fetchMarketplaceItems"
+		| "filterMarketplaceItems"
+		| "marketplaceButtonClicked"
+		| "refreshMarketplaceSource"
 		| "repositoryRefreshComplete"
 		| "openExternal"
 	text?: string
@@ -158,7 +158,7 @@ export interface WebviewMessage {
 	source?: "global" | "project"
 	requestId?: string
 	ids?: string[]
-	sources?: PackageManagerSource[]
+	sources?: MarketplaceSource[]
 	filters?: { type?: string; search?: string; tags?: string[] }
 	url?: string // For openExternal
 }

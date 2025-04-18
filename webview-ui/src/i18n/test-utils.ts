@@ -29,7 +29,7 @@ export const setupI18nForTests = () => {
 				chat: {
 					test: "Test",
 				},
-				"package-manager": {
+				marketplace: {
 					items: {
 						card: {
 							by: "by {{author}}",
